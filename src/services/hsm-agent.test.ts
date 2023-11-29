@@ -13,7 +13,7 @@ describe('HSM Agent', () => {
     const pairingToken = hsmAgentDriver.given.jwtToken({ userId });
     const deviceId = chance.guid();
 
-    serverApiDriver.givenPairDevice({ userId, pairingToken, deviceId });
+    serverApiDriver.mock.pairDevice({ userId, pairingToken, deviceId });
     await agent.pairDevice(pairingToken, deviceId);
 
     expect(deviceService.isPaired()).toBe(true);

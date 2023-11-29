@@ -8,7 +8,7 @@
     "start": "node dist/hsm-client.js",
     "test": "jest",
     "test:watch": "jest --watchAll",
-    "test:spec": "jest hsm-agent.test"
+    "test:spec": "jest server.api.test"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
@@ -30,7 +30,7 @@
     "chalk": "^4.0.0",
     "figlet": "^1.7.0",
     "jsonwebtoken": "^9.0.2",
-    "ora": "^6.0.0",
+    "ora": "^5.0.0",
     "uuid": "^9.0.1"
   }
 }

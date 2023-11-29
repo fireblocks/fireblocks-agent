@@ -2,11 +2,10 @@ import { beforeEach, describe, expect, it } from '@jest/globals';
 import Chance from 'chance';
 import fs from 'fs';
 import { TOKEN_PATH } from '../constants';
-import service from './device.service';
+import service, { DeviceData } from './device.service';
 
+const chance = new Chance();
 describe('device service', () => {
-  const chance = new Chance();
-
   beforeEach(() => {
     if (fs.existsSync(TOKEN_PATH)) {
       fs.unlinkSync(TOKEN_PATH);
@@ -18,19 +17,32 @@ describe('device service', () => {
     expect(res).toBe(false);
   });
 
-  it('should return true in case refresh token is missing', () => {
-    fs.writeFileSync(TOKEN_PATH, 'test');
+  it('should return true in case of existing data', () => {
+    fs.writeFileSync(TOKEN_PATH, JSON.stringify(driver.given.deviceData()));
     const res = service.isPaired();
     expect(res).toBe(true);
   });
 
-  it('should save rehresh token', () => {
-    let token = service.getRefreshToken();
+  it('should save device data', () => {
+    let token = service.getDeviceData();
     expect(token).not.toBeDefined();
 
-    service.saveRefreshToken('my-token');
+    const deviceData = driver.given.deviceData();
+    service.saveDeviceData(deviceData);
 
-    token = service.getRefreshToken();
-    expect(token).toBe('my-token');
+    const fetchedData = service.getDeviceData();
+    expect(fetchedData).toStrictEqual(deviceData);
   });
 });
+
+const driver = {
+  given: {
+    deviceData: (): DeviceData => {
+      return {
+        userId: chance.guid(),
+        deviceId: chance.guid(),
+        refreshToken: chance.string(),
+      };
+    },
+  },
+};

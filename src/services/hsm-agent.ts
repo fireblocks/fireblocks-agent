@@ -15,7 +15,7 @@ class HsmAgentImpl implements HsmAgent {
       pairingToken,
       deviceId,
     });
-    deviceService.saveRefreshToken(refreshToken);
+    deviceService.saveDeviceData({userId, deviceId, refreshToken});
   }
 }
 
