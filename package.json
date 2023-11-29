@@ -5,23 +5,32 @@
   "scripts": {
     "watch": "tsc --watch",
     "build": "tsc",
-    "start": "node dist/hsm-agent.js",
+    "start": "node dist/hsm-client.js",
     "test": "jest",
-    "test:watch": "jest --watchAll"
+    "test:watch": "jest --watchAll",
+    "test:spec": "jest hsm-agent.test"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@types/chance": "^1.1.6",
     "@types/figlet": "^1.5.8",
+    "axios-mock-adapter": "^1.22.0",
+    "chance": "^1.1.11",
     "jest": "^29.7.0",
     "prettier": "^3.1.0",
     "ts-jest": "^29.1.1",
     "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.1",
     "typescript": "^5.3.2",
     "webpack": "^5.89.0"
   },
   "dependencies": {
+    "@inquirer/password": "^1.1.14",
+    "axios": "^1.6.2",
     "chalk": "^4.0.0",
     "figlet": "^1.7.0",
-    "ts-node": "^10.9.1"
+    "jsonwebtoken": "^9.0.2",
+    "ora": "^6.0.0",
+    "uuid": "^9.0.1"
   }
 }

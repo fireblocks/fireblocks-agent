@@ -1,23 +1,13 @@
-import {
-  afterAll,
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  jest,
-} from '@jest/globals';
-import { TOKEN_PATH } from '../constants';
+import { beforeEach, describe, expect, it } from '@jest/globals';
+import Chance from 'chance';
 import fs from 'fs';
+import { TOKEN_PATH } from '../constants';
+import service from './device.service';
 
 describe('device service', () => {
-  let service;
+  const chance = new Chance();
 
   beforeEach(() => {
-    service = require('./device.service');
-  });
-
-  afterEach(() => {
     if (fs.existsSync(TOKEN_PATH)) {
       fs.unlinkSync(TOKEN_PATH);
     }
