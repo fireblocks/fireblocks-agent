@@ -7,9 +7,11 @@
     "build": "tsc",
     "start": "node dist/hsm-client.js",
     "test": "jest",
+    "prepack": "npm run build",
     "test:watch": "jest --watchAll",
     "test:spec": "jest server.api.test"
   },
+  "bin": "dist/hsm-client.js",
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@types/chance": "^1.1.6",
