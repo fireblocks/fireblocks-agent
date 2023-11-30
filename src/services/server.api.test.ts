@@ -3,7 +3,12 @@ import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import Chance from 'chance';
 import { MOBILE_GATEWAY_URL } from '../constants';
-import { AccessTokenReuest, PairDeviceRequest } from '../types';
+import {
+  AccessToken,
+  AccessTokenReuest,
+  Message,
+  PairDeviceRequest,
+} from '../types';
 import serverApi from './server.api';
 
 const chance = new Chance();
@@ -27,6 +32,16 @@ describe('Server API', () => {
 
     expect(accessTokenRes).toBe(accessToken);
   });
+
+  it('should pull messages', async () => {
+    const accessToken = serverApiDriver.given.accessToken();
+    const someMessage = serverApiDriver.given.aMessage();
+    serverApiDriver.mock.messages(accessToken, someMessage);
+
+    const message = await serverApi.getMessages(accessToken);
+
+    expect(message).toStrictEqual(someMessage);
+  });
 });
 
 export const serverApiDriver = {
@@ -38,6 +53,15 @@ export const serverApiDriver = {
         pairingToken: 'some-valid-jwt',
       };
     },
+    aMessage: (): Message => {
+      return {
+        msg: { someMessageProp: 'propValue' },
+        msgId: chance.guid(),
+        deviceId: chance.guid(),
+        internalMessageId: chance.guid(),
+      };
+    },
+    accessToken: (): AccessToken => chance.string(),
     accessTokenRequst: (): AccessTokenReuest => {
       return {
         userId: chance.guid(),
@@ -60,6 +84,14 @@ export const serverApiDriver = {
       axiosMock
         .onPost(`${MOBILE_GATEWAY_URL}/pair_device`, pairRequest)
         .reply(200, { refreshToken: resultRefreshToken });
+    },
+    messages: (accessToken: AccessToken, message: Message) => {
+      const axiosMock = new MockAdapter(axios);
+      axiosMock
+        .onGet(`${MOBILE_GATEWAY_URL}/msg`, {
+          headers: { 'x-access-token': accessToken },
+        })
+        .reply(200, message);
     },
     accessToken: (
       accessTokenReq?: Partial<AccessTokenReuest>,

@@ -1,10 +1,18 @@
 import axios from 'axios';
-import { AccessTokenReuest, PairDeviceRequest } from 'types';
+import {
+  AccessToken,
+  AccessTokenReuest,
+  Message as MessageResponse,
+  PairDeviceRequest,
+  PairDeviceResponse,
+} from 'types';
 import { MOBILE_GATEWAY_URL } from '../constants';
 import logger from './logger';
 
-export default {
-  pairDevice: async (pairDevice: PairDeviceRequest) => {
+const serverApi = {
+  pairDevice: async (
+    pairDevice: PairDeviceRequest,
+  ): Promise<PairDeviceResponse> => {
     try {
       const res = await axios.post(
         `${MOBILE_GATEWAY_URL}/pair_device`,
@@ -16,7 +24,10 @@ export default {
       throw e;
     }
   },
-  getAccessToken: async (accessTokenReq: AccessTokenReuest) => {
+
+  getAccessToken: async (
+    accessTokenReq: AccessTokenReuest,
+  ): Promise<AccessToken> => {
     try {
       const res = await axios.post(
         `${MOBILE_GATEWAY_URL}/access_token`,
@@ -28,4 +39,18 @@ export default {
       throw e;
     }
   },
+
+  getMessages: async (accessToken: AccessToken): Promise<MessageResponse> => {
+    try {
+      const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg`, {
+        headers: { 'x-access-token': accessToken },
+      });
+      return res.data;
+    } catch (e) {
+      logger.error(`Error on getMessages request`, e);
+      throw e;
+    }
+  },
 };
+
+export default serverApi;
