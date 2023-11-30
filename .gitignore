@@ -2,3 +2,5 @@ dist
 node_modules
 coverage
 .hsm-refresh-token
+.env.prod
+.env.dev*
