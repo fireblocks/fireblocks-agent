@@ -27,14 +27,19 @@ async function main() {
 
 const runAgentMainLoop = async () => {
   const ONE_MIN = 60 * 1000;
+  let i = 0;
   const loopFunc = async () => {
     const accessToken = await serverApi.getAccessToken(
       deviceService.getDeviceData(),
     );
+
+    const start = Date.now();
+    logger.log(`Waiting for a message`);
     const message = await serverApi.getMessages(accessToken);
+    logger.log(`Got Message after ${Date.now() - start}ms`);
+    setTimeout(loopFunc);
   };
-  loopFunc();
-  setInterval(loopFunc, ONE_MIN);
+  setTimeout(loopFunc);
 };
 
 const pairDevice = async (): Promise<boolean> => {
@@ -68,7 +73,7 @@ const promptPairDeviceFlow = async () => {
 };
 
 const spinner = ora('Fireblocks HSM Agent is loading please wait').start();
-const TIME_TO_LET_PM2_START_AND_ATTACH = 2000;
+const TIME_TO_LET_PM2_START_AND_ATTACH = 200;
 setTimeout(() => {
   spinner.stop();
   main();

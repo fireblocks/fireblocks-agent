@@ -2,7 +2,8 @@ import axios from 'axios';
 import {
   AccessToken,
   AccessTokenReuest,
-  Message as MessageResponse,
+  GUID,
+  Message,
   PairDeviceRequest,
   PairDeviceResponse,
 } from 'types';
@@ -40,17 +41,39 @@ const serverApi = {
     }
   },
 
-  getMessages: async (accessToken: AccessToken): Promise<MessageResponse> => {
+  getMessages: async (accessToken: AccessToken): Promise<Message> => {
     try {
-      const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg`, {
-        headers: { 'x-access-token': accessToken },
-      });
+      const res = await axios.get(
+        `${MOBILE_GATEWAY_URL}/msg`,
+        buildHeaders(accessToken),
+      );
       return res.data;
     } catch (e) {
       logger.error(`Error on getMessages request`, e);
       throw e;
     }
   },
+
+  ackMessage: async (accessToken: AccessToken, msgId: GUID) => {
+    try {
+      const res = await axios.put(
+        `${MOBILE_GATEWAY_URL}/msg`,
+        { msgId },
+        buildHeaders(accessToken),
+      );
+      return res.data;
+    } catch (e) {
+      logger.error(`Error on ackMessage request`, e);
+      throw e;
+    }
+  },
 };
+
+function buildHeaders(accessToken: AccessToken) {
+  const headers = {
+    'x-access-token': accessToken,
+  };
+  return { headers };
+}
 
 export default serverApi;

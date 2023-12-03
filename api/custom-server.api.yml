@@ -1,0 +1,77 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: Custom Server API
+  description: API between HSM Agent and custom client's server
+
+servers:
+  - url: https://localhost:5000/v1
+
+
+paths:
+  /txToSign:
+    post:
+      summary: Sign Transaction
+      description: Sign Transaction
+      responses:
+        200:
+          description: Transaction ACK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TxAck'
+        default:
+          $ref: "#/components/schemas/Error"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tx'
+        description: Transaction to sign
+
+components:
+  schemas:  
+    TxAck:
+      type: object
+      required:
+        - txId
+      properties:
+        txId:
+          type: string
+          format: uuid
+          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
+    Tx:
+      type: object
+      required:
+        - txId
+      properties:
+        txId:
+          type: string
+          format: uuid
+          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
+        transactionType:
+          type: string
+          enum: [TRANSFER]
+        dstAddress:
+          type: string
+        signInfo:
+          type: array
+          items:
+            type: object
+            properties:
+              payload:
+                type: string
+              path:
+                type: array
+                items:
+                  type: integer
+    Error:
+      type: object
+      required:
+          - code
+          - message
+      properties:
+        message:
+          type: string
+

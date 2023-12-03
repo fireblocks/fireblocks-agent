@@ -6,12 +6,13 @@ import { MOBILE_GATEWAY_URL } from '../constants';
 import {
   AccessToken,
   AccessTokenReuest,
+  GUID,
   Message,
   PairDeviceRequest,
 } from '../types';
 import serverApi from './server.api';
 
-const chance = new Chance();
+const c = new Chance();
 describe('Server API', () => {
   it('should pair device', async () => {
     const pairDeviceReq = serverApiDriver.given.pairDeviceRequst();
@@ -35,37 +36,51 @@ describe('Server API', () => {
 
   it('should pull messages', async () => {
     const accessToken = serverApiDriver.given.accessToken();
-    const someMessage = serverApiDriver.given.aMessage();
+    const someMessage = messageBuilder.aMessage();
     serverApiDriver.mock.messages(accessToken, someMessage);
 
     const message = await serverApi.getMessages(accessToken);
 
     expect(message).toStrictEqual(someMessage);
   });
+
+  it('shuold ack message', async () => {
+    const accessToken = serverApiDriver.given.accessToken();
+    const aMessage = messageBuilder.aMessage({ msgId: c.guid() });
+    serverApiDriver.mock.ackMessage(accessToken, aMessage.msgId, 'ok');
+
+    const res = await serverApi.ackMessage(accessToken, aMessage.msgId);
+
+    expect(res).toEqual('ok');
+  });
 });
+
+export const messageBuilder = {
+  aMessage: (message?: Partial<Message>): Message => {
+    return {
+      msg: c.string(),
+      msgId: c.guid(),
+      deviceId: c.guid(),
+      internalMessageId: c.guid(),
+      ...message,
+    };
+  },
+};
 
 export const serverApiDriver = {
   given: {
     pairDeviceRequst: (): PairDeviceRequest => {
       return {
-        userId: chance.guid(),
-        deviceId: chance.guid(),
+        userId: c.guid(),
+        deviceId: c.guid(),
         pairingToken: 'some-valid-jwt',
       };
     },
-    aMessage: (): Message => {
-      return {
-        msg: { someMessageProp: 'propValue' },
-        msgId: chance.guid(),
-        deviceId: chance.guid(),
-        internalMessageId: chance.guid(),
-      };
-    },
-    accessToken: (): AccessToken => chance.string(),
+    accessToken: (): AccessToken => c.string(),
     accessTokenRequst: (): AccessTokenReuest => {
       return {
-        userId: chance.guid(),
-        deviceId: chance.guid(),
+        userId: c.guid(),
+        deviceId: c.guid(),
         refreshToken: 'some-valid-refresh-token',
       };
     },
@@ -73,7 +88,7 @@ export const serverApiDriver = {
   mock: {
     pairDevice: (
       pairDeviceReq?: Partial<PairDeviceRequest>,
-      resultRefreshToken: string = chance.string(),
+      resultRefreshToken: string = c.string(),
     ) => {
       const generatedReq = serverApiDriver.given.pairDeviceRequst();
       const pairRequest = {
@@ -93,9 +108,15 @@ export const serverApiDriver = {
         })
         .reply(200, message);
     },
+    ackMessage: (accessToken: AccessToken, msgId: GUID, response: string) => {
+      const axiosMock = new MockAdapter(axios);
+      axiosMock
+        .onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId })
+        .reply(200, response);
+    },
     accessToken: (
       accessTokenReq?: Partial<AccessTokenReuest>,
-      resultAccessToken: string = chance.string(),
+      resultAccessToken: string = c.string(),
     ) => {
       const generatedReq = serverApiDriver.given.accessTokenRequst();
       const accessTokenRequest: AccessTokenReuest = {
