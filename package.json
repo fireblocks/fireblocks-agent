@@ -4,7 +4,7 @@
   "name": "@fireblocks/hsm-agent",
   "scripts": {
     "build": "tsc",
-    "build:api": "openapi-typescript ./api/custom-server.api.yml -o ./api/custom-server.d.ts",
+    "build:api": "openapi-typescript ./api/customer-server.api.yml -o ./api/customer-server.d.ts",
     "start": "npm run build:api; NODE_ENV=local nodemon src/hsm-client.ts",
     "start:prod": "NODE_ENV=prod node dist/hsm-client.js",
     "start:pm2": "NODE_ENV=prod pm2 start dist/hsm-client.js && pm2 attach 0",
@@ -13,13 +13,14 @@
     "test": "jest",
     "prepack": "npm run build",
     "test:watch": "jest --watchAll",
-    "test:spec": "jest server.api.test"
+    "test:spec": "jest messages.service.test.ts --watch"
   },
   "bin": "dist/hsm-client.js",
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@types/chance": "^1.1.6",
     "@types/figlet": "^1.5.8",
+    "@types/jsonwebtoken": "^9.0.5",
     "axios-mock-adapter": "^1.22.0",
     "chance": "^1.1.11",
     "jest": "^29.7.0",

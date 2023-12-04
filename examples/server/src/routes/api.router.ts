@@ -1,5 +1,5 @@
 import { Request, Response, Router } from 'express';
-import { paths } from '../../../../api/custom-server';
+import { paths } from '../../../../api/customer-server';
 
 const apiRouter = Router();
 
@@ -14,7 +14,7 @@ txRouter.post(
   '/txToSign',
   (req: Request<{}, {}, TxRequest>, res: Response<TxResponse>) => {
     const { txId } = req.body;
-    res.status(200).json({ txId });
+    res.status(200).json({txId});
   },
 );
 

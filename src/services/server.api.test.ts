@@ -2,17 +2,22 @@ import { describe, expect, it } from '@jest/globals';
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import Chance from 'chance';
+import jwt from 'jsonwebtoken';
 import { MOBILE_GATEWAY_URL } from '../constants';
 import {
   AccessToken,
   AccessTokenReuest,
+  Algorithm,
   GUID,
   Message,
+  MessageEnvlope,
   PairDeviceRequest,
+  TxType,
 } from '../types';
 import serverApi from './server.api';
 
 const c = new Chance();
+
 describe('Server API', () => {
   it('should pair device', async () => {
     const pairDeviceReq = serverApiDriver.given.pairDeviceRequst();
@@ -36,7 +41,7 @@ describe('Server API', () => {
 
   it('should pull messages', async () => {
     const accessToken = serverApiDriver.given.accessToken();
-    const someMessage = messageBuilder.aMessage();
+    const someMessage = messageBuilder.messageEnvlope();
     serverApiDriver.mock.messages(accessToken, someMessage);
 
     const message = await serverApi.getMessages(accessToken);
@@ -46,7 +51,7 @@ describe('Server API', () => {
 
   it('shuold ack message', async () => {
     const accessToken = serverApiDriver.given.accessToken();
-    const aMessage = messageBuilder.aMessage({ msgId: c.guid() });
+    const aMessage = messageBuilder.messageEnvlope({ msgId: c.guid() });
     serverApiDriver.mock.ackMessage(accessToken, aMessage.msgId, 'ok');
 
     const res = await serverApi.ackMessage(accessToken, aMessage.msgId);
@@ -56,12 +61,25 @@ describe('Server API', () => {
 });
 
 export const messageBuilder = {
-  aMessage: (message?: Partial<Message>): Message => {
+  messageEnvlope: (
+    messageEnvlope?: Partial<MessageEnvlope>,
+    message?: Message,
+  ): MessageEnvlope => {
     return {
-      msg: c.string(),
+      msg: message ? jwt.sign(JSON.stringify(message), 'shhhhh') : c.string(),
       msgId: c.guid(),
       deviceId: c.guid(),
       internalMessageId: c.guid(),
+      ...messageEnvlope,
+    };
+  },
+  aMessage: (message?: Partial<Message>): Message => {
+    return {
+      type: TxType.MPC_START_SIGNING,
+      txId: c.guid(),
+      keyId: c.guid(),
+      payload: c.string(),
+      algorithm: Algorithm.ECDSA,
       ...message,
     };
   },
@@ -100,7 +118,7 @@ export const serverApiDriver = {
         .onPost(`${MOBILE_GATEWAY_URL}/pair_device`, pairRequest)
         .reply(200, { refreshToken: resultRefreshToken });
     },
-    messages: (accessToken: AccessToken, message: Message) => {
+    messages: (accessToken: AccessToken, message: MessageEnvlope) => {
       const axiosMock = new MockAdapter(axios);
       axiosMock
         .onGet(`${MOBILE_GATEWAY_URL}/msg`, {

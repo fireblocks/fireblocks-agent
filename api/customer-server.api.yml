@@ -19,7 +19,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TxAck'
+                $ref: '#/components/schemas/TxResponse'
         default:
           $ref: "#/components/schemas/Error"
       requestBody:
@@ -27,12 +27,50 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Tx'
+              $ref: '#/components/schemas/TxRequest'
         description: Transaction to sign
 
 components:
-  schemas:  
-    TxAck:
+  schemas: 
+    SignedTxResponse:
+      type: object
+      required:
+        - txId
+        - signedTx
+      properties:
+        txId:
+          type: string
+          format: uuid
+          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
+        signedTx:
+          type: string
+    TxRequest:
+      type: object
+      required:
+        - txId
+        - keyId
+        - payload
+        - algorithm
+      properties:
+        txId:
+          type: string
+          format: uuid
+          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
+        keyId:
+          description: keyId that is associated with the HSM private key
+          type: string
+          format: uuid
+          example: 0ba9efb7-73cc-4ea5-9219-2aed45b06364
+        payload:
+          description: payload to sign
+          type: string
+          example: dc93a3b504f2ede4e03e60758571be627b2512aafa1c5e21db4c6b88d0813e9e
+        algorithm:
+          description: algorithm to sign with
+          type: string
+          enum: [ECDSA, EDDSA]
+          example: ECDSA
+    TxResponse:
       type: object
       required:
         - txId
@@ -41,31 +79,6 @@ components:
           type: string
           format: uuid
           example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
-    Tx:
-      type: object
-      required:
-        - txId
-      properties:
-        txId:
-          type: string
-          format: uuid
-          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
-        transactionType:
-          type: string
-          enum: [TRANSFER]
-        dstAddress:
-          type: string
-        signInfo:
-          type: array
-          items:
-            type: object
-            properties:
-              payload:
-                type: string
-              path:
-                type: array
-                items:
-                  type: integer
     Error:
       type: object
       required:

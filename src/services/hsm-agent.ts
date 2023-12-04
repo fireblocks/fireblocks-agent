@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { GUID, JWT } from 'types';
+import { GUID, JWT, PairingToken } from 'types';
 import deviceService from './device.service';
 import serverApi from './server.api';
 
@@ -9,7 +9,7 @@ interface HsmAgent {
 
 class HsmAgentImpl implements HsmAgent {
   async pairDevice(pairingToken: string, deviceId: GUID) {
-    const { userId } = jwt.decode(pairingToken);
+    const { userId } = jwt.decode(pairingToken) as PairingToken;
     const { refreshToken } = await serverApi.pairDevice({
       userId,
       pairingToken,
