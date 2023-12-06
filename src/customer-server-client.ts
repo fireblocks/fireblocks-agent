@@ -8,7 +8,6 @@ class CustomerClient {
 
   constructor() {
     this.txCache = {};
-    this.startPullMessagesLoop();
   }
 
   startPullMessagesLoop = async () => {
@@ -20,13 +19,13 @@ class CustomerClient {
   };
 
   addTxToSign = async (transactions: Message[]) => {
-    transactions.forEach(
-      (tx) =>
-        (this.txCache[tx.txId] = {
-          tx,
-          txStatus: { txId: tx.txId, status: 'PENDING_SIGN' },
-        }),
-    );
+    for (const tx of transactions) {
+      await customerServerApi.txToSign(tx);
+      this.txCache[tx.txId] = {
+        tx,
+        txStatus: { txId: tx.txId, status: 'PENDING_SIGN' },
+      };
+    }
   };
 }
 
@@ -36,4 +35,5 @@ interface TxCacheEntry {
 }
 
 export type TxStatus = components['schemas']['TxStatus'];
-export default CustomerClient;
+
+export default new CustomerClient();

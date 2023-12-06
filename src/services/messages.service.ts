@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
+import customerServerClient from '../customer-server-client';
 import { Message, MessageEnvlope, TxType } from '../types';
-import customerServerApi from './customerServer.api';
 
 const messageService = {
   handleMessage: async ({ msgId, msg }: MessageEnvlope) => {
@@ -8,7 +8,7 @@ const messageService = {
     if (message.type !== TxType.MPC_START_SIGNING) {
       return;
     }
-    await customerServerApi.txToSign(message);
+    customerServerClient.addTxToSign([message]);
   },
 };
 

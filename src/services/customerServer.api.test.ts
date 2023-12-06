@@ -65,7 +65,7 @@ export const customerServerApiDriver = {
         })
         .reply(200, result);
     },
-    txStatus: (txStatusReq: TxStatusRequest, result?: TxStatusResponse) => {
+        txStatus: (txStatusReq: TxStatusRequest, result?: TxStatusResponse) => {
       const axiosMock = new MockAdapter(axios);
       axiosMock
         .onPost(`${CUSTOMER_SERVER_URL}/txStatus`, txStatusReq, {
