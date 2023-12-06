@@ -14,7 +14,7 @@ jest.mock('./services/customerServer.api');
 describe('Customer server client', () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    jest.spyOn(service, 'startPullMessagesLoop');
+    jest.spyOn(service, 'start');
   });
   afterEach(() => {
     jest.useRealTimers();
@@ -23,16 +23,16 @@ describe('Customer server client', () => {
 
   it('should fetch tx status every 30 sec', async () => {
     //set a reponse for an empty request
-    await service.startPullMessagesLoop();
-    expect(service.startPullMessagesLoop).toHaveBeenCalledTimes(1);
+    await service.start();
+    expect(service.start).toHaveBeenCalledTimes(1);
 
     //advance 29 seconds
     await jest.advanceTimersByTimeAsync(29 * 1000);
-    expect(service.startPullMessagesLoop).toHaveBeenCalledTimes(1);
+    expect(service.start).toHaveBeenCalledTimes(1);
 
     //pass 30 secondss
     await jest.advanceTimersByTimeAsync(2000);
-    expect(service.startPullMessagesLoop).toHaveBeenCalledTimes(2);
+    expect(service.start).toHaveBeenCalledTimes(2);
   });
 
   it('should fetch pending tx', async () => {
@@ -40,7 +40,7 @@ describe('Customer server client', () => {
     const tx2 = messageBuilder.aMessage();
     await service.addTxToSign([tx1, tx2]);
 
-    await service.startPullMessagesLoop();
+    await service.start();
     expect(customerServerApi.txStatus).toHaveBeenCalledWith({
       txIds: [tx1.txId, tx2.txId],
     });

@@ -10,12 +10,12 @@ class CustomerClient {
     this.txCache = {};
   }
 
-  startPullMessagesLoop = async () => {
+  start = async () => {
     const txIds = Object.keys(this.txCache).filter(
       (txId) => this.txCache[txId].txStatus.status === 'PENDING_SIGN',
     );
     const status = await customerServerApi.txStatus({ txIds });
-    setInterval(this.startPullMessagesLoop, this.HALF_A_MINUTE);
+    setInterval(this.start, this.HALF_A_MINUTE);
   };
 
   addTxToSign = async (transactions: Message[]) => {

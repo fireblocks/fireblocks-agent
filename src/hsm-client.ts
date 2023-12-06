@@ -4,7 +4,7 @@ import figlet from 'figlet';
 import jwt from 'jsonwebtoken';
 import ora from 'ora';
 import { v4 as uuid } from 'uuid';
-import deviceService from './services/device.service';
+import deviceService, { DeviceData } from './services/device.service';
 import hsmAgent from './services/hsm-agent';
 import logger from './services/logger';
 import serverApi from './services/server.api';
@@ -62,7 +62,7 @@ const promptPairDeviceFlow = async () => {
     mask: true,
     validate: (pairingToken) => {
       try {
-        const { userId } = jwt.decode(pairingToken);
+        const { userId } = jwt.decode(pairingToken) as DeviceData;
         return userId.length > 0;
       } catch (e) {
         return false;
@@ -72,9 +72,11 @@ const promptPairDeviceFlow = async () => {
   return token;
 };
 
-const spinner = ora('Fireblocks HSM Agent is loading please wait').start();
-const TIME_TO_LET_PM2_START_AND_ATTACH = 200;
-setTimeout(() => {
-  spinner.stop();
-  main();
-}, TIME_TO_LET_PM2_START_AND_ATTACH);
+export const start = async () => {
+  const spinner = ora('Fireblocks HSM Agent is loading please wait').start();
+  const TIME_TO_LET_PM2_START_AND_ATTACH = 200;
+  setTimeout(() => {
+    spinner.stop();
+    main();
+  }, TIME_TO_LET_PM2_START_AND_ATTACH);
+};
