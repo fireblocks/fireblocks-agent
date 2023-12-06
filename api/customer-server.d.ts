@@ -5,6 +5,23 @@
 
 
 export interface paths {
+  "/txStatus": {
+    /** Get updates on requested transcations */
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["TxStatusRequest"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["TxStatusResponse"];
+          };
+        };
+      };
+    };
+  };
   "/txToSign": {
     /**
      * Sign Transaction
@@ -34,13 +51,25 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
-    SignedTxResponse: {
+    TxStatusResponse: {
+      transcations: components["schemas"]["TxStatus"][];
+    };
+    TxStatus: {
       /**
        * Format: uuid
        * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
        */
       txId: string;
-      signedTx: string;
+      /**
+       * @example ECDSA
+       * @enum {string}
+       */
+      status: "PENDING_SIGN" | "SIGNED" | "FAILED";
+      errorMessage?: string;
+      payload?: string;
+    };
+    TxStatusRequest: {
+      txIds: string[];
     };
     TxRequest: {
       /**

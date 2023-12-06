@@ -18,11 +18,32 @@ const customerServerApi = {
       throw e;
     }
   },
+
+  txStatus: async (txStatus: TxStatusRequest) => {
+    try {
+      const res = await axios.post(
+        `${CUSTOMER_SERVER_URL}/txStatus`,
+        txStatus,
+        {
+          headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
+        },
+      );
+      return res.data;
+    } catch (e) {
+      logger.error(`Error on customer server api {txStatus} request`, e);
+      throw e;
+    }
+  },
 };
 
-type TxResponse =
+export type TxResponse =
   paths['/txToSign']['post']['responses'][200]['content']['application/json'];
 export type TxRequest =
   paths['/txToSign']['post']['requestBody']['content']['application/json'];
+
+export type TxStatusResponse =
+  paths['/txStatus']['post']['responses'][200]['content']['application/json'];
+export type TxStatusRequest =
+  paths['/txStatus']['post']['requestBody']['content']['application/json'];
 
 export default customerServerApi;

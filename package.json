@@ -13,7 +13,7 @@
     "test": "jest",
     "prepack": "npm run build",
     "test:watch": "jest --watchAll",
-    "test:spec": "jest messages.service.test.ts --watch"
+    "test:spec": "jest customer-server-client.test.ts --watch"
   },
   "bin": "dist/hsm-client.js",
   "devDependencies": {

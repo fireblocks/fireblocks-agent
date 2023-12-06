@@ -9,6 +9,21 @@ servers:
 
 
 paths:
+  /txStatus:
+    post:
+      summary: Get updates on requested transcations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TxStatusRequest'
+      responses:
+        200:
+          content:
+            application/json: 
+              schema:
+                $ref: '#/components/schemas/TxStatusResponse'
   /txToSign:
     post:
       summary: Sign Transaction
@@ -29,21 +44,48 @@ paths:
             schema:
               $ref: '#/components/schemas/TxRequest'
         description: Transaction to sign
-
 components:
   schemas: 
-    SignedTxResponse:
+    TxStatusResponse:
+      type: object
+      required:
+        - transcations
+      properties:
+        transcations:
+          type: array
+          items:
+            $ref: '#/components/schemas/TxStatus'
+    TxStatus:
       type: object
       required:
         - txId
-        - signedTx
+        - status
       properties:
         txId:
           type: string
           format: uuid
           example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
-        signedTx:
+        status:
           type: string
+          enum: [PENDING_SIGN, SIGNED, FAILED]
+          example: ECDSA
+        errorMessage:
+          type: string
+          exmaple: Transction 8c2b2b3d-fb83-497e-8138-72446b9184b6 failed due to insufficient funds
+        payload:
+          type: string
+          exmaple: singed-tx-string
+    TxStatusRequest:
+      type: object
+      required:
+        - txIds
+      properties:
+        txIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+            example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
     TxRequest:
       type: object
       required:

@@ -7,7 +7,12 @@ import {
   CUSTOMER_SERVER_URL,
 } from '../constants';
 import { GUID, Message } from '../types';
-import service, { TxRequest } from './customerServer.api';
+import service, {
+  TxRequest,
+  TxResponse,
+  TxStatusRequest,
+  TxStatusResponse,
+} from './customerServer.api';
 import { messageBuilder } from './server.api.test';
 const c = new Chance();
 
@@ -43,12 +48,27 @@ export const customerServerApiDriver = {
         payload,
       };
     },
+    aTxStatusRequest: (txIds: GUID[] = []): TxStatusRequest => {
+      return {
+        txIds,
+      };
+    },
   },
   mock: {
-    txToSign: (txRequest: TxRequest, result?: { txId: GUID }) => {
+    txToSign: (txRequest: TxRequest, result?: TxResponse) => {
       const axiosMock = new MockAdapter(axios);
       axiosMock
         .onPost(`${CUSTOMER_SERVER_URL}/txToSign`, txRequest, {
+          Authorization: CUSTOMER_SERVER_AUTHORIZATION as string,
+          Accept: 'application/json, text/plain, */*',
+          'Content-Type': 'application/json',
+        })
+        .reply(200, result);
+    },
+    txStatus: (txStatusReq: TxStatusRequest, result?: TxStatusResponse) => {
+      const axiosMock = new MockAdapter(axios);
+      axiosMock
+        .onPost(`${CUSTOMER_SERVER_URL}/txStatus`, txStatusReq, {
           Authorization: CUSTOMER_SERVER_AUTHORIZATION as string,
           Accept: 'application/json, text/plain, */*',
           'Content-Type': 'application/json',

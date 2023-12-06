@@ -49,7 +49,3 @@ describe('messages service', () => {
   //     );
   //   });
 });
-
-const driver = {
-  given: {},
-};
