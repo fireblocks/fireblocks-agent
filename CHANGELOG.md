@@ -1,3 +1,10 @@
+# [1.1.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.0.0...v1.1.0) (2023-12-11)
+
+
+### Features
+
+* **customer server:** add softHsm ([cf0b386](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/cf0b3862ff8472a446de463b70d5e25e564387a5))
+
 # 1.0.0 (2023-12-07)
 
 
