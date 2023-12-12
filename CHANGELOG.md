@@ -1,3 +1,10 @@
+# [1.2.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.1.0...v1.2.0) (2023-12-12)
+
+
+### Features
+
+* **example server:** add pem public key to generateKeyPair ([a07c402](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/a07c402240ffa80da0ef421052f20ccbe34090e6))
+
 # [1.1.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.0.0...v1.1.0) (2023-12-11)
 
 
