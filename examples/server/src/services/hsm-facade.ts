@@ -1,8 +1,10 @@
+import fs from 'fs';
 import { Crypto, CryptoKey } from 'node-webcrypto-p11';
+import { exec } from 'node:child_process';
 import { GUID } from '../types';
-
+import logger from './logger';
 export interface HSMFacade {
-  generateKeyPair(): Promise<string>;
+  generateKeyPair(): Promise<{ keyId: GUID; pem: string }>;
   sign(keyId: GUID, payload: string): Promise<string>;
   verify(keyId: GUID, signature: string, payload: string): Promise<boolean>;
 }
@@ -21,7 +23,7 @@ class HSM implements HSMFacade {
     this.crypto = new Crypto(config);
   }
 
-  async generateKeyPair(): Promise<GUID> {
+  async generateKeyPair(): Promise<{ keyId: GUID; pem: string }> {
     const keys = await this.crypto.subtle.generateKey(
       { name: 'ECDSA', namedCurve: 'K-256' },
       false,
@@ -30,7 +32,9 @@ class HSM implements HSMFacade {
     const key = await this.crypto.keyStorage.setItem(keys.privateKey);
     await this.crypto.keyStorage.setItem(keys.publicKey);
     const keyId = this.extractKeyUUID(key);
-    return keyId;
+    const pem = await this.exportPublicKeyAsPem(keyId);
+
+    return { keyId, pem };
   }
 
   async sign(keyId: GUID, payload: string): Promise<string> {
@@ -57,6 +61,31 @@ class HSM implements HSMFacade {
     return ok;
   }
 
+  private exportPublicKeyAsPem(keyId: GUID): Promise<string> {
+    return new Promise((res, rej) => {
+      exec(
+        `pkcs11-tool --module  /usr/local/lib/softhsm/libsofthsm2.so  --read-object --type pubkey --id ${keyId} --output-file public_key.der`,
+        (err, output, errMessage) => {
+          if (err) {
+            logger.error(`error while exporting der file for public key. ${errMessage}`, err);
+            rej(err);
+          }
+          exec(
+            `openssl ec -inform DER -in public_key.der -pubin -outform PEM -out public_key.pem`,
+            (err, out, errMessage) => {
+              if (err) {
+                logger.error(`error while exporting pem file for public key. ${errMessage}`, err);
+                rej(err);
+              }
+              const pem = fs.readFileSync('./public_key.pem', 'utf-8');
+              res(pem);
+            },
+          );
+        },
+      );
+    });
+  }
+
   private toArrayBuffer(buffer: Buffer) {
     const arrayBuffer = new ArrayBuffer(buffer.length);
     const view = new Uint8Array(arrayBuffer);
@@ -75,7 +104,7 @@ class HSM implements HSMFacade {
     return key;
   }
 
-  private extractKeyUUID(fullKey: string): string {
+  private extractKeyUUID(fullKey: string): GUID {
     // @ts-ignore
     return /(.*)-(.*)-(.*)/.exec(fullKey)[3];
   }

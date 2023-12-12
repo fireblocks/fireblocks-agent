@@ -3,9 +3,9 @@ import hsm from '../services/hsm-facade';
 const hsmRouter = Router();
 
 hsmRouter.get('/generateKeyPair', async (req, res) => {
-  const keyId = await hsm.generateKeyPair();
+  const { keyId, pem } = await hsm.generateKeyPair();
   console.log(`keyId`, keyId);
-  res.status(200).json({ keyId });
+  res.status(200).json({ keyId, pem });
 });
 
 hsmRouter.post('/sign', async (req, res) => {
