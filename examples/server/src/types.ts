@@ -1,4 +1,4 @@
 import { components } from './customer-server';
 
-export type TxStatus = components['schemas']['TxStatus'];
+export type MessageStatus = components['schemas']['MessageStatus'];
 export type GUID = string;

@@ -9,58 +9,95 @@ servers:
 
 
 paths:
-  /txStatus:
+  /messagesStatus:
     post:
-      summary: Get updates on requested transcations
+      summary: Get updates on requested messages
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TxStatusRequest'
+              $ref: '#/components/schemas/MessagesStatusRequest'
       responses:
         200:
           content:
             application/json: 
               schema:
-                $ref: '#/components/schemas/TxStatusResponse'
-  /txToSign:
+                $ref: '#/components/schemas/MessagesStatusResponse'
+  /messagesToSign:
     post:
-      summary: Sign Transaction
-      description: Sign Transaction
-      responses:
-        200:
-          description: Transaction ACK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TxResponse'
-        default:
-          $ref: "#/components/schemas/Error"
+      summary: Sign Messages
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TxRequest'
-        description: Transaction to sign
+              $ref: '#/components/schemas/MessagesRequest'
+        description: Messages to sign
+      responses:
+        200:
+          description: Messages Status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessagesStatusResponse'
+        default:
+          $ref: "#/components/schemas/Error"
+
 components:
   schemas: 
-    TxStatusResponse:
+    MessagesStatusRequest:
       type: object
       required:
-        - transcations
+        - msgIds
       properties:
-        transcations:
+        msgIds:
           type: array
           items:
-            $ref: '#/components/schemas/TxStatus'
-    TxStatus:
+            type: string
+            format: uuid
+            example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
+    MessagesStatusResponse:
       type: object
       required:
+        - messages
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageStatus'
+    MessagesRequest:
+      type: object
+      required:
+        - messages
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageEnvelope'
+    MessageEnvelope:
+      type: object
+      required:
+        - msgId
+        - message
+      properties:
+        msgId:
+          type: string
+          format: uuid
+          example: 9eca83b5-5936-4eef-89cc-51bec0f49945
+        message:
+          $ref: '#/components/schemas/Message'
+    MessageStatus:
+      type: object
+      required:
+        - msgId
         - txId
         - status
       properties:
+        msgId:
+          type: string
+          format: uuid
+          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
         txId:
           type: string
           format: uuid
@@ -75,18 +112,7 @@ components:
         payload:
           type: string
           exmaple: singed-tx-string
-    TxStatusRequest:
-      type: object
-      required:
-        - txIds
-      properties:
-        txIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-            example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
-    TxRequest:
+    Message:
       type: object
       required:
         - txId
@@ -112,15 +138,6 @@ components:
           type: string
           enum: [ECDSA, EDDSA]
           example: ECDSA
-    TxResponse:
-      type: object
-      required:
-        - txId
-      properties:
-        txId:
-          type: string
-          format: uuid
-          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
     Error:
       type: object
       required:

@@ -1,13 +1,7 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  jest,
-} from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import service from './customer-server-client';
 import customerServerApi from './services/customerServer.api';
+import serverApi from './services/server.api';
 import { messageBuilder } from './services/server.api.test';
 
 jest.mock('./services/customerServer.api');
@@ -53,5 +47,14 @@ describe('Customer server client', () => {
     service.addTxToSign([tx1]);
 
     expect(customerServerApi.txToSign).toHaveBeenCalledWith(tx1);
+  });
+
+  it('should report ack on signed tx', () => {
+    const { txId } = messageBuilder.aMdxessage();
+    jest
+      .spyOn(customerServerApi, 'txStatus')
+      .mockResolvedValue({ transcations: [{ txId, status: 'SIGNED' }] });
+
+    expect(serverApi.ackMessage).toHaveBeenCalledWith(txId);
   });
 });

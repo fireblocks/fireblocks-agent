@@ -1,33 +1,30 @@
 import axios from 'axios';
-import { paths } from '../../api/customer-server';
-import {
-  CUSTOMER_SERVER_AUTHORIZATION,
-  CUSTOMER_SERVER_URL,
-} from '../constants';
+import { components, paths } from '../../api/customer-server';
+import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants';
 import logger from './logger';
 
 const customerServerApi = {
-  txToSign: async (tx: TxRequest) => {
+  messagesToSign: async (messages: MessageEnvlope[]): Promise<MessageStatus[]> => {
     try {
-      const res = await axios.post(`${CUSTOMER_SERVER_URL}/txToSign`, tx, {
-        headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
-      });
-      return res.data;
+      const res = await axios.post(
+        `${CUSTOMER_SERVER_URL}/messagesToSign`,
+        { messages },
+        {
+          headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
+        },
+      );
+      return res.data.messages;
     } catch (e) {
       logger.error(`Error on customer server api {txToSign} request`, e);
       throw e;
     }
   },
 
-  txStatus: async (txStatus: TxStatusRequest) => {
+  messagesStatus: async (txStatus: MessagesStatusRequest): Promise<MessagesStatusResponse> => {
     try {
-      const res = await axios.post(
-        `${CUSTOMER_SERVER_URL}/txStatus`,
-        txStatus,
-        {
-          headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
-        },
-      );
+      const res = await axios.post(`${CUSTOMER_SERVER_URL}/txStatus`, txStatus, {
+        headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
+      });
       return res.data;
     } catch (e) {
       logger.error(`Error on customer server api {txStatus} request`, e);
@@ -36,14 +33,16 @@ const customerServerApi = {
   },
 };
 
-export type TxResponse =
-  paths['/txToSign']['post']['responses'][200]['content']['application/json'];
-export type TxRequest =
-  paths['/txToSign']['post']['requestBody']['content']['application/json'];
+export type MessageStatus = components['schemas']['MessageStatus'];
+type MessageEnvlope = components['schemas']['MessageEnvelope'];
+export type MessagesRequest =
+  paths['/messagesToSign']['post']['requestBody']['content']['application/json'];
+export type MessagesResponse =
+  paths['/messagesToSign']['post']['responses'][200]['content']['application/json'];
 
-export type TxStatusResponse =
-  paths['/txStatus']['post']['responses'][200]['content']['application/json'];
-export type TxStatusRequest =
-  paths['/txStatus']['post']['requestBody']['content']['application/json'];
+export type MessagesStatusRequest =
+  paths['/messagesStatus']['post']['requestBody']['content']['application/json'];
+export type MessagesStatusResponse =
+  paths['/messagesStatus']['post']['responses'][200]['content']['application/json'];
 
 export default customerServerApi;

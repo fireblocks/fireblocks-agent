@@ -2,23 +2,19 @@ import axios from 'axios';
 import {
   AccessToken,
   AccessTokenReuest,
+  FBMessageEnvlope,
   GUID,
-  Message,
   PairDeviceRequest,
   PairDeviceResponse,
 } from 'types';
 import { MOBILE_GATEWAY_URL } from '../constants';
+import deviceService from './device.service';
 import logger from './logger';
 
 const serverApi = {
-  pairDevice: async (
-    pairDevice: PairDeviceRequest,
-  ): Promise<PairDeviceResponse> => {
+  pairDevice: async (pairDevice: PairDeviceRequest): Promise<PairDeviceResponse> => {
     try {
-      const res = await axios.post(
-        `${MOBILE_GATEWAY_URL}/pair_device`,
-        pairDevice,
-      );
+      const res = await axios.post(`${MOBILE_GATEWAY_URL}/pair_device`, pairDevice);
       return res.data;
     } catch (e) {
       logger.error(`Error on pairDevice request`, e);
@@ -26,14 +22,9 @@ const serverApi = {
     }
   },
 
-  getAccessToken: async (
-    accessTokenReq: AccessTokenReuest,
-  ): Promise<AccessToken> => {
+  getAccessToken: async (accessTokenReq: AccessTokenReuest): Promise<AccessToken> => {
     try {
-      const res = await axios.post(
-        `${MOBILE_GATEWAY_URL}/access_token`,
-        accessTokenReq,
-      );
+      const res = await axios.post(`${MOBILE_GATEWAY_URL}/access_token`, accessTokenReq);
       return res.data.accessToken;
     } catch (e) {
       logger.error(`Error on getAccessToken request`, e);
@@ -41,12 +32,10 @@ const serverApi = {
     }
   },
 
-  getMessages: async (accessToken: AccessToken): Promise<Message> => {
+  getMessages: async (): Promise<FBMessageEnvlope> => {
     try {
-      const res = await axios.get(
-        `${MOBILE_GATEWAY_URL}/msg`,
-        buildHeaders(accessToken),
-      );
+      const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
+      const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg`, buildHeaders(accessToken));
       return res.data;
     } catch (e) {
       logger.error(`Error on getMessages request`, e);
@@ -54,8 +43,9 @@ const serverApi = {
     }
   },
 
-  ackMessage: async (accessToken: AccessToken, msgId: GUID) => {
+  ackMessage: async (msgId: GUID) => {
     try {
+      const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
       const res = await axios.put(
         `${MOBILE_GATEWAY_URL}/msg`,
         { msgId },

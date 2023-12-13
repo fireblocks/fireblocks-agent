@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import jwt from 'jsonwebtoken';
 import ora from 'ora';
+import messageService from 'services/messages.service';
 import { v4 as uuid } from 'uuid';
 import deviceService, { DeviceData } from './services/device.service';
 import hsmAgent from './services/hsm-agent';
@@ -11,9 +12,7 @@ import serverApi from './services/server.api';
 
 async function main() {
   console.clear();
-  console.log(
-    chalk.blue(figlet.textSync('FIREBLOCKS', { horizontalLayout: 'full' })),
-  );
+  console.log(chalk.blue(figlet.textSync('FIREBLOCKS', { horizontalLayout: 'full' })));
   console.log(chalk.blue('Welcome to the Fireblocks HSM Agent'));
 
   if (!deviceService.isPaired()) {
@@ -29,13 +28,11 @@ const runAgentMainLoop = async () => {
   const ONE_MIN = 60 * 1000;
   let i = 0;
   const loopFunc = async () => {
-    const accessToken = await serverApi.getAccessToken(
-      deviceService.getDeviceData(),
-    );
 
     const start = Date.now();
     logger.info(`Waiting for a message`);
     const message = await serverApi.getMessages(accessToken);
+    messageService.handleMessage(message);
     logger.info(`Got Message after ${Date.now() - start}ms`);
     setTimeout(loopFunc);
   };

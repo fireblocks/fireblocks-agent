@@ -5,40 +5,37 @@
 
 
 export interface paths {
-  "/txStatus": {
-    /** Get updates on requested transcations */
+  "/messagesStatus": {
+    /** Get updates on requested messages */
     post: {
       requestBody: {
         content: {
-          "application/json": components["schemas"]["TxStatusRequest"];
+          "application/json": components["schemas"]["MessagesStatusRequest"];
         };
       };
       responses: {
         200: {
           content: {
-            "application/json": components["schemas"]["TxStatusResponse"];
+            "application/json": components["schemas"]["MessagesStatusResponse"];
           };
         };
       };
     };
   };
-  "/txToSign": {
-    /**
-     * Sign Transaction
-     * @description Sign Transaction
-     */
+  "/messagesToSign": {
+    /** Sign Messages */
     post: {
-      /** @description Transaction to sign */
+      /** @description Messages to sign */
       requestBody: {
         content: {
-          "application/json": components["schemas"]["TxRequest"];
+          "application/json": components["schemas"]["MessagesRequest"];
         };
       };
       responses: {
-        /** @description Transaction ACK */
+        /** @description Messages Status */
         200: {
           content: {
-            "application/json": components["schemas"]["TxResponse"];
+            "application/json": components["schemas"]["MessagesStatusResponse"];
           };
         };
         default: components["schemas"]["Error"];
@@ -51,10 +48,29 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
-    TxStatusResponse: {
-      transcations: components["schemas"]["TxStatus"][];
+    MessagesStatusRequest: {
+      msgIds: string[];
     };
-    TxStatus: {
+    MessagesStatusResponse: {
+      messages: components["schemas"]["MessageStatus"][];
+    };
+    MessagesRequest: {
+      messages: components["schemas"]["MessageEnvelope"][];
+    };
+    MessageEnvelope: {
+      /**
+       * Format: uuid
+       * @example 9eca83b5-5936-4eef-89cc-51bec0f49945
+       */
+      msgId: string;
+      message: components["schemas"]["Message"];
+    };
+    MessageStatus: {
+      /**
+       * Format: uuid
+       * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
+       */
+      msgId: string;
       /**
        * Format: uuid
        * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
@@ -68,10 +84,7 @@ export interface components {
       errorMessage?: string;
       payload?: string;
     };
-    TxStatusRequest: {
-      txIds: string[];
-    };
-    TxRequest: {
+    Message: {
       /**
        * Format: uuid
        * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
@@ -94,13 +107,6 @@ export interface components {
        * @enum {string}
        */
       algorithm: "ECDSA" | "EDDSA";
-    };
-    TxResponse: {
-      /**
-       * Format: uuid
-       * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
-       */
-      txId: string;
     };
     Error: {
       message: string;

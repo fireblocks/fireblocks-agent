@@ -1,3 +1,5 @@
+import { components } from "../api/customer-server";
+
 export type GUID = string;
 export type RefreshToken = string;
 export type JWT = string;
@@ -17,7 +19,7 @@ export interface AccessTokenReuest {
   refreshToken: RefreshToken;
 }
 
-export interface MessageEnvlope {
+export interface FBMessageEnvlope {
   msg: JWT;
   msgId: GUID;
   deviceId: GUID;
@@ -25,6 +27,7 @@ export interface MessageEnvlope {
 }
 
 export interface Message {
+  msgId: GUID;
   type: TxType;
   txId: GUID;
   keyId: GUID;
@@ -43,5 +46,8 @@ export enum TxType {
 }
 
 export interface PairingToken {
-  userId: GUID
+  userId: GUID;
 }
+
+export type MessageStatus = components['schemas']['MessageStatus'];
+export type MessageEnvelop = components['schemas']['MessageEnvelope'];

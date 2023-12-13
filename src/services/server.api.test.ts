@@ -8,9 +8,9 @@ import {
   AccessToken,
   AccessTokenReuest,
   Algorithm,
+  FBMessageEnvlope,
   GUID,
   Message,
-  MessageEnvlope,
   PairDeviceRequest,
   TxType,
 } from '../types';
@@ -42,9 +42,10 @@ describe('Server API', () => {
   it('should pull messages', async () => {
     const accessToken = serverApiDriver.given.accessToken();
     const someMessage = messageBuilder.messageEnvlope();
+    serverApiDriver.mock.accessToken({}, accessToken);
     serverApiDriver.mock.messages(accessToken, someMessage);
 
-    const message = await serverApi.getMessages(accessToken);
+    const message = await serverApi.getMessages();
 
     expect(message).toStrictEqual(someMessage);
   });
@@ -52,9 +53,10 @@ describe('Server API', () => {
   it('shuold ack message', async () => {
     const accessToken = serverApiDriver.given.accessToken();
     const aMessage = messageBuilder.messageEnvlope({ msgId: c.guid() });
+    serverApiDriver.mock.accessToken({}, accessToken);
     serverApiDriver.mock.ackMessage(accessToken, aMessage.msgId, 'ok');
 
-    const res = await serverApi.ackMessage(accessToken, aMessage.msgId);
+    const res = await serverApi.ackMessage(aMessage.msgId);
 
     expect(res).toEqual('ok');
   });
@@ -62,9 +64,9 @@ describe('Server API', () => {
 
 export const messageBuilder = {
   messageEnvlope: (
-    messageEnvlope?: Partial<MessageEnvlope>,
+    messageEnvlope?: Partial<FBMessageEnvlope>,
     message?: Message,
-  ): MessageEnvlope => {
+  ): FBMessageEnvlope => {
     return {
       msg: message ? jwt.sign(JSON.stringify(message), 'shhhhh') : c.string(),
       msgId: c.guid(),
@@ -75,6 +77,7 @@ export const messageBuilder = {
   },
   aMessage: (message?: Partial<Message>): Message => {
     return {
+      msgId: c.guid(),
       type: TxType.MPC_START_SIGNING,
       txId: c.guid(),
       keyId: c.guid(),
@@ -118,7 +121,7 @@ export const serverApiDriver = {
         .onPost(`${MOBILE_GATEWAY_URL}/pair_device`, pairRequest)
         .reply(200, { refreshToken: resultRefreshToken });
     },
-    messages: (accessToken: AccessToken, message: MessageEnvlope) => {
+    messages: (accessToken: AccessToken, message: FBMessageEnvlope) => {
       const axiosMock = new MockAdapter(axios);
       axiosMock
         .onGet(`${MOBILE_GATEWAY_URL}/msg`, {
@@ -128,9 +131,7 @@ export const serverApiDriver = {
     },
     ackMessage: (accessToken: AccessToken, msgId: GUID, response: string) => {
       const axiosMock = new MockAdapter(axios);
-      axiosMock
-        .onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId })
-        .reply(200, response);
+      axiosMock.onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId }).reply(200, response);
     },
     accessToken: (
       accessTokenReq?: Partial<AccessTokenReuest>,
