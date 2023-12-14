@@ -14,6 +14,8 @@ import {
   PairDeviceRequest,
   TxType,
 } from '../types';
+import deviceService from './device.service';
+import { deviceDriver } from './device.service.test';
 import serverApi from './server.api';
 
 const c = new Chance();
@@ -41,8 +43,11 @@ describe('Server API', () => {
 
   it('should pull messages', async () => {
     const accessToken = serverApiDriver.given.accessToken();
+    const deviceData = deviceDriver.given.deviceData();
+    // jest.mock('./device.šice');
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
     const someMessage = messageBuilder.messageEnvlope();
-    serverApiDriver.mock.accessToken({}, accessToken);
+    serverApiDriver.mock.accessToken(deviceData, accessToken);
     serverApiDriver.mock.messages(accessToken, someMessage);
 
     const message = await serverApi.getMessages();
@@ -53,7 +58,10 @@ describe('Server API', () => {
   it('shuold ack message', async () => {
     const accessToken = serverApiDriver.given.accessToken();
     const aMessage = messageBuilder.messageEnvlope({ msgId: c.guid() });
-    serverApiDriver.mock.accessToken({}, accessToken);
+    const deviceData = deviceDriver.given.deviceData();
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
+    serverApiDriver.mock.accessToken(deviceData, accessToken);
+
     serverApiDriver.mock.ackMessage(accessToken, aMessage.msgId, 'ok');
 
     const res = await serverApi.ackMessage(aMessage.msgId);
@@ -88,7 +96,23 @@ export const messageBuilder = {
   },
 };
 
+// class ServerApiDriver {
+//   private axiosMock: MockAdapter
+//   constructor() {
+//     this.axiosMock = new MockAdapter(axios);
+//   }
+
+// }
+let instance;
 export const serverApiDriver = {
+  axiosMock: () => {
+    if (instance) {
+      return instance;
+    }
+    instance = new MockAdapter(axios);
+    return instance;
+  },
+  reset: () => serverApiDriver.axiosMock().reset(),
   given: {
     pairDeviceRequst: (): PairDeviceRequest => {
       return {
@@ -116,22 +140,24 @@ export const serverApiDriver = {
         ...generatedReq,
         ...pairDeviceReq,
       };
-      const axiosMock = new MockAdapter(axios);
-      axiosMock
+      serverApiDriver
+        .axiosMock()
         .onPost(`${MOBILE_GATEWAY_URL}/pair_device`, pairRequest)
         .reply(200, { refreshToken: resultRefreshToken });
     },
     messages: (accessToken: AccessToken, message: FBMessageEnvlope) => {
-      const axiosMock = new MockAdapter(axios);
-      axiosMock
-        .onGet(`${MOBILE_GATEWAY_URL}/msg`, {
+      serverApiDriver
+        .axiosMock()
+        .onGet(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, {
           headers: { 'x-access-token': accessToken },
         })
         .reply(200, message);
     },
     ackMessage: (accessToken: AccessToken, msgId: GUID, response: string) => {
-      const axiosMock = new MockAdapter(axios);
-      axiosMock.onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId }).reply(200, response);
+      serverApiDriver
+        .axiosMock()
+        .onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId })
+        .reply(200, response);
     },
     accessToken: (
       accessTokenReq?: Partial<AccessTokenReuest>,
@@ -142,8 +168,8 @@ export const serverApiDriver = {
         ...generatedReq,
         ...accessTokenReq,
       };
-      const axiosMock = new MockAdapter(axios);
-      axiosMock
+      serverApiDriver
+        .axiosMock()
         .onPost(`${MOBILE_GATEWAY_URL}/access_token`, accessTokenRequest)
         .reply(200, { accessToken: resultAccessToken });
     },

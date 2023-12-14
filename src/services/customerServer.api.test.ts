@@ -2,16 +2,12 @@ import { describe, expect, it } from '@jest/globals';
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import Chance from 'chance';
-import {
-  CUSTOMER_SERVER_AUTHORIZATION,
-  CUSTOMER_SERVER_URL,
-} from '../constants';
-import { GUID, Message } from '../types';
+import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants';
+import { GUID, Message, MessageEnvelop, MessageStatus } from '../types';
 import service, {
-  TxRequest,
-  TxResponse,
-  TxStatusRequest,
-  TxStatusResponse,
+  MessagesResponse,
+  MessagesStatusRequest,
+  MessagesStatusResponse,
 } from './customerServer.api';
 import { messageBuilder } from './server.api.test';
 const c = new Chance();
@@ -19,56 +15,67 @@ const c = new Chance();
 describe('Customer Server API', () => {
   it('should send tx to sign', async () => {
     const aMessage = messageBuilder.aMessage();
-    const txToSign = customerServerApiDriver.given.aTxRequest(aMessage);
-    customerServerApiDriver.mock.txToSign(txToSign, { txId: txToSign.txId });
+    const messageToSign = customerServerApiDriver.given.aMessageRequest(aMessage);
+    const expectedRes: MessageStatus[] = [
+      { msgId: aMessage.msgId, txId: aMessage.txId, status: 'PENDING_SIGN' },
+    ];
+    customerServerApiDriver.mock.messagesToSign(messageToSign, { messages: expectedRes });
 
-    const res = await service.txToSign(txToSign);
+    const res = await service.messagesToSign(messageToSign);
 
-    expect(res).toEqual({ txId: txToSign.txId });
+    expect(res).toEqual(expectedRes);
   });
 
   it('should send Authorization header from env variable', async () => {
     const aMessage = messageBuilder.aMessage();
-    const txToSign = customerServerApiDriver.given.aTxRequest(aMessage);
-    customerServerApiDriver.mock.txToSign(txToSign, { txId: txToSign.txId });
+    const messageToSign = customerServerApiDriver.given.aMessageRequest(aMessage);
+    const expectedRes: MessageStatus[] = [
+      { msgId: aMessage.msgId, txId: aMessage.txId, status: 'PENDING_SIGN' },
+    ];
+    customerServerApiDriver.mock.messagesToSign(messageToSign, { messages: expectedRes });
 
-    const res = await service.txToSign(txToSign);
+    const res = await service.messagesToSign(messageToSign);
 
-    expect(res).toEqual({ txId: txToSign.txId });
+    expect(res).toEqual(expectedRes);
   });
 });
 
 export const customerServerApiDriver = {
   given: {
-    aTxRequest: ({ txId, keyId, algorithm, payload }: Message): TxRequest => {
-      return {
+    aMessageRequest: ({ msgId, txId, keyId, algorithm, payload }: Message): MessageEnvelop[] => {
+      const message = {
         txId,
         keyId,
         algorithm,
         payload,
       };
+      return [{ msgId, message }];
     },
-    aTxStatusRequest: (txIds: GUID[] = []): TxStatusRequest => {
+    aTxStatusRequest: (msgIds: GUID[] = []): MessagesStatusRequest => {
       return {
-        txIds,
+        msgIds,
       };
     },
   },
   mock: {
-    txToSign: (txRequest: TxRequest, result?: TxResponse) => {
+    messagesToSign: (messages: MessageEnvelop[], result?: MessagesResponse) => {
       const axiosMock = new MockAdapter(axios);
       axiosMock
-        .onPost(`${CUSTOMER_SERVER_URL}/txToSign`, txRequest, {
-          Authorization: CUSTOMER_SERVER_AUTHORIZATION as string,
-          Accept: 'application/json, text/plain, */*',
-          'Content-Type': 'application/json',
-        })
+        .onPost(
+          `${CUSTOMER_SERVER_URL}/messagesToSign`,
+          { messages },
+          {
+            Authorization: CUSTOMER_SERVER_AUTHORIZATION as string,
+            Accept: 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+          },
+        )
         .reply(200, result);
     },
-        txStatus: (txStatusReq: TxStatusRequest, result?: TxStatusResponse) => {
+    messagesStatus: (txStatusReq: MessagesStatusRequest, result?: MessagesStatusResponse) => {
       const axiosMock = new MockAdapter(axios);
       axiosMock
-        .onPost(`${CUSTOMER_SERVER_URL}/txStatus`, txStatusReq, {
+        .onPost(`${CUSTOMER_SERVER_URL}/messagesStatus`, txStatusReq, {
           Authorization: CUSTOMER_SERVER_AUTHORIZATION as string,
           Accept: 'application/json, text/plain, */*',
           'Content-Type': 'application/json',

@@ -28,11 +28,10 @@ const runAgentMainLoop = async () => {
   const ONE_MIN = 60 * 1000;
   let i = 0;
   const loopFunc = async () => {
-
     const start = Date.now();
     logger.info(`Waiting for a message`);
-    const message = await serverApi.getMessages(accessToken);
-    messageService.handleMessage(message);
+    const message = await serverApi.getMessages();
+    messageService.handleMessages(message);
     logger.info(`Got Message after ${Date.now() - start}ms`);
     setTimeout(loopFunc);
   };

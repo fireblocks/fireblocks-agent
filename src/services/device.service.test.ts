@@ -18,7 +18,7 @@ describe('device service', () => {
   });
 
   it('should return true in case of existing data', () => {
-    fs.writeFileSync(TOKEN_PATH, JSON.stringify(driver.given.deviceData()));
+    fs.writeFileSync(TOKEN_PATH, JSON.stringify(deviceDriver.given.deviceData()));
     const res = service.isPaired();
     expect(res).toBe(true);
   });
@@ -27,7 +27,7 @@ describe('device service', () => {
     let token = service.getDeviceData();
     expect(token).not.toBeDefined();
 
-    const deviceData = driver.given.deviceData();
+    const deviceData = deviceDriver.given.deviceData();
     service.saveDeviceData(deviceData);
 
     const fetchedData = service.getDeviceData();
@@ -35,7 +35,7 @@ describe('device service', () => {
   });
 });
 
-const driver = {
+export const deviceDriver = {
   given: {
     deviceData: (): DeviceData => {
       return {

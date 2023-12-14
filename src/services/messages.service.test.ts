@@ -5,14 +5,14 @@ import customerServerApi from './customerServer.api';
 import service from './messages.service';
 import serverApi from './server.api';
 import { messageBuilder } from './server.api.test';
-jest.mock('./customerServer.api');
-jest.mock('./server.api');
 const c = new Chance();
 
 describe('messages service', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
     service._clearCache();
+  });
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should send the customer server server the messages to sign ', async () => {
@@ -70,9 +70,9 @@ describe('messages service', () => {
       txId: c.guid(),
       status: 'SIGNED',
     };
-    // jest
-    //   .spyOn(customerServerApi, 'txStatus')
-    //   .mockResolvedValue({ transcations: [{ txId, status: 'SIGNED' }] });
+
+    // @ts-ignore
+    jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn);
     service.updateStatus([signedMessageStatus]);
 
     expect(serverApi.ackMessage).toHaveBeenCalledWith(signedMessageStatus.msgId);

@@ -32,10 +32,13 @@ const serverApi = {
     }
   },
 
-  getMessages: async (): Promise<FBMessageEnvlope> => {
+  getMessages: async (): Promise<FBMessageEnvlope[]> => {
     try {
       const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
-      const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg`, buildHeaders(accessToken));
+      const res = await axios.get(
+        `${MOBILE_GATEWAY_URL}/msg?useBatch=true`,
+        buildHeaders(accessToken),
+      );
       return res.data;
     } catch (e) {
       logger.error(`Error on getMessages request`, e);

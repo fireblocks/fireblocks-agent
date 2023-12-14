@@ -1,17 +1,17 @@
-import messagesService from 'services/messages.service';
 import customerServerApi from './services/customerServer.api';
+import messagesService from './services/messages.service';
 
 class CustomerClient {
   private HALF_A_MINUTE = 30 * 1000;
 
   constructor() {}
 
-  start = async () => {
+  pullMessagesStatus = async () => {
     const msgIds = messagesService.getPendingMessages();
     const status = await customerServerApi.messagesStatus({ msgIds });
-    messagesService.updateStatus(status);
+    messagesService.updateStatus(status.messages);
 
-    setInterval(this.start, this.HALF_A_MINUTE);
+    setTimeout(this.pullMessagesStatus, this.HALF_A_MINUTE);
   };
 }
 
