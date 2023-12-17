@@ -1,3 +1,10 @@
+# [1.3.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.2.0...v1.3.0) (2023-12-17)
+
+
+### Features
+
+* **customer server:** randomly sign or reject transactions ([bd76297](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/bd76297e8496d74e37ae1843fbe8d6a3d4e10108))
+
 # [1.2.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.1.0...v1.2.0) (2023-12-12)
 
 
