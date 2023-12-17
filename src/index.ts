@@ -1,5 +1,5 @@
 import customerServerclient from './customer-server-client';
-import { start } from './hsm-client';
+import * as hsmClient from './hsm-client';
 
-start();
+hsmClient.start();
 customerServerclient.pullMessagesStatus();

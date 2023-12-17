@@ -17,6 +17,7 @@ msgRouter.post(
       };
     });
     await transactionsDao.insertMessages(messagesStatus);
+    randomlySignOrFailMessagesAsync(messagesStatus);
     res.status(200).json({ messages: messagesStatus });
   },
 );
@@ -29,6 +30,21 @@ msgRouter.post(
     res.status(200).json({ messages: messagesStatus });
   },
 );
+
+function randomlySignOrFailMessagesAsync(messages: MessageStatus[]) {
+  messages.forEach((msg) => {
+    const oneToFiveSeconds = Math.ceil(Math.random() * 5) * 1000;
+    setTimeout(async () => {
+      const previousStatus = msg.status;
+      msg.status = Math.round(Math.random()) ? 'FAILED' : 'SIGNED';
+      if (msg.status === 'FAILED') {
+        msg.errorMessage = `Simulate error while signing this message`;
+      }
+      await transactionsDao.updateMessageStatus(msg);
+      console.log(`Set ${msg.msgId} from status ${previousStatus} to ${msg.status}`);
+    }, oneToFiveSeconds);
+  });
+}
 
 export default msgRouter;
 
