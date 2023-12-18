@@ -1,3 +1,10 @@
+# [1.4.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.3.0...v1.4.0) (2023-12-18)
+
+
+### Features
+
+* **example server:** support multi algorithms ([45a1fb7](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/45a1fb7a7529dac04ad71de11070be9aed61bcc3))
+
 # [1.3.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.2.0...v1.3.0) (2023-12-17)
 
 
