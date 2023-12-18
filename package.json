@@ -11,7 +11,7 @@
   "scripts": {
     "build": "npm run build:api && tsc",
     "build:api": "openapi-typescript ./api/customer-server.api.yml -o ./api/customer-server.d.ts",
-    "start": "NODE_ENV=local nodemon src/hsm-client.ts",
+    "start": "NODE_ENV=local nodemon src/index.ts",
     "start:prod": "NODE_ENV=prod node dist/hsm-client.js",
     "start:pm2": "NODE_ENV=prod pm2 start dist/hsm-client.js && pm2 attach 0",
     "start:docker": "docker run -t hsm-agent",

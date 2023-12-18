@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Algorithm } from 'types';
+import { Algorithm } from '../types';
 import hsm from '../services/hsm-facade';
 const hsmRouter = Router();
 

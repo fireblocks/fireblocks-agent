@@ -1,0 +1,27 @@
+services:
+  customer-server:
+    build:
+      context: .
+    depends_on:
+      - customer-database
+    environment:
+      NODE_ENV: production
+    ports:
+      - 3000:3000
+      - 35729:35729
+    develop:
+      watch:
+        - path: ./package.json
+          action: rebuild
+        - path: .
+          target: /usr/src/app
+          action: sync
+
+  customer-database:
+    image: mongo:6
+    #volumes:
+    #  - database:/data/db
+    ports:
+      - 27017:27017
+#volumes:
+#database:

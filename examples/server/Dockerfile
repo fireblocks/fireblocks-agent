@@ -53,7 +53,7 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 RUN npm run initToken
-RUN npm install --omit=dev \
+RUN npm install \
   && npm run build
 
 

@@ -39,7 +39,7 @@ const serverApi = {
         `${MOBILE_GATEWAY_URL}/msg?useBatch=true`,
         buildHeaders(accessToken),
       );
-      return res.data;
+      return res.data || [];
     } catch (e) {
       logger.error(`Error on getMessages request`, e);
       throw e;

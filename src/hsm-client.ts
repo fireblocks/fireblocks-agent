@@ -3,11 +3,11 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import jwt from 'jsonwebtoken';
 import ora from 'ora';
-import messageService from 'services/messages.service';
 import { v4 as uuid } from 'uuid';
 import deviceService, { DeviceData } from './services/device.service';
 import hsmAgent from './services/hsm-agent';
 import logger from './services/logger';
+import messageService from './services/messages.service';
 import serverApi from './services/server.api';
 
 async function main() {
