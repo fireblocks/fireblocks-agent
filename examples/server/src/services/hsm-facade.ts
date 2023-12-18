@@ -1,12 +1,12 @@
 import fs from 'fs';
 import { Crypto, CryptoKey } from 'node-webcrypto-p11';
 import { exec } from 'node:child_process';
-import { GUID } from '../types';
+import { Algorithm, GUID } from '../types';
 import logger from './logger';
 export interface HSMFacade {
-  generateKeyPair(): Promise<{ keyId: GUID; pem: string }>;
-  sign(keyId: GUID, payload: string): Promise<string>;
-  verify(keyId: GUID, signature: string, payload: string): Promise<boolean>;
+  generateKeyPair(algorithm: Algorithm): Promise<{ keyId: GUID; pem: string }>;
+  sign(keyId: GUID, payload: string, algorithm: Algorithm): Promise<string>;
+  verify(keyId: GUID, signature: string, payload: string, algorithm: Algorithm): Promise<boolean>;
 }
 
 class HSM implements HSMFacade {
@@ -23,12 +23,12 @@ class HSM implements HSMFacade {
     this.crypto = new Crypto(config);
   }
 
-  async generateKeyPair(): Promise<{ keyId: GUID; pem: string }> {
-    const keys = await this.crypto.subtle.generateKey(
-      { name: 'ECDSA', namedCurve: 'K-256' },
-      false,
-      ['sign', 'verify'],
-    );
+  async generateKeyPair(algorithm: Algorithm): Promise<{ keyId: GUID; pem: string }> {
+    const name = algorithm === Algorithm.ECDSA ? 'ECDSA' : 'EDDSA';
+    const keys = await this.crypto.subtle.generateKey({ name, namedCurve: 'K-256' }, false, [
+      'sign',
+      'verify',
+    ]);
     const key = await this.crypto.keyStorage.setItem(keys.privateKey);
     await this.crypto.keyStorage.setItem(keys.publicKey);
     const keyId = this.extractKeyUUID(key);
@@ -37,23 +37,28 @@ class HSM implements HSMFacade {
     return { keyId, pem };
   }
 
-  async sign(keyId: GUID, payload: string): Promise<string> {
+  async sign(keyId: GUID, payload: string, algorithm: Algorithm): Promise<string> {
     const privateKey = await this.getKeyById(keyId);
+    const name = algorithm === Algorithm.ECDSA ? 'ECDSA' : 'EDDSA';
     const signature = await this.crypto.subtle.sign(
-      // @ts-ignore
-      { name: 'ECDSA', hash: 'SHA-256' },
+      { name, hash: 'SHA-256' },
       privateKey,
       Buffer.from(payload),
     );
     return Buffer.from(signature).toString('hex');
   }
 
-  async verify(keyId: GUID, signature: string, payload: string): Promise<boolean> {
+  async verify(
+    keyId: GUID,
+    signature: string,
+    payload: string,
+    algorithm: Algorithm,
+  ): Promise<boolean> {
     const publicKey = await this.getKeyById(keyId, false);
     const signatureArrayBuffer = this.toArrayBuffer(Buffer.from(signature, 'hex'));
+    const name = algorithm === Algorithm.ECDSA ? 'ECDSA' : 'EDDSA';
     const ok = await this.crypto.subtle.verify(
-      // @ts-ignore
-      { name: 'ECDSA', hash: 'SHA-256' },
+      { name, hash: 'SHA-256' },
       publicKey,
       signatureArrayBuffer,
       Buffer.from(payload),

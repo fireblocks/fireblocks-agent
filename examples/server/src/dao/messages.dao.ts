@@ -1,8 +1,8 @@
 import { Collection, MongoClient } from 'mongodb';
-import { GUID, MessageStatus } from '../types';
+import { GUID, MessageAlgorithm, MessageEnvelope, MessageStatus } from '../types';
 import { getMongoUri } from './mongo.connect';
 
-let _msgRef: Collection<DbMsgStatus>;
+let _msgRef: Collection<DbMsg>;
 const getMessagesCollection = async () => {
   if (_msgRef) {
     return _msgRef;
@@ -10,7 +10,7 @@ const getMessagesCollection = async () => {
   const uri = await getMongoUri();
   const client = new MongoClient(uri);
   const database = client.db('customer-server-db');
-  _msgRef = database.collection<DbMsgStatus>('messages');
+  _msgRef = database.collection<DbMsg>('messages');
   return _msgRef;
 };
 
@@ -23,29 +23,52 @@ export const updateMessageStatus = async (msg: MessageStatus) => {
   return msgRef.updateOne({ _id: dbMsg._id }, { $set: dbMsg }, { upsert: true });
 };
 
-export const insertMessages = async (messages: MessageStatus[]) => {
+export const insertMessages = async (messages: MessageEnvelope[]): Promise<MessageStatus[]> => {
   const msgRef = await getMessagesCollection();
-  const dbMsgs = messages.map((msgStatus) => {
+  const dbMsgs = messages.map((msg: MessageEnvelope) => {
+    const { txId, algorithm, payload, keyId } = msg.message;
     return {
-      _id: msgStatus.msgId,
-      ...msgStatus,
-    };
+      _id: msg.msgId,
+      msgId: msg.msgId,
+      txId,
+      keyId,
+      payloadToSign: payload,
+      algorithm,
+      status: 'PENDING_SIGN',
+    } as DbMsg;
   });
-  return msgRef.insertMany(dbMsgs);
+  const insertRes = await msgRef.insertMany(dbMsgs);
+  const messagesRes = await getMessagesStatus(Object.values(insertRes.insertedIds));
+  return messagesRes;
 };
 
 export const getMessagesStatus = async (msgIds: GUID[]): Promise<MessageStatus[]> => {
   const txRef = await getMessagesCollection();
   const cursor = await txRef.find({ _id: { $in: msgIds } });
-  const res: Partial<DbMsgStatus>[] = await cursor.toArray();
+  const res = await cursor.toArray();
   return toMsgStatus(res);
 };
 
-function toMsgStatus(dbMsgs: Partial<DbMsgStatus>[]): MessageStatus[] {
-  dbMsgs.forEach((_) => delete _._id);
+export const getMessages = async (msgIds: GUID[]): Promise<DbMsg[]> => {
+  const txRef = await getMessagesCollection();
+  const cursor = await txRef.find({ _id: { $in: msgIds } });
+  const res = await cursor.toArray();
+  return res;
+};
+
+function toMsgStatus(dbMsgs: Partial<DbMsg>[]): MessageStatus[] {
+  dbMsgs.forEach((_) => {
+    delete _._id;
+    delete _.payloadToSign;
+    delete _.algorithm;
+    delete _.keyId;
+  });
   return dbMsgs as MessageStatus[];
 }
 
-interface DbMsgStatus extends MessageStatus {
+interface DbMsg extends MessageStatus {
   _id: GUID;
+  payloadToSign: string;
+  algorithm: MessageAlgorithm;
+  keyId: GUID;
 }
