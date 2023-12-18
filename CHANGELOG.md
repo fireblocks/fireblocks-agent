@@ -1,3 +1,10 @@
+# [1.5.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.4.0...v1.5.0) (2023-12-18)
+
+
+### Features
+
+* **integration:** wip starting to connect the dots ([1455e81](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/1455e816fbfe9592cf68f2d82dc7d4d334c3a317))
+
 # [1.4.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.3.0...v1.4.0) (2023-12-18)
 
 
