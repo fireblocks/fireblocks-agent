@@ -44,15 +44,14 @@ describe('Server API', () => {
   it('should pull messages', async () => {
     const accessToken = serverApiDriver.given.accessToken();
     const deviceData = deviceDriver.given.deviceData();
-    // jest.mock('./device.šice');
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
-    const someMessage = messageBuilder.messageEnvlope();
+    const someMessages = [messageBuilder.messageEnvlope()];
     serverApiDriver.mock.accessToken(deviceData, accessToken);
-    serverApiDriver.mock.messages(accessToken, someMessage);
+    serverApiDriver.mock.messages(accessToken, someMessages);
 
-    const message = await serverApi.getMessages();
+    const messages = await serverApi.getMessages();
 
-    expect(message).toStrictEqual(someMessage);
+    expect(messages).toStrictEqual(someMessages);
   });
 
   it('shuold ack message', async () => {
@@ -73,10 +72,12 @@ describe('Server API', () => {
 export const messageBuilder = {
   messageEnvlope: (
     messageEnvlope?: Partial<FBMessageEnvlope>,
-    message?: Message,
+    message?: Partial<Message>,
+    shouldEncode: boolean = true,
   ): FBMessageEnvlope => {
+    const msg = shouldEncode ? jwt.sign(JSON.stringify(message || c.string()), 'shhhhh') : message;
     return {
-      msg: message ? jwt.sign(JSON.stringify(message), 'shhhhh') : c.string(),
+      msg,
       msgId: c.guid(),
       deviceId: c.guid(),
       internalMessageId: c.guid(),
@@ -96,13 +97,6 @@ export const messageBuilder = {
   },
 };
 
-// class ServerApiDriver {
-//   private axiosMock: MockAdapter
-//   constructor() {
-//     this.axiosMock = new MockAdapter(axios);
-//   }
-
-// }
 let instance;
 export const serverApiDriver = {
   axiosMock: () => {
@@ -145,7 +139,7 @@ export const serverApiDriver = {
         .onPost(`${MOBILE_GATEWAY_URL}/pair_device`, pairRequest)
         .reply(200, { refreshToken: resultRefreshToken });
     },
-    messages: (accessToken: AccessToken, message: FBMessageEnvlope) => {
+    messages: (accessToken: AccessToken, message: FBMessageEnvlope[]) => {
       serverApiDriver
         .axiosMock()
         .onGet(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, {

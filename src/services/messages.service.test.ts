@@ -6,7 +6,6 @@ import service from './messages.service';
 import serverApi from './server.api';
 import { messageBuilder } from './server.api.test';
 const c = new Chance();
-
 describe('messages service', () => {
   beforeEach(() => {
     service._clearCache();
@@ -36,6 +35,15 @@ describe('messages service', () => {
       type: TxType.MPC_STOP_SIGNING,
     });
     const messageEnvlope = messageBuilder.messageEnvlope({}, aNonMpcStartSignMessage);
+    jest.spyOn(customerServerApi, 'messagesToSign');
+    await service.handleMessages([messageEnvlope]);
+
+    expect(customerServerApi.messagesToSign).not.toBeCalled();
+  });
+
+  it('should ignore non encoded messages', async () => {
+    const aNonEncodedMessage = {};
+    const messageEnvlope = messageBuilder.messageEnvlope({}, aNonEncodedMessage, false);
     jest.spyOn(customerServerApi, 'messagesToSign');
     await service.handleMessages([messageEnvlope]);
 

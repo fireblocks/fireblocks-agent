@@ -1,5 +1,5 @@
-import jwt from 'jsonwebtoken';
-import { FBMessageEnvlope, GUID, Message, MessageEnvelop, MessageStatus, TxType } from '../types';
+import { FBMessageEnvlope, GUID, MessageEnvelop, MessageStatus, TxType } from '../types';
+import { decodeAndVerifyMessage } from '../utils/message-utils';
 import customerServerApi from './customerServer.api';
 import serverApi from './server.api';
 
@@ -16,9 +16,11 @@ class MessageService {
 
   async handleMessages(messages: FBMessageEnvlope[]) {
     const decodedMessages: MessageEnvelop[] = messages
-      .map(({ msgId, msg }: FBMessageEnvlope) => {
-        const message = jwt.decode(msg) as Message;
-        return { message, msgId };
+      .filter(({ msg }) => typeof msg === 'string')
+      .map((messageEnvelope: FBMessageEnvlope) => {
+        //TODO: pass certificates
+        const message = decodeAndVerifyMessage(messageEnvelope, {});
+        return { message, msgId: messageEnvelope.msgId };
       })
       .filter((_) => _.message.type === TxType.MPC_START_SIGNING);
 

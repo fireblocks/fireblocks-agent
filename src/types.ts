@@ -1,4 +1,4 @@
-import { components } from "../api/customer-server";
+import { components } from '../api/customer-server';
 
 export type GUID = string;
 export type RefreshToken = string;
@@ -20,10 +20,26 @@ export interface AccessTokenReuest {
 }
 
 export interface FBMessageEnvlope {
-  msg: JWT;
+  msg: JWT | Object;
   msgId: GUID;
   deviceId: GUID;
   internalMessageId: GUID;
+}
+
+export interface FBMessage {
+  type: TxType;
+  payload: TransactionPayload;
+}
+
+export interface TransactionPayload {
+    phase: TxType;
+    tenantId: GUID;
+    txId: GUID;
+    keyId: GUID;
+    payload: string;
+    algorithm: number;
+    metadata: TransactionMetadata;
+    userAccessToken: string;
 }
 
 export interface Message {
@@ -48,6 +64,19 @@ export enum TxType {
 export interface PairingToken {
   userId: GUID;
 }
+
+export interface TransactionMetadata {
+  signInfo: Array<{ path: number[]; payload: string }>;
+  chaincode: string;
+  txMetaData: string;
+  txMetaDataSignatures: {
+    id: string;
+    type: string;
+    signature: string;
+  }[];
+}
+
+export type CertificatesMap  = {[service: string]: string};
 
 export type MessageStatus = components['schemas']['MessageStatus'];
 export type MessageEnvelop = components['schemas']['MessageEnvelope'];
