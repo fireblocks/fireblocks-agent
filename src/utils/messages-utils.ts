@@ -1,10 +1,5 @@
-import axios from 'axios';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { MOBILE_GATEWAY_URL } from '../constants';
-import deviceService from '../services/device.service';
-import logger from '../services/logger';
-import serverApi from '../services/server.api';
 import {
   Algorithm,
   CertificatesMap,
@@ -24,8 +19,11 @@ export const decodeAndVerifyMessage = (
   certMap = certificates;
   const zsCertificate = certMap['zs'];
   const decodedMessage = jwt.verify(messageEnvelope.msg as JWT, zsCertificate) as FBMessage;
-  verifyMpcMessage(decodedMessage);
-  return toMessage(messageEnvelope.msgId, decodedMessage);
+  if (verifyMpcMessage(decodedMessage)) {
+    return toMessage(messageEnvelope.msgId, decodedMessage);
+  } else {
+    throw new Error('Message signature is invalid');
+  }
 };
 
 const toMessage = (msgId: GUID, fbMessage: FBMessage): Message => {
@@ -50,7 +48,7 @@ const verifyMpcMessage = (message: FBMessage): boolean => {
       verifying.signatureInfo.format,
     );
     if (!isSignatureValid) {
-      throw new Error('Message signature is invalid');
+      return false;
     }
     return isSignatureValid;
   }
@@ -72,7 +70,7 @@ const getDataToVerify = (message: FBMessage): VerifyDetails[] => {
   //   const verifyDetails = await this._buildVerifyDetailsForMessagesWithSignature(message, jwtInfo);
   const metaData = buildVerifyDetailsForMessagesWithMetadata(message);
   switch (message.type) {
-    case 'MPC_START_SIGNING': {
+    case TxType.MPC_START_SIGNING: {
       res.push(...metaData);
       // res.push(...verifyDetails);
       break;
@@ -95,21 +93,6 @@ const buildVerifyDetailsForMessagesWithMetadata = (message: FBMessage): VerifyDe
       },
     },
   ];
-};
-
-const getServiceCertificate = async (serviceName: string): Promise<string> => {
-  try {
-    const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
-    const res = await axios.get(`${MOBILE_GATEWAY_URL}/get_service_certificates`, {
-      headers: {
-        'x-access-token': accessToken,
-      },
-    });
-    return res.data[serviceName];
-  } catch (e) {
-    logger.error(`Error on get_service_certificates request`, e);
-    throw e;
-  }
 };
 
 interface VerifyDetails {

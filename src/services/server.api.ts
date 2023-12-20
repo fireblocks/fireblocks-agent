@@ -1,7 +1,9 @@
 import axios from 'axios';
+import fs from 'fs';
 import {
   AccessToken,
   AccessTokenReuest,
+  CertificatesMap,
   FBMessageEnvlope,
   GUID,
   PairDeviceRequest,
@@ -11,6 +13,8 @@ import { MOBILE_GATEWAY_URL } from '../constants';
 import deviceService from './device.service';
 import logger from './logger';
 
+let i = 16;
+let certificatesMapCache;
 const serverApi = {
   pairDevice: async (pairDevice: PairDeviceRequest): Promise<PairDeviceResponse> => {
     try {
@@ -39,7 +43,28 @@ const serverApi = {
         `${MOBILE_GATEWAY_URL}/msg?useBatch=true`,
         buildHeaders(accessToken),
       );
-      return res.data || [];
+      if (res.data) {
+        fs.writeFileSync(`messages${i}.json`, JSON.stringify(res.data));
+        i++;
+      }
+      return Array.isArray(res.data) ? res.data : res.data ? [res.data] : [];
+    } catch (e) {
+      logger.error(`Error on getMessages request`, e);
+      throw e;
+    }
+  },
+  getCertificates: async (): Promise<CertificatesMap> => {
+    try {
+      if (certificatesMapCache) {
+        return certificatesMapCache;
+      }
+      const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
+      const res = await axios.get(
+        `${MOBILE_GATEWAY_URL}/get_service_certificates`,
+        buildHeaders(accessToken),
+      );
+      certificatesMapCache = res.data;
+      return certificatesMapCache;
     } catch (e) {
       logger.error(`Error on getMessages request`, e);
       throw e;

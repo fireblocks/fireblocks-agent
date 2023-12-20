@@ -8,6 +8,7 @@ import {
   AccessToken,
   AccessTokenReuest,
   Algorithm,
+  CertificatesMap,
   FBMessageEnvlope,
   GUID,
   Message,
@@ -54,6 +55,39 @@ describe('Server API', () => {
     expect(messages).toStrictEqual(someMessages);
   });
 
+  it('should get certificates', async () => {
+    const accessToken = serverApiDriver.given.accessToken();
+    const deviceData = deviceDriver.given.deviceData();
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
+    const certificatesMap = { zs: 'certificate for zService', vs: 'certificate for vault service' };
+    serverApiDriver.mock.accessToken(deviceData, accessToken);
+
+    serverApiDriver.mock.certificates(accessToken, certificatesMap);
+
+    const certificates = await serverApi.getCertificates();
+
+    expect(certificates).toStrictEqual(certificatesMap);
+  });
+
+  it('should cache certificates map', async () => {
+    const accessToken = serverApiDriver.given.accessToken();
+    const deviceData = deviceDriver.given.deviceData();
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
+    const certificatesMap = { zs: 'certificate for zService', vs: 'certificate for vault service' };
+    serverApiDriver.mock.accessToken(deviceData, accessToken);
+    serverApiDriver.mock.certificates(accessToken, certificatesMap);
+
+    const certificates = await serverApi.getCertificates();
+
+    const someOtherCertificatesMap = { zs: 'other certificate' };
+    serverApiDriver.reset();
+    serverApiDriver.mock.certificates(accessToken, someOtherCertificatesMap);
+
+    const certificates2 = await serverApi.getCertificates();
+
+    expect(certificates).toStrictEqual(certificates2);
+  });
+
   it('shuold ack message', async () => {
     const accessToken = serverApiDriver.given.accessToken();
     const aMessage = messageBuilder.messageEnvlope({ msgId: c.guid() });
@@ -75,7 +109,9 @@ export const messageBuilder = {
     message?: Partial<Message>,
     shouldEncode: boolean = true,
   ): FBMessageEnvlope => {
-    const msg = shouldEncode ? jwt.sign(JSON.stringify(message || c.string()), 'shhhhh') : message;
+    const msg = shouldEncode
+      ? jwt.sign(JSON.stringify(message || c.string()), 'shhhhh')
+      : message || {};
     return {
       msg,
       msgId: c.guid(),
@@ -146,6 +182,14 @@ export const serverApiDriver = {
           headers: { 'x-access-token': accessToken },
         })
         .reply(200, message);
+    },
+    certificates: (accessToken: AccessToken, certificates: CertificatesMap) => {
+      serverApiDriver
+        .axiosMock()
+        .onGet(`${MOBILE_GATEWAY_URL}/get_service_certificates`, {
+          headers: { 'x-access-token': accessToken },
+        })
+        .reply(200, certificates);
     },
     ackMessage: (accessToken: AccessToken, msgId: GUID, response: string) => {
       serverApiDriver

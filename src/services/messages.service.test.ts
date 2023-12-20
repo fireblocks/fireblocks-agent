@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import Chance from 'chance';
 import { MessageStatus, TxType } from '../types';
+import * as messagesUtils from '../utils/messages-utils';
 import customerServerApi from './customerServer.api';
 import service from './messages.service';
 import serverApi from './server.api';
@@ -9,12 +10,13 @@ const c = new Chance();
 describe('messages service', () => {
   beforeEach(() => {
     service._clearCache();
+    jest.spyOn(serverApi, 'getCertificates').mockResolvedValue({});
   });
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should send the customer server server the messages to sign ', async () => {
+  it('should send the customer server server the messages to sign', async () => {
     const msgId = c.guid();
     const aTxToSignMessage = messageBuilder.aMessage({
       type: TxType.MPC_START_SIGNING,
@@ -22,6 +24,7 @@ describe('messages service', () => {
     });
     const messageEnvlope = messageBuilder.messageEnvlope({ msgId }, aTxToSignMessage);
     jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([]);
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(aTxToSignMessage);
 
     await service.handleMessages([messageEnvlope]);
 
@@ -30,12 +33,13 @@ describe('messages service', () => {
     ]);
   });
 
-  it('should ignore non `MPC_START_SIGNING` messages ', async () => {
+  it('should ignore non `MPC_START_SIGNING` messages', async () => {
     const aNonMpcStartSignMessage = messageBuilder.aMessage({
       type: TxType.MPC_STOP_SIGNING,
     });
     const messageEnvlope = messageBuilder.messageEnvlope({}, aNonMpcStartSignMessage);
     jest.spyOn(customerServerApi, 'messagesToSign');
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(aNonMpcStartSignMessage);
     await service.handleMessages([messageEnvlope]);
 
     expect(customerServerApi.messagesToSign).not.toBeCalled();
@@ -58,6 +62,7 @@ describe('messages service', () => {
     });
 
     const messageEnvlope = messageBuilder.messageEnvlope({ msgId }, aTxToSignMessage);
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(aTxToSignMessage);
     jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([
       {
         msgId: aTxToSignMessage.msgId,

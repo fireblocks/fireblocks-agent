@@ -1,5 +1,5 @@
 import { FBMessageEnvlope, GUID, MessageEnvelop, MessageStatus, TxType } from '../types';
-import { decodeAndVerifyMessage } from '../utils/message-utils';
+import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customerServer.api';
 import serverApi from './server.api';
 
@@ -15,11 +15,11 @@ class MessageService {
   }
 
   async handleMessages(messages: FBMessageEnvlope[]) {
+    const certificates = await serverApi.getCertificates();
     const decodedMessages: MessageEnvelop[] = messages
       .filter(({ msg }) => typeof msg === 'string')
       .map((messageEnvelope: FBMessageEnvlope) => {
-        //TODO: pass certificates
-        const message = decodeAndVerifyMessage(messageEnvelope, {});
+        const message = decodeAndVerifyMessage(messageEnvelope, certificates);
         return { message, msgId: messageEnvelope.msgId };
       })
       .filter((_) => _.message.type === TxType.MPC_START_SIGNING);
