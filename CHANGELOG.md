@@ -1,3 +1,11 @@
+# [1.6.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.5.0...v1.6.0) (2023-12-20)
+
+
+### Features
+
+* **verify:** verify metadata and encodedMessage with zService and policy service ([075a715](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/075a7157bfc281eb637aa1eb1c9561b6cabf2672))
+* **verify:** verify metadata and zService jwt ([d0d036e](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/d0d036e8d81a8a0dc5de85086e93dadeb28de502))
+
 # [1.5.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.4.0...v1.5.0) (2023-12-18)
 
 
