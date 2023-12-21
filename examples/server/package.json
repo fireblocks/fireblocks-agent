@@ -10,7 +10,7 @@
     "start": "NODE_ENV=dev node ./dist/server.js",
     "dev": "NODE_ENV=dev ts-node ./src/server.ts",
     "build:docker": "npm run build:api && docker build -t softhsm2:2.6.1 .",
-    "start:docker": "docker run -p 5001:3000 --name hsm softhsm2:2.6.1",
+    "start:docker": "docker compose up -d",
     "initToken": "softhsm2-util --init-token --slot 0 --label test-token --pin 1234 --so-pin 4321",
     "exportDER": "pkcs11-tool --module  /usr/local/lib/softhsm/libsofthsm2.so  --read-object --type pubkey --id 49b8e635db29a67cd7ea64ee2ec01d2d --output-file public_key.der",
     "exportPEM": "openssl ec -inform DER -in public_key.der -pubin -outform PEM -out public_key.pem"

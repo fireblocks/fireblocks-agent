@@ -12,7 +12,8 @@
     "build": "npm run build:api && tsc && npm run copy:env",
     "copy:env": "cp .env.prod ./dist",
     "build:api": "openapi-typescript ./api/customer-server.api.yml -o ./api/customer-server.d.ts",
-    "start": "NODE_ENV=local nodemon src/index.ts",
+    "start": "NODE_ENV=${npm_config_env} nodemon src/index.ts",
+    "start:example-server": "cd ./examples/server && npm run start:docker",
     "start:prod": "NODE_ENV=prod node dist/hsm-client.js",
     "start:pm2": "NODE_ENV=prod pm2 start dist/hsm-client.js && pm2 attach 0",
     "start:docker": "docker run -t hsm-agent",
@@ -28,7 +29,6 @@
   "bin": "dist/hsm-client.js",
   "devDependencies": {
     "@commitlint/cli": "^17.0.0",
-    "@fireblocks/conventional-commit": "1.1.0",
     "@jest/globals": "^29.7.0",
     "@semantic-release/changelog": "^6.0.0",
     "@semantic-release/git": "latest",
@@ -66,65 +66,5 @@
     "hooks": {
       "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
     }
-  },
-  "release": {
-    "plugins": [
-      [
-        "@semantic-release/commit-analyzer",
-        {
-          "preset": "conventionalcommits",
-          "releaseRules": [
-            {
-              "type": "breaking",
-              "release": "major"
-            }
-          ]
-        }
-      ],
-      "@semantic-release/release-notes-generator",
-      [
-        "@semantic-release/npm",
-        {
-          "npmPublish": true
-        }
-      ],
-      "@semantic-release/gitlab"
-    ],
-    "prepare": [
-      "@semantic-release/changelog",
-      "@semantic-release/npm",
-      {
-        "path": "@semantic-release/git",
-        "assets": [
-          "package.json",
-          "package-lock.json",
-          "CHANGELOG.md"
-        ],
-        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-      }
-    ],
-    "branches": [
-      {
-        "name": "main"
-      },
-      {
-        "name": "*",
-        "channel": "ft-${name}",
-        "prerelease": true
-      },
-      {
-        "name": "fix-*",
-        "channel": "${name}",
-        "prerelease": true
-      },
-      {
-        "name": "feat/*",
-        "channel": "${name}",
-        "prerelease": true
-      }
-    ]
-  },
-  "publishConfig": {
-    "@fireblocks:registry": "https://gitlab.com/api/v4/projects/20565764/packages/npm/"
   }
 }
