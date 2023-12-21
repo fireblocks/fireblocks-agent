@@ -9,7 +9,8 @@
     "url": "https://gitlab.com/fireblocks/shell/common/hsm-agent.git"
   },
   "scripts": {
-    "build": "npm run build:api && tsc",
+    "build": "npm run build:api && tsc && npm run copy:env",
+    "copy:env": "cp .env.prod ./dist",
     "build:api": "openapi-typescript ./api/customer-server.api.yml -o ./api/customer-server.d.ts",
     "start": "NODE_ENV=local nodemon src/index.ts",
     "start:prod": "NODE_ENV=prod node dist/hsm-client.js",
