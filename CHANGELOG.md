@@ -1,3 +1,11 @@
+# [1.7.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.6.0...v1.7.0) (2023-12-21)
+
+
+### Features
+
+* **docker:** wip- prepare installation ([e4ab3a8](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/e4ab3a8f72e876b41b60884b759c7c4ce3c09ac8))
+* **installation:** wip ([4a2865b](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/4a2865bb36af82c56388e257704a8751676f740d))
+
 # [1.6.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.5.0...v1.6.0) (2023-12-20)
 
 
