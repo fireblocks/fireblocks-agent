@@ -15,7 +15,6 @@ app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV === 'dev') {
   app.use(morgan('dev'));
 }
-// Security
 app.use(helmet());
 
 app.use(`/api`, apiRouter);

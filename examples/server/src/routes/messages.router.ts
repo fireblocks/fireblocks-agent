@@ -1,6 +1,6 @@
 import { Request, Response, Router } from 'express';
 import { paths } from '../customer-server';
-import * as transactionsDao from '../dao/messages.dao';
+import * as messagesDao from '../dao/messages.dao';
 import * as hsmSignService from '../services/hsm-sign-service';
 import { MessageStatus } from '../types';
 const msgRouter = Router();
@@ -9,8 +9,11 @@ msgRouter.post(
   '/messagesToSign',
   async (req: Request<{}, {}, MessagesRequest>, res: Response<MessagesResponse>) => {
     const { messages } = req.body;
-    const messagesStatus: MessageStatus[] = await transactionsDao.insertMessages(messages);
+    const messagesStatus: MessageStatus[] = await messagesDao.insertMessages(messages);
+
+    //the next line sign or fail the messages we got in a random time between one and five seconds.
     hsmSignService.randomlySignOrFailMessagesAsync(messagesStatus.map((_) => _.msgId));
+
     res.status(200).json({ messages: messagesStatus });
   },
 );
@@ -19,7 +22,7 @@ msgRouter.post(
   '/messagesStatus',
   async (req: Request<{}, {}, MessagesStatusRequest>, res: Response<MessagesStatusResponse>) => {
     const { msgIds } = req.body;
-    const messagesStatus = await transactionsDao.getMessagesStatus(msgIds);
+    const messagesStatus = await messagesDao.getMessagesStatus(msgIds);
     res.status(200).json({ messages: messagesStatus });
   },
 );
