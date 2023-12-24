@@ -9,14 +9,6 @@ services:
     ports:
       - 3000:3000
       - 35729:35729
-    develop:
-      watch:
-        - path: ./package.json
-          action: rebuild
-        - path: .
-          target: /usr/src/app
-          action: sync
-
   customer-database:
     image: mongo:6
     #volumes:

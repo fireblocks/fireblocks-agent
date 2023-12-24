@@ -4,9 +4,10 @@
 
 ### Preconditions
 
-- Make sure you have nvm on your machine.
-  - On mac run `brew isntall nvm`
-  - Linux, follow these [instructions](https://github.com/nvm-sh/nvm?tab=readme-ov-file#installing-and-updating)
+- Make sure you have nvm on your machine. To check run `nvm` in a terminal.
+  - To install `nvm`:
+    - On mac run `brew isntall nvm`
+    - Linux, follow these [instructions](https://github.com/nvm-sh/nvm?tab=readme-ov-file#installing-and-updating)
 
 ### Installation 
 
