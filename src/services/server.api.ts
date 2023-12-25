@@ -43,11 +43,12 @@ const serverApi = {
         `${MOBILE_GATEWAY_URL}/msg?useBatch=true`,
         buildHeaders(accessToken),
       );
-      if (res.data) {
+      const messages = res.data;
+      if (messages) {
         fs.writeFileSync(`messages${i}.json`, JSON.stringify(res.data));
         i++;
       }
-      return Array.isArray(res.data) ? res.data : res.data ? [res.data] : [];
+      return Array.isArray(messages) ? messages : [messages];
     } catch (e) {
       logger.error(`Error on getMessages request`, e);
       throw e;

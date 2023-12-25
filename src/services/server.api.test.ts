@@ -22,6 +22,10 @@ import serverApi from './server.api';
 const c = new Chance();
 
 describe('Server API', () => {
+  beforeEach(() => {
+    serverApiDriver.reset();
+  });
+
   it('should pair device', async () => {
     const pairDeviceReq = serverApiDriver.given.pairDeviceRequst();
     const refreshToken = `some-valid-refresh-token`;
@@ -53,6 +57,19 @@ describe('Server API', () => {
     const messages = await serverApi.getMessages();
 
     expect(messages).toStrictEqual(someMessages);
+  });
+
+  it('should handle messages in non batch mode as well', async () => {
+    const accessToken = serverApiDriver.given.accessToken();
+    const deviceData = deviceDriver.given.deviceData();
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
+    const someMessage = messageBuilder.messageEnvlope();
+    serverApiDriver.mock.accessToken(deviceData, accessToken);
+    serverApiDriver.mock.messages(accessToken, someMessage);
+
+    const messages = await serverApi.getMessages();
+
+    expect(messages).toStrictEqual([someMessage]);
   });
 
   it('should get certificates', async () => {
@@ -175,7 +192,7 @@ export const serverApiDriver = {
         .onPost(`${MOBILE_GATEWAY_URL}/pair_device`, pairRequest)
         .reply(200, { refreshToken: resultRefreshToken });
     },
-    messages: (accessToken: AccessToken, message: FBMessageEnvlope[]) => {
+    messages: (accessToken: AccessToken, message: FBMessageEnvlope[] | FBMessageEnvlope) => {
       serverApiDriver
         .axiosMock()
         .onGet(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, {
