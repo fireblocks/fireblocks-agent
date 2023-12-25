@@ -16,12 +16,13 @@ export const decodeAndVerifyMessage = (
   messageEnvelope: FBMessageEnvlope,
   certificates: CertificatesMap,
 ): Message => {
-  certMap = certificates;
-  const zsCertificate = certMap['zs'];
-  const decodedMessage = jwt.verify(messageEnvelope.msg as JWT, zsCertificate) as FBMessage;
-  if (verifyMpcMessage(decodedMessage)) {
+  try {
+    certMap = certificates;
+    const zsCertificate = certMap['zs'];
+    const decodedMessage = jwt.verify(messageEnvelope.msg as JWT, zsCertificate) as FBMessage;
+    verifyMpcMessage(decodedMessage);
     return toMessage(messageEnvelope.msgId, decodedMessage);
-  } else {
+  } catch (e) {
     throw new Error('Message signature is invalid');
   }
 };
@@ -48,7 +49,7 @@ const verifyMpcMessage = (message: FBMessage): boolean => {
       verifying.signatureInfo.format,
     );
     if (!isSignatureValid) {
-      return false;
+      throw 'invalid signature';
     }
     return isSignatureValid;
   }
