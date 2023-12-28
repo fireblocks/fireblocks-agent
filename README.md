@@ -1,3 +1,5 @@
+[![Node.js CI](https://github.com/fireblocks/fireblocks-agent/actions/workflows/node.js.yml/badge.svg)](https://github.com/fireblocks/fireblocks-agent/actions/workflows/node.js.yml)
+
 # Welcome to Fireblocks HSM Agent
 
 # Develop (Run Locally)
