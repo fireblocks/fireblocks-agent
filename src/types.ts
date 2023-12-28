@@ -26,20 +26,39 @@ export interface FBMessageEnvlope {
   internalMessageId: GUID;
 }
 
-export interface FBMessage {
-  type: TxType;
-  payload: TransactionPayload;
+export type ProofOfOwnershipPayloadStringify = string
+export type MessagePayload = MPCPayload | ProofOfOwnershipPayloadStringify;
+export type SignatureId = 'configuration_manager' | 'zs';
+
+export interface ProofOfOwnershipPayload {
+  tenantId: string;
+  timestamp: number;
+  version: number;
+  fbKeyId: GUID;
+  requestId: string;
+  externalKeyId: string;
+  algorithm: number;
 }
 
-export interface TransactionPayload {
-    phase: TxType;
-    tenantId: GUID;
-    txId: GUID;
-    keyId: GUID;
-    payload: string;
-    algorithm: number;
-    metadata: TransactionMetadata;
-    userAccessToken: string;
+export interface FBSignatureMessage extends FBMessage<ProofOfOwnershipPayloadStringify> {
+  signature: string;
+  signatureId: SignatureId;
+}
+
+export interface FBMessage<MessagePayload> {
+  type: TxType;
+  payload: MessagePayload;
+}
+
+export interface MPCPayload {
+  phase: TxType;
+  tenantId: GUID;
+  txId: GUID;
+  keyId: GUID;
+  payload: string;
+  algorithm: number;
+  metadata: TransactionMetadata;
+  userAccessToken: string;
 }
 
 export interface Message {
@@ -58,6 +77,7 @@ export enum Algorithm {
 
 export enum TxType {
   MPC_START_SIGNING = 'MPC_START_SIGNING',
+  EXTERNAL_KEY_PROOF_OF_OWNERSHIP = 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP',
   MPC_STOP_SIGNING = 'MPC_STOP_SIGNING',
 }
 
@@ -76,7 +96,7 @@ export interface TransactionMetadata {
   }[];
 }
 
-export type CertificatesMap  = {[service: string]: string};
+export type CertificatesMap = { [service: string]: string };
 
 export type MessageStatus = components['schemas']['MessageStatus'];
 export type MessageEnvelop = components['schemas']['MessageEnvelope'];

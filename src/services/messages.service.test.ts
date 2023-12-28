@@ -16,24 +16,27 @@ describe('messages service', () => {
     jest.clearAllMocks();
   });
 
-  it('should send the customer server server the messages to sign', async () => {
-    const msgId = c.guid();
-    const aTxToSignMessage = messageBuilder.aMessage({
-      type: TxType.MPC_START_SIGNING,
-      msgId,
-    });
-    const messageEnvlope = messageBuilder.messageEnvlope({ msgId }, aTxToSignMessage);
-    jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([]);
-    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(aTxToSignMessage);
+  it.each([TxType.EXTERNAL_KEY_PROOF_OF_OWNERSHIP, TxType.MPC_START_SIGNING])(
+    'should send the customer server the messages to sign',
+    async (type: TxType) => {
+      const msgId = c.guid();
+      const aTxToSignMessage = messageBuilder.aMessage({
+        type,
+        msgId,
+      });
+      const messageEnvlope = messageBuilder.messageEnvlope({ msgId }, aTxToSignMessage);
+      jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([]);
+      jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(aTxToSignMessage);
 
-    await service.handleMessages([messageEnvlope]);
+      await service.handleMessages([messageEnvlope]);
 
-    expect(customerServerApi.messagesToSign).toHaveBeenCalledWith([
-      { message: aTxToSignMessage, msgId: messageEnvlope.msgId },
-    ]);
-  });
+      expect(customerServerApi.messagesToSign).toHaveBeenCalledWith([
+        { message: aTxToSignMessage, msgId: messageEnvlope.msgId },
+      ]);
+    },
+  );
 
-  it('should ignore non `MPC_START_SIGNING` messages', async () => {
+  it('should ignore non whitelist messages', async () => {
     const aNonMpcStartSignMessage = messageBuilder.aMessage({
       type: TxType.MPC_STOP_SIGNING,
     });

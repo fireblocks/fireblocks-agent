@@ -4,11 +4,11 @@ import customerServerApi from './customerServer.api';
 import serverApi from './server.api';
 
 class MessageService {
-  private msgCache: { [msgId: GUID]: MessageStatus };
-
-  constructor() {
-    this.msgCache = {};
-  }
+  private msgCache: { [msgId: GUID]: MessageStatus } = {};
+  private knownMessageTypes: TxType[] = [
+    TxType.EXTERNAL_KEY_PROOF_OF_OWNERSHIP,
+    TxType.MPC_START_SIGNING,
+  ];
 
   getPendingMessages(): GUID[] {
     return Object.keys(this.msgCache);
@@ -22,7 +22,7 @@ class MessageService {
         const message = decodeAndVerifyMessage(messageEnvelope, certificates);
         return { message, msgId: messageEnvelope.msgId };
       })
-      .filter((_) => _.message.type === TxType.MPC_START_SIGNING);
+      .filter((_) => this.knownMessageTypes.includes(_.message.type));
 
     if (decodedMessages.length > 0) {
       const status = await customerServerApi.messagesToSign(decodedMessages);
