@@ -1,4 +1,9 @@
 [![Node.js CI](https://github.com/fireblocks/fireblocks-agent/actions/workflows/node.js.yml/badge.svg)](https://github.com/fireblocks/fireblocks-agent/actions/workflows/node.js.yml)
+![Branches](https://github.com/fireblocks/fireblocks-agent/blob/badges/badges/coverage-branches.svg)
+![Functions](https://github.com/fireblocks/fireblocks-agent/blob/badges/badges/coverage-functions.svg)
+![Lines](https://github.com/fireblocks/fireblocks-agent/blob/badges/badges/coverage-lines.svg)
+![Statements](https://github.com/fireblocks/fireblocks-agent/blob/badges/badges/coverage-statements.svg)
+![Jest coverage](https://github.com/fireblocks/fireblocks-agent/blob/badges/badges/coverage-jest%20coverage.svg)
 
 # Welcome to Fireblocks HSM Agent
 
