@@ -211,7 +211,7 @@ export const serverApiDriver = {
     ackMessage: (accessToken: AccessToken, msgId: GUID, response: string) => {
       serverApiDriver
         .axiosMock()
-        .onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId })
+        .onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false })
         .reply(200, response);
     },
     accessToken: (

@@ -1,13 +1,13 @@
-# 🚀 Welcome to Fireblocks HSM Agent
+# Welcome to Fireblocks HSM Agent
 
 # Develop (Run Locally)
 
 ### Preconditions
 
 - Make sure you have nvm on your machine. To check, run `nvm` in a terminal.
-  - To install `nvm`:
-    - On mac run `brew isntall nvm`
-    - Linux, follow these [instructions](https://github.com/nvm-sh/nvm?tab=readme-ov-file#installing-and-updating)
+  - To install `nvm`:
+    - On mac run `brew install nvm`
+    - Linux, follow these [instructions](https://github.com/nvm-sh/nvm?tab=readme-ov-file#installing-and-updating)
 
 ### Installation 
 
@@ -22,18 +22,24 @@
 - Edit your newly created `.env.{env}` file with the right config
 - Start hsm agent with your desired env i.e `npm run start --env=dev9`
 
+### HSM-Agent environment parameters
+The HSM-Agent expect a configuration file (for production it's called `.env.prod`) with several parameters:
+* `MOBILE_GATEWAY_URL` - In production this value should be `https://mobile-api.fireblocks.io`
+* `CUSTOMER_SERVER_URL` - The client's custom server url
+* `CUSTOMER_SERVER_AUTHORIZATION` - If exists, the HSM-Agent will send its value on the `Authorization` header for each request. The client can use it for authorizing the HSM-Agent or keep track on which agent is calling it
+
 
 # Fireblocks External Keys Workspace
 
 ### Actors
-The fireblocks extenral keys worksapce consists of several components (aka actors). Each with its own responsibility.
+The Fireblocks external keys workspace consists of several components (aka actors). Each with its own responsibility.
 
 * Console - Fireblocks web console. [Link](https://console.fireblocks.io/v2/)
 * Mobile App - Fireblocks mobile app.
-* Mobile API Gateway - Fireblocks's REST API Server. The HSM-Agent communicate with this server in the registration flow and for receiving new messages.
+* Mobile API Gateway - Fireblocks's REST API Server. The HSM-Agent communicates with this server in the registration flow and for receiving new messages.
 * Developer API - Fireblock's back office server for workspace setup and configuration.
-* HSM-Agent - An on-prem service written in Typescript which is responsible for receiving new messages to sign from fireblocks, relay these messages to the clien't HSM and return the signed result back to Fireblocks.
-* Customer Server - The client's own server which receive messages to sign from the HSM-Agent. Sign them via the client's HSM and provide the HSM-Agent with the signed messages.
+* HSM-Agent - An on-prem service written in Typescript which is responsible for receiving new messages to sign from Fireblocks, relay these messages to the client HSM and return the signed result back to Fireblocks.
+* Customer Server - The client's own server which receives messages to sign from the HSM-Agent. Sign them via the client's HSM and provide the HSM-Agent with the signed messages.
 * HSM component - The actual HSM implementation. Can be on prem or a cloud based HSM.
 
 ## HSM API User Main Flows
@@ -49,7 +55,7 @@ The fireblocks extenral keys worksapce consists of several components (aka actor
 
 
 #### Add validator key
-This procedure shuold happen once. Fireblocks will need a validator key to approve new signing keys. This flow is done via the fireblocks sdk and not via this program.
+This procedure should happen once. Fireblocks will need a validator key to approve new signing keys. This flow is done via the fireblocks sdk and not via this program.
 
 ![Add validator key flow](docs/flows/add_validator_key.jpg)
 
@@ -59,7 +65,7 @@ The customer server is a component that should be written by the client accordin
 
 In general, it should support signing messages according to `ECDSA` and `EDDSA` algorithms and return the status for given messages.
 
-We provided an exmaple of such a server with a software implementation of HSM called [softHSM](https://www.opendnssec.org/softhsm/)
+We provide an example of such a server with a software implementation of HSM called [softHSM](https://www.opendnssec.org/softhsm/)
 
 The entry point for the server is [here](examples/server/src/server.ts)
 

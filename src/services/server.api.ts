@@ -77,7 +77,7 @@ const serverApi = {
       const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
       const res = await axios.put(
         `${MOBILE_GATEWAY_URL}/msg`,
-        { msgId },
+        { msgId, nack: false },
         buildHeaders(accessToken),
       );
       return res.data;
