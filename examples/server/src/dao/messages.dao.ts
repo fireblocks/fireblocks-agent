@@ -1,5 +1,5 @@
 import { Collection, MongoClient } from 'mongodb';
-import { GUID, MessageAlgorithm, MessageEnvelope, MessageStatus } from '../types';
+import { GUID, Message, MessageEnvelope, MessageStatus, TxType } from '../types';
 import { getMongoUri } from './mongo.connect';
 
 let _msgRef: Collection<DbMsg>;
@@ -26,14 +26,10 @@ export const updateMessageStatus = async (msg: MessageStatus) => {
 export const insertMessages = async (messages: MessageEnvelope[]): Promise<MessageStatus[]> => {
   const msgRef = await getMessagesCollection();
   const dbMsgs = messages.map((msg: MessageEnvelope) => {
-    const { txId, algorithm, payload, keyId } = msg.message;
     return {
       _id: msg.msgId,
-      msgId: msg.msgId,
-      txId,
-      keyId,
-      payloadToSign: payload,
-      algorithm,
+      type: msg.type,
+      message: msg.message,
       status: 'PENDING_SIGN',
     } as DbMsg;
   });
@@ -59,16 +55,14 @@ export const getMessages = async (msgIds: GUID[]): Promise<DbMsg[]> => {
 function toMsgStatus(dbMsgs: Partial<DbMsg>[]): MessageStatus[] {
   dbMsgs.forEach((_) => {
     delete _._id;
-    delete _.payloadToSign;
-    delete _.algorithm;
-    delete _.keyId;
+    delete _.message;
+    delete _.type;
   });
   return dbMsgs as MessageStatus[];
 }
 
 interface DbMsg extends MessageStatus {
   _id: GUID;
-  payloadToSign: string;
-  algorithm: MessageAlgorithm;
-  keyId: GUID;
+  type: TxType;
+  message: Message;
 }

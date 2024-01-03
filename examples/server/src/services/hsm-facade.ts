@@ -23,9 +23,8 @@ class HSM implements HSMFacade {
     this.crypto = new Crypto(config);
   }
 
-  async generateKeyPair(algorithm: Algorithm): Promise<{ keyId: GUID; pem: string }> {
-    const name = algorithm === Algorithm.ECDSA ? 'ECDSA' : 'EDDSA';
-    const keys = await this.crypto.subtle.generateKey({ name, namedCurve: 'K-256' }, false, [
+  async generateKeyPair(algorithm: string): Promise<{ keyId: GUID; pem: string }> {
+    const keys = await this.crypto.subtle.generateKey({ name: algorithm, namedCurve: 'K-256' }, false, [
       'sign',
       'verify',
     ]);
@@ -37,28 +36,21 @@ class HSM implements HSMFacade {
     return { keyId, pem };
   }
 
-  async sign(keyId: GUID, payload: string, algorithm: Algorithm): Promise<string> {
+  async sign(keyId: GUID, payload: string, algorithm: string): Promise<string> {
     const privateKey = await this.getKeyById(keyId);
-    const name = algorithm === Algorithm.ECDSA ? 'ECDSA' : 'EDDSA';
     const signature = await this.crypto.subtle.sign(
-      { name, hash: 'SHA-256' },
+      { name: algorithm, hash: 'SHA-256' },
       privateKey,
       Buffer.from(payload),
     );
     return Buffer.from(signature).toString('hex');
   }
 
-  async verify(
-    keyId: GUID,
-    signature: string,
-    payload: string,
-    algorithm: Algorithm,
-  ): Promise<boolean> {
+  async verify(keyId: GUID, signature: string, payload: string, algorithm: string): Promise<boolean> {
     const publicKey = await this.getKeyById(keyId, false);
     const signatureArrayBuffer = this.toArrayBuffer(Buffer.from(signature, 'hex'));
-    const name = algorithm === Algorithm.ECDSA ? 'ECDSA' : 'EDDSA';
     const ok = await this.crypto.subtle.verify(
-      { name, hash: 'SHA-256' },
+      { name: algorithm, hash: 'SHA-256' },
       publicKey,
       signatureArrayBuffer,
       Buffer.from(payload),
@@ -102,9 +94,7 @@ class HSM implements HSMFacade {
 
   private async getKeyById(keyId: string, isPrivateKey: boolean = true): Promise<CryptoKey> {
     const keys = await this.crypto.keyStorage.keys();
-    const fullKeyId =
-      keys.find((_) => _.startsWith(isPrivateKey ? 'private' : 'public') && _.includes(keyId)) ||
-      '';
+    const fullKeyId = keys.find((_) => _.startsWith(isPrivateKey ? 'private' : 'public') && _.includes(keyId)) || '';
     const key = await this.crypto.keyStorage.getItem(fullKeyId);
     return key;
   }

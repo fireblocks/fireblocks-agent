@@ -4,7 +4,7 @@ import hsm from '../services/hsm-facade';
 const hsmRouter = Router();
 
 hsmRouter.get('/generateKeyPair', async (req, res) => {
-  const algorithm = req.query.algorithm === 'EDDSA' ? Algorithm.EDDSA : Algorithm.ECDSA;
+  const algorithm = req.query.algorithm === 'EDDSA' ? 'EDDSA' : 'ECDSA';
   const { keyId, pem } = await hsm.generateKeyPair(algorithm);
   console.log(`keyId`, keyId);
   res.status(200).json({ keyId, pem });
