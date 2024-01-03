@@ -5,10 +5,7 @@ import serverApi from './server.api';
 
 class MessageService {
   private msgCache: { [msgId: GUID]: MessageStatus } = {};
-  private knownMessageTypes: TxType[] = [
-    TxType.EXTERNAL_KEY_PROOF_OF_OWNERSHIP,
-    TxType.MPC_START_SIGNING,
-  ];
+  private knownMessageTypes: TxType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP', 'TX'];
 
   getPendingMessages(): GUID[] {
     return Object.keys(this.msgCache);
@@ -19,10 +16,10 @@ class MessageService {
     const decodedMessages: MessageEnvelop[] = messages
       .filter(({ msg }) => typeof msg === 'string')
       .map((messageEnvelope: FBMessageEnvlope) => {
-        const message = decodeAndVerifyMessage(messageEnvelope, certificates);
-        return { message, msgId: messageEnvelope.msgId };
+        const { message, msgId, type } = decodeAndVerifyMessage(messageEnvelope, certificates);
+        return { message, msgId, type };
       })
-      .filter((_) => this.knownMessageTypes.includes(_.message.type));
+      .filter((_) => this.knownMessageTypes.includes(_.type));
 
     if (decodedMessages.length > 0) {
       const status = await customerServerApi.messagesToSign(decodedMessages);

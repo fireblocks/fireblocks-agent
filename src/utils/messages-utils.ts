@@ -1,66 +1,41 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import {
-  Algorithm,
-  CertificatesMap,
-  FBMessage,
-  FBMessageEnvlope,
-  FBSignatureMessage,
-  GUID,
-  JWT,
-  MPCPayload,
-  Message,
-  MessagePayload,
-  ProofOfOwnershipPayload,
-  TxType,
-} from '../types';
+import { CertificatesMap, FBMessage, FBMessageEnvlope, GUID, JWT, Message, MessageEnvelop } from '../types';
 
 let certMap;
-export const decodeAndVerifyMessage = (messageEnvelope: FBMessageEnvlope, certificates: CertificatesMap): Message => {
+export const decodeAndVerifyMessage = (
+  fbMsgEnvelope: FBMessageEnvlope,
+  certificates: CertificatesMap,
+): MessageEnvelop => {
   try {
     certMap = certificates;
     const zsCertificate = certMap['zs'];
-    const decodedMessage = jwt.verify(messageEnvelope.msg as JWT, zsCertificate) as FBMessage<MessagePayload>;
-    verifyMpcMessage(decodedMessage);
-    return toMessage(messageEnvelope.msgId, decodedMessage);
+    const fbMessage = jwt.verify(fbMsgEnvelope.msg as JWT, zsCertificate) as FBMessage;
+    verifyMpcMessage(fbMessage);
+    return toMessage(fbMsgEnvelope.msgId, fbMessage);
   } catch (e) {
     throw new Error('Message signature is invalid');
   }
 };
 
-const toMessage = (msgId: GUID, fbMessage: FBMessage<MessagePayload>): Message => {
+const toMessage = (msgId: GUID, fbMessage: FBMessage): MessageEnvelop => {
   const shared = {
     msgId,
     type: fbMessage.type,
   };
   switch (fbMessage.type) {
-    case TxType.MPC_START_SIGNING: {
-      const mpcMessage = fbMessage as FBMessage<MPCPayload>;
-      const { txId, keyId, payload, algorithm } = mpcMessage.payload;
+    case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP': {
+      const fbMsgPayload = fbMessage.payload;
+      const parsedMessage = JSON.parse(fbMsgPayload.payload) as Message;
       return {
         ...shared,
-        txId,
-        keyId,
-        payload,
-        algorithm: algorithm === 101 ? Algorithm.ECDSA : Algorithm.EDDSA,
-      };
-    }
-    case TxType.EXTERNAL_KEY_PROOF_OF_OWNERSHIP: {
-      const ownershipMessage = fbMessage as FBSignatureMessage;
-      const parsedPayload = JSON.parse(ownershipMessage.payload) as ProofOfOwnershipPayload;
-      const { externalKeyId, algorithm, requestId } = parsedPayload;
-      return {
-        ...shared,
-        keyId: externalKeyId,
-        txId: requestId,
-        payload: ownershipMessage.payload,
-        algorithm: algorithm === 101 ? Algorithm.ECDSA : Algorithm.EDDSA,
+        message: parsedMessage,
       };
     }
   }
 };
 
-const verifyMpcMessage = (message: FBMessage<MessagePayload>): boolean => {
+const verifyMpcMessage = (message: FBMessage): boolean => {
   const toVerify = getDataToVerify(message);
   for (const verifying of toVerify) {
     const isSignatureValid = verifyRSASignatureFromCertificate(
@@ -87,26 +62,19 @@ function verifyRSASignatureFromCertificate(
   return verifier.verify(certificatePEM, signature, signatureFormat);
 }
 
-const getDataToVerify = (message: FBMessage<MessagePayload>): VerifyDetails[] => {
+const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   const res: VerifyDetails[] = [];
 
-  switch (message.type) {
-    case TxType.MPC_START_SIGNING: {
-      //   const verifyDetails = await this._buildVerifyDetailsForMessagesWithSignature(message, jwtInfo);
-      const metaData = buildVerifyDetailsForMessagesWithMetadata(message as FBMessage<MPCPayload>);
-      res.push(...metaData);
-      // res.push(...verifyDetails);
-      break;
-    }
-    case TxType.EXTERNAL_KEY_PROOF_OF_OWNERSHIP: {
-      const ownershipMessage = message as FBSignatureMessage;
-      const messageVerifier = KEY_TO_VERIFIER_MAP[ownershipMessage.signatureId];
+  switch (fbMessage.type) {
+    case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP': {
+      const fbMsgPayload = fbMessage.payload;
+      const messageVerifier = KEY_TO_VERIFIER_MAP[fbMsgPayload.signatureData.service.toLowerCase()];
       const certificate = certMap[messageVerifier];
       res.push({
-        payload: ownershipMessage.payload,
+        payload: fbMsgPayload.payload,
         certificate,
         signatureInfo: {
-          signature: ownershipMessage.signature,
+          signature: fbMsgPayload.signatureData.signature,
           format: 'hex',
         },
       });
@@ -114,22 +82,6 @@ const getDataToVerify = (message: FBMessage<MessagePayload>): VerifyDetails[] =>
     }
   }
   return res;
-};
-
-const buildVerifyDetailsForMessagesWithMetadata = (message: FBMessage<MPCPayload>): VerifyDetails[] => {
-  const { metadata } = message.payload;
-  const metadataVerifier = KEY_TO_VERIFIER_MAP[metadata.txMetaDataSignatures[0].id];
-  const serviceCertificate = certMap[metadataVerifier];
-  return [
-    {
-      payload: metadata.txMetaData,
-      certificate: serviceCertificate,
-      signatureInfo: {
-        signature: metadata.txMetaDataSignatures[0].signature,
-        format: 'hex',
-      },
-    },
-  ];
 };
 
 interface VerifyDetails {

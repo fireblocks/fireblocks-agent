@@ -1,40 +1,10 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import {
-  Algorithm,
-  FBMessage,
-  FBMessageEnvlope,
-  FBSignatureMessage,
-  MPCPayload,
-  Message,
-  MessagePayload,
-  ProofOfOwnershipPayload,
-  TxType,
-} from '../types';
+import { messageBuilder } from '../services/server.api.test';
+import { FBMessage, FBMessageEnvlope, FBMessagePayload, Message, MessageEnvelop } from '../types';
 import * as utils from './messages-utils';
 
 describe('Messages utils', () => {
-  it('should verify a message', () => {
-    const { privateKey, publicKey } = aKeyPair();
-    const certificates = {
-      zs: 'my-zs-secret',
-      vs: publicKey,
-    };
-    const fbMessage = aFbMpcMessage(privateKey);
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
-    const message = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
-
-    const expectedMessage: Message = {
-      msgId: fbMessageEnvelope.msgId,
-      type: fbMessage.type,
-      txId: fbMessage.payload.txId,
-      keyId: fbMessage.payload.keyId,
-      payload: fbMessage.payload.payload,
-      algorithm: Algorithm.ECDSA,
-    };
-    expect(message).toEqual(expectedMessage);
-  });
-
   it('should verify proof of ownership message', () => {
     const { privateKey, publicKey } = aKeyPair();
     const certificates = {
@@ -43,18 +13,15 @@ describe('Messages utils', () => {
     };
     const fbMessage = aFbProofOfOwnershipMessage(privateKey);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
-    const message = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
-    const parsedPayload = JSON.parse(fbMessage.payload) as ProofOfOwnershipPayload;
+    const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+    const internalMessage = JSON.parse(fbMessage.payload.payload) as Message;
 
-    const expectedMessage: Message = {
+    const expectedMessage: MessageEnvelop = {
       msgId: fbMessageEnvelope.msgId,
-      type: fbMessage.type,
-      payload: fbMessage.payload,
-      keyId: parsedPayload.externalKeyId,
-      txId: parsedPayload.requestId,
-      algorithm: Algorithm.ECDSA,
+      type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP',
+      message: internalMessage,
     };
-    expect(message).toEqual(expectedMessage);
+    expect(messageEnvelope).toEqual(expectedMessage);
   });
 
   it('should not verify a message with false zServiceCertificate', () => {
@@ -63,7 +30,7 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       vs: publicKey,
     };
-    const fbMessage = aFbMpcMessage(privateKey);
+    const fbMessage = aFbProofOfOwnershipMessage(privateKey);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, 'false-certificate');
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
@@ -78,7 +45,7 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       vs: pair1.publicKey,
     };
-    const fbMessage = aFbMpcMessage(pair2.privateKey);
+    const fbMessage = aFbProofOfOwnershipMessage(pair2.privateKey);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
@@ -101,59 +68,33 @@ function aKeyPair(): KeyPair {
   return { privateKey, publicKey };
 }
 
-function aFbProofOfOwnershipMessage(privateKey: string): FBSignatureMessage {
-  const payload = {
-    tenantId: 'tenant-id',
-    algorithm: 101,
-    timestamp: Date.now(),
-    fbKeyId: `some-key-id`,
-    externalKeyId: `some-external-key-id`,
-    version: 1,
-    requestId: `some-request-id`,
+function aFbProofOfOwnershipMessage(privateKey: string): FBMessage {
+  const fbMsgPayload = aFbMessagePayload(privateKey);
+  return {
+    type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP',
+    payload: fbMsgPayload,
   };
+}
+
+function aFbMessagePayload(privateKey: string): FBMessagePayload {
+  const payload: Message = messageBuilder.aMessage();
   const payloadStr = JSON.stringify(payload);
 
   const signer = crypto.createSign('sha256');
   signer.update(payloadStr);
   const signature = signer.sign(privateKey, 'hex');
 
-  const innerMessage: FBSignatureMessage = {
-    type: TxType.EXTERNAL_KEY_PROOF_OF_OWNERSHIP,
+  const innerMessage: FBMessagePayload = {
     payload: payloadStr,
-    signature,
-    signatureId: 'configuration_manager',
-  };
-  return innerMessage;
-}
-
-function aFbMpcMessage(privateKey: string): FBMessage<MPCPayload> {
-  const txMetaData = `some-content-to-sign`;
-  const signer = crypto.createSign('sha256');
-  signer.update(txMetaData);
-  const signature = signer.sign(privateKey, 'hex');
-
-  const innerMessage: FBMessage<MPCPayload> = {
-    type: TxType.MPC_START_SIGNING,
-    payload: {
-      phase: TxType.MPC_START_SIGNING,
-      tenantId: 'tenant-id',
-      txId: 'some-tx-id',
-      keyId: 'some-guid-id',
-      payload: 'the-payload-to-sign',
-      algorithm: 101,
-      userAccessToken: 'access-token',
-      metadata: {
-        signInfo: [],
-        chaincode: 'a9f2313dafed920fe2c258ae694c7c7282e0d4503a8238bfa9d72de688b443b6',
-        txMetaData,
-        txMetaDataSignatures: [{ id: 'MPC_START_SIGNING', signature, type: 'SERVICE' }],
-      },
+    signatureData: {
+      service: 'CONFIGURATION_MANAGER',
+      signature,
     },
   };
   return innerMessage;
 }
 
-function buildASignedMessage(innerMessage: FBMessage<MessagePayload>, zsCertificate): FBMessageEnvlope {
+function buildASignedMessage(innerMessage: FBMessage, zsCertificate): FBMessageEnvlope {
   const jwtMessage = jwt.sign(JSON.stringify(innerMessage), zsCertificate);
   return {
     deviceId: 'some-device-id',

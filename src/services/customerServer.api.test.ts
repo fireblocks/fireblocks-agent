@@ -4,21 +4,16 @@ import MockAdapter from 'axios-mock-adapter';
 import Chance from 'chance';
 import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants';
 import { GUID, Message, MessageEnvelop, MessageStatus } from '../types';
-import service, {
-  MessagesResponse,
-  MessagesStatusRequest,
-  MessagesStatusResponse,
-} from './customerServer.api';
+import service, { MessagesResponse, MessagesStatusRequest, MessagesStatusResponse } from './customerServer.api';
 import { messageBuilder } from './server.api.test';
 const c = new Chance();
 
 describe('Customer Server API', () => {
   it('should send tx to sign', async () => {
+    const msgId = c.guid();
     const aMessage = messageBuilder.aMessage();
-    const messageToSign = customerServerApiDriver.given.aMessageRequest(aMessage);
-    const expectedRes: MessageStatus[] = [
-      { msgId: aMessage.msgId, txId: aMessage.txId, status: 'PENDING_SIGN' },
-    ];
+    const messageToSign = customerServerApiDriver.given.aMessageRequest(msgId, aMessage);
+    const expectedRes: MessageStatus[] = [{ msgId, requestId: aMessage.requestId, status: 'PENDING_SIGN' }];
     customerServerApiDriver.mock.messagesToSign(messageToSign, { messages: expectedRes });
 
     const res = await service.messagesToSign(messageToSign);
@@ -27,11 +22,10 @@ describe('Customer Server API', () => {
   });
 
   it('should send Authorization header from env variable', async () => {
+    const msgId = c.guid();
     const aMessage = messageBuilder.aMessage();
-    const messageToSign = customerServerApiDriver.given.aMessageRequest(aMessage);
-    const expectedRes: MessageStatus[] = [
-      { msgId: aMessage.msgId, txId: aMessage.txId, status: 'PENDING_SIGN' },
-    ];
+    const messageToSign = customerServerApiDriver.given.aMessageRequest(msgId, aMessage);
+    const expectedRes: MessageStatus[] = [{ msgId, requestId: aMessage.requestId, status: 'PENDING_SIGN' }];
     customerServerApiDriver.mock.messagesToSign(messageToSign, { messages: expectedRes });
 
     const res = await service.messagesToSign(messageToSign);
@@ -42,14 +36,8 @@ describe('Customer Server API', () => {
 
 export const customerServerApiDriver = {
   given: {
-    aMessageRequest: ({ msgId, txId, keyId, algorithm, payload }: Message): MessageEnvelop[] => {
-      const message = {
-        txId,
-        keyId,
-        algorithm,
-        payload,
-      };
-      return [{ msgId, message }];
+    aMessageRequest: (msgId: string, message: Message): MessageEnvelop[] => {
+      return [{ msgId, message, type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP' }];
     },
     aTxStatusRequest: (msgIds: GUID[] = []): MessagesStatusRequest => {
       return {

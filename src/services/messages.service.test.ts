@@ -16,41 +16,41 @@ describe('messages service', () => {
     jest.clearAllMocks();
   });
 
-  it.each([TxType.EXTERNAL_KEY_PROOF_OF_OWNERSHIP, TxType.MPC_START_SIGNING])(
-    'should send the customer server the messages to sign',
-    async (type: TxType) => {
-      const msgId = c.guid();
-      const aTxToSignMessage = messageBuilder.aMessage({
-        type,
-        msgId,
-      });
-      const messageEnvlope = messageBuilder.messageEnvlope({ msgId }, aTxToSignMessage);
-      jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([]);
-      jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(aTxToSignMessage);
+  const types: TxType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP', 'TX'];
+  it.each(types)('should send the customer server the messages to sign', async (type: TxType) => {
+    const msgId = c.guid();
+    const aTxToSignMessage = messageBuilder.aMessage();
+    const fbMessage = messageBuilder.fbMessage('TX', aTxToSignMessage);
+    const fbMessageEnvlope = messageBuilder.fbMsgEnvelope({ msgId }, fbMessage);
+    const msgEnvelop = messageBuilder.anMessageEnvelope(msgId, type, aTxToSignMessage);
+    jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([]);
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
 
-      await service.handleMessages([messageEnvlope]);
+    await service.handleMessages([fbMessageEnvlope]);
 
-      expect(customerServerApi.messagesToSign).toHaveBeenCalledWith([
-        { message: aTxToSignMessage, msgId: messageEnvlope.msgId },
-      ]);
-    },
-  );
+    expect(customerServerApi.messagesToSign).toHaveBeenCalledWith([
+      { message: aTxToSignMessage, msgId: fbMessageEnvlope.msgId, type },
+    ]);
+  });
 
   it('should ignore non whitelist messages', async () => {
-    const aNonMpcStartSignMessage = messageBuilder.aMessage({
-      type: TxType.MPC_STOP_SIGNING,
-    });
-    const messageEnvlope = messageBuilder.messageEnvlope({}, aNonMpcStartSignMessage);
+    const msgId = c.guid();
+    const aTxToSignMessage = messageBuilder.aMessage();
+    //@ts-ignore
+    const fbMessage = messageBuilder.fbMessage('UNKNOWN_TYPE', aTxToSignMessage);
+    const fbMsgEnvelop = messageBuilder.fbMsgEnvelope({ msgId }, fbMessage);
+    //@ts-ignore
+    const msgEnvelop = messageBuilder.anMessageEnvelope(msgId, 'UNKNOWN_TYPE', aTxToSignMessage);
     jest.spyOn(customerServerApi, 'messagesToSign');
-    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(aNonMpcStartSignMessage);
-    await service.handleMessages([messageEnvlope]);
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
+    await service.handleMessages([fbMsgEnvelop]);
 
     expect(customerServerApi.messagesToSign).not.toBeCalled();
   });
 
   it('should ignore non encoded messages', async () => {
     const aNonEncodedMessage = {};
-    const messageEnvlope = messageBuilder.messageEnvlope({}, aNonEncodedMessage, false);
+    const messageEnvlope = messageBuilder.fbMsgEnvelope({}, aNonEncodedMessage, false);
     jest.spyOn(customerServerApi, 'messagesToSign');
     await service.handleMessages([messageEnvlope]);
 
@@ -59,31 +59,30 @@ describe('messages service', () => {
 
   it('should get pending messages', async () => {
     const msgId = c.guid();
-    const aTxToSignMessage = messageBuilder.aMessage({
-      type: TxType.MPC_START_SIGNING,
-      msgId,
-    });
+    const aTxToSignMessage = messageBuilder.aMessage();
+    const fbMessage = messageBuilder.fbMessage('TX', aTxToSignMessage);
+    const fbMessageEnvlope = messageBuilder.fbMsgEnvelope({ msgId }, fbMessage);
+    const msgEnvelop = messageBuilder.anMessageEnvelope(msgId, 'TX', aTxToSignMessage);
 
-    const messageEnvlope = messageBuilder.messageEnvlope({ msgId }, aTxToSignMessage);
-    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(aTxToSignMessage);
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
     jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([
       {
-        msgId: aTxToSignMessage.msgId,
-        txId: aTxToSignMessage.txId,
+        msgId,
+        requestId: aTxToSignMessage.requestId,
         status: 'PENDING_SIGN',
       },
     ]);
 
-    await service.handleMessages([messageEnvlope]);
+    await service.handleMessages([fbMessageEnvlope]);
 
     const pendingMessages = service.getPendingMessages();
-    expect(pendingMessages).toEqual([aTxToSignMessage.msgId]);
+    expect(pendingMessages).toEqual([msgId]);
   });
 
   it('should report ack on signed tx status update', () => {
     const signedMessageStatus: MessageStatus = {
       msgId: c.guid(),
-      txId: c.guid(),
+      requestId: c.guid(),
       status: 'SIGNED',
     };
 

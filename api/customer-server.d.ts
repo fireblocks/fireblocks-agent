@@ -63,6 +63,7 @@ export interface components {
        * @example 9eca83b5-5936-4eef-89cc-51bec0f49945
        */
       msgId: string;
+      type: components["schemas"]["TxType"];
       message: components["schemas"]["Message"];
     };
     MessageStatus: {
@@ -71,25 +72,16 @@ export interface components {
        * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
        */
       msgId: string;
+      requestId: string;
       /**
-       * Format: uuid
-       * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
-       */
-      txId: string;
-      /**
-       * @example ECDSA
+       * @example SIGNED
        * @enum {string}
        */
       status: "PENDING_SIGN" | "SIGNED" | "FAILED";
       errorMessage?: string;
       payload?: string;
     };
-    Message: {
-      /**
-       * Format: uuid
-       * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
-       */
-      txId: string;
+    SigningData: {
       /**
        * Format: uuid
        * @description keyId that is associated with the HSM private key
@@ -101,12 +93,44 @@ export interface components {
        * @example dc93a3b504f2ede4e03e60758571be627b2512aafa1c5e21db4c6b88d0813e9e
        */
       payload: string;
+      algorithm: components["schemas"]["Algorithm"];
+    };
+    /**
+     * @example EXTERNAL_KEY_PROOF_OF_OWNERSHIP
+     * @enum {string}
+     */
+    TxType: "EXTERNAL_KEY_PROOF_OF_OWNERSHIP" | "TX";
+    /**
+     * @description algorithm to sign with
+     * @example ECDSA
+     * @enum {string}
+     */
+    Algorithm: "ECDSA" | "EDDSA_ED25519";
+    Message: {
       /**
-       * @description algorithm to sign with
-       * @example ECDSA
-       * @enum {string}
+       * Format: uuid
+       * @example ea7d0d9a-6a10-4288-9b91-da8fb0b149f2
        */
-      algorithm: "ECDSA" | "EDDSA";
+      tenantId: string;
+      /** @example 1704122262 */
+      timestamp: number;
+      /** @example 1 */
+      version: number;
+      /** Format: uuid */
+      fbKeyId: string;
+      /**
+       * Format: uuid
+       * @example b015f35e-5d44-4d68-a0df-a1c625255abc
+       */
+      requestId: string;
+      /** @example 70721651-a7f3-42f6-a984-6e058269495f */
+      externalKeyId: string;
+      algorithm: components["schemas"]["Algorithm"];
+      /**
+       * @description The string to sign
+       * @example 3de97a18822d06fd19bea82522917c634c134a13ace2b887cf12e37dfd343d30
+       */
+      data: string;
     };
     Error: {
       message: string;

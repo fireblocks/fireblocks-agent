@@ -79,51 +79,47 @@ components:
       type: object
       required:
         - msgId
+        - type
         - message
       properties:
         msgId:
           type: string
           format: uuid
           example: 9eca83b5-5936-4eef-89cc-51bec0f49945
+        type:
+          $ref: '#/components/schemas/TxType'
         message:
           $ref: '#/components/schemas/Message'
     MessageStatus:
       type: object
       required:
         - msgId
-        - txId
+        - requestId
         - status
       properties:
         msgId:
           type: string
           format: uuid
           example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
-        txId:
+        requestId:
           type: string
-          format: uuid
-          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
         status:
           type: string
           enum: [PENDING_SIGN, SIGNED, FAILED]
-          example: ECDSA
+          example: SIGNED
         errorMessage:
           type: string
           exmaple: Transction 8c2b2b3d-fb83-497e-8138-72446b9184b6 failed due to insufficient funds
         payload:
           type: string
           exmaple: singed-tx-string
-    Message:
+    SigningData:
       type: object
       required:
-        - txId
         - keyId
         - payload
         - algorithm
       properties:
-        txId:
-          type: string
-          format: uuid
-          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
         keyId:
           description: keyId that is associated with the HSM private key
           type: string
@@ -134,10 +130,54 @@ components:
           type: string
           example: dc93a3b504f2ede4e03e60758571be627b2512aafa1c5e21db4c6b88d0813e9e
         algorithm:
-          description: algorithm to sign with
+          $ref: '#/components/schemas/Algorithm'
+    TxType:
+      type: string
+      enum: [EXTERNAL_KEY_PROOF_OF_OWNERSHIP, TX]
+      example: EXTERNAL_KEY_PROOF_OF_OWNERSHIP
+    Algorithm:
+      description: algorithm to sign with
+      type: string
+      enum: [ECDSA, EDDSA_ED25519]
+      example: ECDSA
+    Message:
+      required:
+        - tenantId
+        - timestamp
+        - version
+        - fbKeyId
+        - requestId
+        - externalKeyId
+        - algorithm
+        - data
+      properties:
+        tenantId:
           type: string
-          enum: [ECDSA, EDDSA]
-          example: ECDSA
+          format: uuid
+          example: ea7d0d9a-6a10-4288-9b91-da8fb0b149f2
+        timestamp:
+          type: number
+          example: 1704122262
+        version:
+          type: number
+          example: 1
+        fbKeyId:
+          type: string
+          format: uuid
+          exmaple: 70721651-a7f3-42f6-a984-6e058269495f
+        requestId:
+          type: string
+          format: uuid
+          example: b015f35e-5d44-4d68-a0df-a1c625255abc
+        externalKeyId:
+          type: string
+          example: 70721651-a7f3-42f6-a984-6e058269495f
+        algorithm:
+          $ref: '#/components/schemas/Algorithm'
+        data:
+          description: The string to sign
+          type: string
+          example: 3de97a18822d06fd19bea82522917c634c134a13ace2b887cf12e37dfd343d30
     Error:
       type: object
       required:

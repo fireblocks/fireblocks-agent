@@ -7,11 +7,13 @@ import { MOBILE_GATEWAY_URL } from '../constants';
 import {
   AccessToken,
   AccessTokenReuest,
-  Algorithm,
   CertificatesMap,
+  FBMessage,
   FBMessageEnvlope,
+  FBMessagePayload,
   GUID,
   Message,
+  MessageEnvelop,
   PairDeviceRequest,
   TxType,
 } from '../types';
@@ -50,7 +52,7 @@ describe('Server API', () => {
     const accessToken = serverApiDriver.given.accessToken();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
-    const someMessages = [messageBuilder.messageEnvlope()];
+    const someMessages = [messageBuilder.fbMsgEnvelope()];
     serverApiDriver.mock.accessToken(deviceData, accessToken);
     serverApiDriver.mock.messages(accessToken, someMessages);
 
@@ -63,7 +65,7 @@ describe('Server API', () => {
     const accessToken = serverApiDriver.given.accessToken();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
-    const someMessage = messageBuilder.messageEnvlope();
+    const someMessage = messageBuilder.fbMsgEnvelope();
     serverApiDriver.mock.accessToken(deviceData, accessToken);
     serverApiDriver.mock.messages(accessToken, someMessage);
 
@@ -107,7 +109,7 @@ describe('Server API', () => {
 
   it('shuold ack message', async () => {
     const accessToken = serverApiDriver.given.accessToken();
-    const aMessage = messageBuilder.messageEnvlope({ msgId: c.guid() });
+    const aMessage = messageBuilder.fbMsgEnvelope({ msgId: c.guid() });
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
     serverApiDriver.mock.accessToken(deviceData, accessToken);
@@ -121,30 +123,50 @@ describe('Server API', () => {
 });
 
 export const messageBuilder = {
-  messageEnvlope: (
-    messageEnvlope?: Partial<FBMessageEnvlope>,
-    message?: Partial<Message>,
+  fbMsgEnvelope: (
+    fbMsgEnvelope?: Partial<FBMessageEnvlope>,
+    fbMsg?: Partial<FBMessage>,
     shouldEncode: boolean = true,
   ): FBMessageEnvlope => {
-    const msg = shouldEncode
-      ? jwt.sign(JSON.stringify(message || c.string()), 'shhhhh')
-      : message || {};
+    const msg = shouldEncode ? jwt.sign(JSON.stringify(fbMsg || c.string()), 'shhhhh') : fbMsg || {};
     return {
       msg,
       msgId: c.guid(),
       deviceId: c.guid(),
       internalMessageId: c.guid(),
-      ...messageEnvlope,
+      ...fbMsgEnvelope,
+    };
+  },
+  fbMessage: (type: TxType, msg: Message): FBMessage => {
+    const fbMessagePayload: FBMessagePayload = {
+      payload: JSON.stringify(msg),
+      signatureData: {
+        service: 'some-service',
+        signature: 'signature of the payload',
+      },
+    };
+    return {
+      type,
+      payload: fbMessagePayload,
+    };
+  },
+  anMessageEnvelope: (msgId: string, type: TxType, message: Message): MessageEnvelop => {
+    return {
+      msgId,
+      type,
+      message,
     };
   },
   aMessage: (message?: Partial<Message>): Message => {
     return {
-      msgId: c.guid(),
-      type: TxType.MPC_START_SIGNING,
-      txId: c.guid(),
-      keyId: c.guid(),
-      payload: c.string(),
-      algorithm: Algorithm.ECDSA,
+      tenantId: c.guid(),
+      timestamp: c.timestamp(),
+      version: 1,
+      fbKeyId: c.guid(),
+      requestId: c.guid(),
+      externalKeyId: c.guid(),
+      algorithm: 'ECDSA',
+      data: c.string(),
       ...message,
     };
   },
@@ -178,10 +200,7 @@ export const serverApiDriver = {
     },
   },
   mock: {
-    pairDevice: (
-      pairDeviceReq?: Partial<PairDeviceRequest>,
-      resultRefreshToken: string = c.string(),
-    ) => {
+    pairDevice: (pairDeviceReq?: Partial<PairDeviceRequest>, resultRefreshToken: string = c.string()) => {
       const generatedReq = serverApiDriver.given.pairDeviceRequst();
       const pairRequest = {
         ...generatedReq,
@@ -209,15 +228,9 @@ export const serverApiDriver = {
         .reply(200, certificates);
     },
     ackMessage: (accessToken: AccessToken, msgId: GUID, response: string) => {
-      serverApiDriver
-        .axiosMock()
-        .onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false })
-        .reply(200, response);
+      serverApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
     },
-    accessToken: (
-      accessTokenReq?: Partial<AccessTokenReuest>,
-      resultAccessToken: string = c.string(),
-    ) => {
+    accessToken: (accessTokenReq?: Partial<AccessTokenReuest>, resultAccessToken: string = c.string()) => {
       const generatedReq = serverApiDriver.given.accessTokenRequst();
       const accessTokenRequest: AccessTokenReuest = {
         ...generatedReq,
