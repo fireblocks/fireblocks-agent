@@ -6,6 +6,7 @@ import {
   CertificatesMap,
   FBMessageEnvlope,
   GUID,
+  MessageStatus,
   PairDeviceRequest,
   PairDeviceResponse,
 } from 'types';
@@ -35,14 +36,25 @@ const serverApi = {
       throw e;
     }
   },
+  broadcast: async ({ requestId, payload }: MessageStatus): Promise<void> => {
+    try {
+      const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
+      const res = await axios.post(
+        `${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`,
+        { requestId, payload },
+        buildHeaders(accessToken),
+      );
+      return res.data;
+    } catch (e) {
+      logger.error(`Error on broadcast request`, e);
+      throw e;
+    }
+  },
 
   getMessages: async (): Promise<FBMessageEnvlope[]> => {
     try {
       const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
-      const res = await axios.get(
-        `${MOBILE_GATEWAY_URL}/msg?useBatch=true`,
-        buildHeaders(accessToken),
-      );
+      const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, buildHeaders(accessToken));
       const messages = res.data;
       if (messages) {
         fs.writeFileSync(`messages${i}.json`, JSON.stringify(res.data));
@@ -60,10 +72,7 @@ const serverApi = {
         return certificatesMapCache;
       }
       const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
-      const res = await axios.get(
-        `${MOBILE_GATEWAY_URL}/get_service_certificates`,
-        buildHeaders(accessToken),
-      );
+      const res = await axios.get(`${MOBILE_GATEWAY_URL}/get_service_certificates`, buildHeaders(accessToken));
       certificatesMapCache = res.data;
       return certificatesMapCache;
     } catch (e) {
@@ -75,11 +84,7 @@ const serverApi = {
   ackMessage: async (msgId: GUID) => {
     try {
       const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
-      const res = await axios.put(
-        `${MOBILE_GATEWAY_URL}/msg`,
-        { msgId, nack: false },
-        buildHeaders(accessToken),
-      );
+      const res = await axios.put(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }, buildHeaders(accessToken));
       return res.data;
     } catch (e) {
       logger.error(`Error on ackMessage request`, e);

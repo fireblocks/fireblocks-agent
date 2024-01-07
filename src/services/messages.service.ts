@@ -17,6 +17,7 @@ class MessageService {
       .filter(({ msg }) => typeof msg === 'string')
       .map((messageEnvelope: FBMessageEnvlope) => {
         const { message, msgId, type } = decodeAndVerifyMessage(messageEnvelope, certificates);
+        console.log(`Got message with type ${type}`);
         return { message, msgId, type };
       })
       .filter((_) => this.knownMessageTypes.includes(_.type));
@@ -30,9 +31,10 @@ class MessageService {
   }
 
   async updateStatus(messagesStatus: MessageStatus[]) {
-    for (const _ of messagesStatus) {
-      if (_.status === 'SIGNED') {
-        await serverApi.ackMessage(_.msgId);
+    for (const msgStatus of messagesStatus) {
+      if (msgStatus.status === 'SIGNED') {
+        await serverApi.ackMessage(msgStatus.msgId);
+        await serverApi.broadcast(msgStatus);
       }
     }
   }

@@ -88,8 +88,25 @@ describe('messages service', () => {
 
     // @ts-ignore
     jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn);
+    // @ts-ignore
+    jest.spyOn(serverApi, 'broadcast').mockImplementation(jest.fn);
+
     service.updateStatus([signedMessageStatus]);
 
     expect(serverApi.ackMessage).toHaveBeenCalledWith(signedMessageStatus.msgId);
+  });
+
+  it('should broadcast result to mobile api gw', async () => {
+    const signedMessageStatus: MessageStatus = {
+      msgId: c.guid(),
+      requestId: c.guid(),
+      status: 'SIGNED',
+    };
+
+    jest.spyOn(serverApi, 'broadcast').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+    await service.updateStatus([signedMessageStatus]);
+
+    expect(serverApi.broadcast).toHaveBeenCalledWith(signedMessageStatus);
   });
 });

@@ -14,6 +14,7 @@ import {
   GUID,
   Message,
   MessageEnvelop,
+  MessageStatus,
   PairDeviceRequest,
   TxType,
 } from '../types';
@@ -120,8 +121,30 @@ describe('Server API', () => {
 
     expect(res).toEqual('ok');
   });
+
+  it('shuold broadcast message', async () => {
+    const accessToken = serverApiDriver.given.accessToken();
+    const signedMessageStatus = aSignedMessageStatus();
+    const deviceData = deviceDriver.given.deviceData();
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
+    serverApiDriver.mock.accessToken(deviceData, accessToken);
+
+    serverApiDriver.mock.broadcast(accessToken, signedMessageStatus, 'ok');
+
+    const res = await serverApi.broadcast(signedMessageStatus);
+
+    expect(res).toEqual('ok');
+  });
 });
 
+function aSignedMessageStatus(): MessageStatus {
+  return {
+    msgId: c.guid(),
+    requestId: c.guid(),
+    status: 'SIGNED',
+    payload: c.string(),
+  };
+}
 export const messageBuilder = {
   fbMsgEnvelope: (
     fbMsgEnvelope?: Partial<FBMessageEnvlope>,
@@ -229,6 +252,15 @@ export const serverApiDriver = {
     },
     ackMessage: (accessToken: AccessToken, msgId: GUID, response: string) => {
       serverApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
+    },
+    broadcast: (accessToken: AccessToken, status: MessageStatus, response: string) => {
+      serverApiDriver
+        .axiosMock()
+        .onPost(`${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`, {
+          requestId: status.requestId,
+          payload: status.payload,
+        })
+        .reply(200, response);
     },
     accessToken: (accessTokenReq?: Partial<AccessTokenReuest>, resultAccessToken: string = c.string()) => {
       const generatedReq = serverApiDriver.given.accessTokenRequst();
