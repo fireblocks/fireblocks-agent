@@ -59,10 +59,11 @@ const serverApi = {
       if (messages) {
         fs.writeFileSync(`messages${i}.json`, JSON.stringify(messages));
         i++;
+        return Array.isArray(messages) ? messages : [messages];
       }
-      return Array.isArray(messages) ? messages : [messages];
+      return [];
     } catch (e) {
-      logger.error(`Error on getMessages request`, e);
+      logger.error(`Error on getMessages request ${e.message}`);
       throw e;
     }
   },
