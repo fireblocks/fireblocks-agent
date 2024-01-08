@@ -1,5 +1,5 @@
 import { Collection, MongoClient } from 'mongodb';
-import { GUID, Message, MessageEnvelope, MessageStatus, TxType } from '../types';
+import { GUID, Message, MessageEnvelope, MessageStatus } from '../types';
 import { getMongoUri } from './mongo.connect';
 
 let _msgRef: Collection<DbMsg>;
@@ -25,11 +25,12 @@ export const updateMessageStatus = async (msg: MessageStatus) => {
 
 export const insertMessages = async (messages: MessageEnvelope[]): Promise<MessageStatus[]> => {
   const msgRef = await getMessagesCollection();
-  const dbMsgs = messages.map((msg: MessageEnvelope) => {
+  const dbMsgs = messages.map(({msgId, type, message, payload}: MessageEnvelope) => {
     return {
-      _id: msg.msgId,
-      type: msg.type,
-      message: msg.message,
+      _id: msgId,
+      type,
+      message,
+      payload,
       status: 'PENDING_SIGN',
     } as DbMsg;
   });
@@ -56,13 +57,11 @@ function toMsgStatus(dbMsgs: Partial<DbMsg>[]): MessageStatus[] {
   dbMsgs.forEach((_) => {
     delete _._id;
     delete _.message;
-    delete _.type;
   });
   return dbMsgs as MessageStatus[];
 }
 
 interface DbMsg extends MessageStatus {
   _id: GUID;
-  type: TxType;
   message: Message;
 }

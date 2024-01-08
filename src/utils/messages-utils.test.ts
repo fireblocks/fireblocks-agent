@@ -20,6 +20,7 @@ describe('Messages utils', () => {
       msgId: fbMessageEnvelope.msgId,
       type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP',
       message: internalMessage,
+      payload: fbMessage.payload.payload,
     };
     expect(messageEnvelope).toEqual(expectedMessage);
   });

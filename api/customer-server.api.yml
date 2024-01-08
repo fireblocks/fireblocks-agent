@@ -81,6 +81,7 @@ components:
         - msgId
         - type
         - message
+        - payload 
       properties:
         msgId:
           type: string
@@ -90,13 +91,21 @@ components:
           $ref: '#/components/schemas/TxType'
         message:
           $ref: '#/components/schemas/Message'
+        payload:
+          type: string
+          format: string
+          description: Original message payload
     MessageStatus:
       type: object
       required:
         - msgId
         - requestId
         - status
+        - type
+        - payload
       properties:
+        type:
+          $ref: '#/components/schemas/TxType'
         msgId:
           type: string
           format: uuid
@@ -110,9 +119,12 @@ components:
         errorMessage:
           type: string
           exmaple: Transction 8c2b2b3d-fb83-497e-8138-72446b9184b6 failed due to insufficient funds
-        payload:
+        signedPayload:
           type: string
           exmaple: singed-tx-string
+        payload:
+          type: string
+          description: Original message payload
     SigningData:
       type: object
       required:

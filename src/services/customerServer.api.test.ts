@@ -12,32 +12,29 @@ describe('Customer Server API', () => {
   it('should send tx to sign', async () => {
     const msgId = c.guid();
     const aMessage = messageBuilder.aMessage();
-    const messageToSign = customerServerApiDriver.given.aMessageRequest(msgId, aMessage);
-    const expectedRes: MessageStatus[] = [{ msgId, requestId: aMessage.requestId, status: 'PENDING_SIGN' }];
-    customerServerApiDriver.mock.messagesToSign(messageToSign, { messages: expectedRes });
+    const messagesToSign = customerServerApiDriver.given.aMessageRequest(msgId, aMessage);
+    const expectedRes: MessageStatus[] = [
+      {
+        msgId,
+        requestId: aMessage.requestId,
+        status: 'PENDING_SIGN',
+        payload: messagesToSign[0].payload,
+        type: messagesToSign[0].type,
+      },
+    ];
+    customerServerApiDriver.mock.messagesToSign(messagesToSign, { messages: expectedRes });
 
-    const res = await service.messagesToSign(messageToSign);
-
-    expect(res).toEqual(expectedRes);
-  });
-
-  it('should send Authorization header from env variable', async () => {
-    const msgId = c.guid();
-    const aMessage = messageBuilder.aMessage();
-    const messageToSign = customerServerApiDriver.given.aMessageRequest(msgId, aMessage);
-    const expectedRes: MessageStatus[] = [{ msgId, requestId: aMessage.requestId, status: 'PENDING_SIGN' }];
-    customerServerApiDriver.mock.messagesToSign(messageToSign, { messages: expectedRes });
-
-    const res = await service.messagesToSign(messageToSign);
+    const res = await service.messagesToSign(messagesToSign);
 
     expect(res).toEqual(expectedRes);
   });
+
 });
 
 export const customerServerApiDriver = {
   given: {
     aMessageRequest: (msgId: string, message: Message): MessageEnvelop[] => {
-      return [{ msgId, message, type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP' }];
+      return [{ msgId, message, type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP', payload: JSON.stringify(message) }];
     },
     aTxStatusRequest: (msgIds: GUID[] = []): MessagesStatusRequest => {
       return {

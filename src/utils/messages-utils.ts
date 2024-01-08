@@ -9,8 +9,11 @@ export const decodeAndVerifyMessage = (
 ): MessageEnvelop => {
   try {
     certMap = certificates;
-    const zsCertificate = certMap['zs'];
-    const fbMessage = jwt.verify(fbMsgEnvelope.msg as JWT, zsCertificate) as FBMessage;
+    let fbMessage = fbMsgEnvelope.msg;
+    if (typeof fbMessage === 'string') {
+      const zsCertificate = certMap['zs'];
+      fbMessage = jwt.verify(fbMsgEnvelope.msg as JWT, zsCertificate) as FBMessage;
+    }
     verifyMpcMessage(fbMessage);
     return toMessage(fbMsgEnvelope.msgId, fbMessage);
   } catch (e) {
@@ -30,6 +33,7 @@ const toMessage = (msgId: GUID, fbMessage: FBMessage): MessageEnvelop => {
       return {
         ...shared,
         message: parsedMessage,
+        payload: fbMsgPayload.payload,
       };
     }
   }

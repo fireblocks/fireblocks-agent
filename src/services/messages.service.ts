@@ -1,6 +1,7 @@
 import { FBMessageEnvlope, GUID, MessageEnvelop, MessageStatus, TxType } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customerServer.api';
+import logger from './logger';
 import serverApi from './server.api';
 
 class MessageService {
@@ -14,11 +15,10 @@ class MessageService {
   async handleMessages(messages: FBMessageEnvlope[]) {
     const certificates = await serverApi.getCertificates();
     const decodedMessages: MessageEnvelop[] = messages
-      .filter(({ msg }) => typeof msg === 'string')
       .map((messageEnvelope: FBMessageEnvlope) => {
-        const { message, msgId, type } = decodeAndVerifyMessage(messageEnvelope, certificates);
-        console.log(`Got message with type ${type}`);
-        return { message, msgId, type };
+        const { message, msgId, type, payload } = decodeAndVerifyMessage(messageEnvelope, certificates);
+        logger.debug(`Got message with type ${type}`);
+        return { message, msgId, type, payload };
       })
       .filter((_) => this.knownMessageTypes.includes(_.type));
 

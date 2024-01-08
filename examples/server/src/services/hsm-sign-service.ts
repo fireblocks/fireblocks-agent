@@ -16,7 +16,7 @@ export async function randomlySignOrFailMessagesAsync(msgIds: GUID[]) {
       const algorithm = msg.message.algorithm === 'ECDSA' ? 'ECDSA' : 'EDDSA';
       const { externalKeyId, data } = msg.message;
       if (msg.status === 'SIGNED') {
-        msg.payload = await hsmFacade.sign(externalKeyId, data, algorithm);
+        msg.signedPayload = await hsmFacade.sign(externalKeyId, data, algorithm);
       }
       await messagesDao.updateMessageStatus(msg);
       console.log(`Set ${msg.msgId} from status ${previousStatus} to ${msg.status}`);

@@ -14,7 +14,7 @@ import { MOBILE_GATEWAY_URL } from '../constants';
 import deviceService from './device.service';
 import logger from './logger';
 
-let i = 16;
+let i = 21;
 let certificatesMapCache;
 const serverApi = {
   pairDevice: async (pairDevice: PairDeviceRequest): Promise<PairDeviceResponse> => {
@@ -36,12 +36,12 @@ const serverApi = {
       throw e;
     }
   },
-  broadcast: async ({ requestId, payload }: MessageStatus): Promise<void> => {
+  broadcast: async ({ requestId, signedPayload, payload, type }: MessageStatus): Promise<void> => {
     try {
       const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
       const res = await axios.post(
         `${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`,
-        { requestId, payload },
+        { requestId, signedPayload, payload, type },
         buildHeaders(accessToken),
       );
       return res.data;
@@ -57,7 +57,7 @@ const serverApi = {
       const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, buildHeaders(accessToken));
       const messages = res.data;
       if (messages) {
-        fs.writeFileSync(`messages${i}.json`, JSON.stringify(res.data));
+        fs.writeFileSync(`messages${i}.json`, JSON.stringify(messages));
         i++;
       }
       return Array.isArray(messages) ? messages : [messages];

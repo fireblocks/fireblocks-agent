@@ -11,8 +11,8 @@ services:
       - 35729:35729
   customer-database:
     image: mongo:6
-    #volumes:
-    #  - database:/data/db
+    volumes:
+     - database:/data/db
     ports:
       - 27017:27017
 #volumes:

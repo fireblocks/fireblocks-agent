@@ -65,8 +65,14 @@ export interface components {
       msgId: string;
       type: components["schemas"]["TxType"];
       message: components["schemas"]["Message"];
+      /**
+       * Format: string
+       * @description Original message payload
+       */
+      payload: string;
     };
     MessageStatus: {
+      type: components["schemas"]["TxType"];
       /**
        * Format: uuid
        * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
@@ -79,7 +85,9 @@ export interface components {
        */
       status: "PENDING_SIGN" | "SIGNED" | "FAILED";
       errorMessage?: string;
-      payload?: string;
+      signedPayload?: string;
+      /** @description Original message payload */
+      payload: string;
     };
     SigningData: {
       /**

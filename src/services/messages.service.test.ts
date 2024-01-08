@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import Chance from 'chance';
-import { MessageStatus, TxType } from '../types';
+import { TxType } from '../types';
 import * as messagesUtils from '../utils/messages-utils';
 import customerServerApi from './customerServer.api';
 import service from './messages.service';
 import serverApi from './server.api';
-import { messageBuilder } from './server.api.test';
+import { aSignedMessageStatus, messageBuilder } from './server.api.test';
 const c = new Chance();
 describe('messages service', () => {
   beforeEach(() => {
@@ -29,7 +29,7 @@ describe('messages service', () => {
     await service.handleMessages([fbMessageEnvlope]);
 
     expect(customerServerApi.messagesToSign).toHaveBeenCalledWith([
-      { message: aTxToSignMessage, msgId: fbMessageEnvlope.msgId, type },
+      { message: aTxToSignMessage, msgId: fbMessageEnvlope.msgId, type, payload: fbMessage.payload.payload },
     ]);
   });
 
@@ -49,7 +49,7 @@ describe('messages service', () => {
   });
 
   it('should ignore non encoded messages', async () => {
-    const aNonEncodedMessage = {};
+    const aNonEncodedMessage = messageBuilder.fbMessage('EXTERNAL_KEY_PROOF_OF_OWNERSHIP', messageBuilder.aMessage());
     const messageEnvlope = messageBuilder.fbMsgEnvelope({}, aNonEncodedMessage, false);
     jest.spyOn(customerServerApi, 'messagesToSign');
     await service.handleMessages([messageEnvlope]);
@@ -70,6 +70,8 @@ describe('messages service', () => {
         msgId,
         requestId: aTxToSignMessage.requestId,
         status: 'PENDING_SIGN',
+        payload: fbMessage.payload.payload,
+        type: fbMessage.type,
       },
     ]);
 
@@ -80,12 +82,7 @@ describe('messages service', () => {
   });
 
   it('should report ack on signed tx status update', () => {
-    const signedMessageStatus: MessageStatus = {
-      msgId: c.guid(),
-      requestId: c.guid(),
-      status: 'SIGNED',
-    };
-
+    const signedMessageStatus = aSignedMessageStatus();
     // @ts-ignore
     jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn);
     // @ts-ignore
@@ -97,12 +94,7 @@ describe('messages service', () => {
   });
 
   it('should broadcast result to mobile api gw', async () => {
-    const signedMessageStatus: MessageStatus = {
-      msgId: c.guid(),
-      requestId: c.guid(),
-      status: 'SIGNED',
-    };
-
+    const signedMessageStatus = aSignedMessageStatus();
     jest.spyOn(serverApi, 'broadcast').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
     await service.updateStatus([signedMessageStatus]);

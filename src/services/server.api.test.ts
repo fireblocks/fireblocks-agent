@@ -137,21 +137,25 @@ describe('Server API', () => {
   });
 });
 
-function aSignedMessageStatus(): MessageStatus {
+export function aSignedMessageStatus(): MessageStatus {
   return {
     msgId: c.guid(),
     requestId: c.guid(),
     status: 'SIGNED',
-    payload: c.string(),
+    payload: 'original message payload',
+    signedPayload: 'signed payload',
+    type: 'TX',
   };
 }
 export const messageBuilder = {
   fbMsgEnvelope: (
     fbMsgEnvelope?: Partial<FBMessageEnvlope>,
-    fbMsg?: Partial<FBMessage>,
+    fbMsg?: FBMessage,
     shouldEncode: boolean = true,
   ): FBMessageEnvlope => {
-    const msg = shouldEncode ? jwt.sign(JSON.stringify(fbMsg || c.string()), 'shhhhh') : fbMsg || {};
+    const msg = shouldEncode
+      ? jwt.sign(JSON.stringify(fbMsg || c.string()), 'shhhhh')
+      : fbMsg || messageBuilder.fbMessage('TX', messageBuilder.aMessage());
     return {
       msg,
       msgId: c.guid(),
@@ -176,6 +180,7 @@ export const messageBuilder = {
   anMessageEnvelope: (msgId: string, type: TxType, message: Message): MessageEnvelop => {
     return {
       msgId,
+      payload: JSON.stringify(message),
       type,
       message,
     };
@@ -254,11 +259,14 @@ export const serverApiDriver = {
       serverApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
     },
     broadcast: (accessToken: AccessToken, status: MessageStatus, response: string) => {
+      const { requestId, signedPayload, payload, type } = status;
       serverApiDriver
         .axiosMock()
         .onPost(`${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`, {
-          requestId: status.requestId,
-          payload: status.payload,
+          requestId,
+          signedPayload,
+          payload,
+          type,
         })
         .reply(200, response);
     },
