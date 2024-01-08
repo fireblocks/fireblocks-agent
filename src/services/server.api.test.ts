@@ -129,9 +129,13 @@ describe('Server API', () => {
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
     serverApiDriver.mock.accessToken(deviceData, accessToken);
 
-    serverApiDriver.mock.broadcast(accessToken, signedMessageStatus, 'ok');
+    const expectedResponseStatus = {
+      ...signedMessageStatus,
+      type: `${signedMessageStatus.type}_RESPONSE`,
+    };
+    serverApiDriver.mock.broadcast(accessToken, expectedResponseStatus, 'ok');
 
-    const res = await serverApi.broadcast(signedMessageStatus);
+    const res = await serverApi.broadcastResponse(signedMessageStatus);
 
     expect(res).toEqual('ok');
   });
@@ -258,7 +262,7 @@ export const serverApiDriver = {
     ackMessage: (accessToken: AccessToken, msgId: GUID, response: string) => {
       serverApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
     },
-    broadcast: (accessToken: AccessToken, status: MessageStatus, response: string) => {
+    broadcast: (accessToken: AccessToken, status: any, response: string) => {
       const { requestId, signedPayload, payload, type } = status;
       serverApiDriver
         .axiosMock()

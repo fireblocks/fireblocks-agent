@@ -34,7 +34,7 @@ class MessageService {
     for (const msgStatus of messagesStatus) {
       if (msgStatus.status === 'SIGNED') {
         await serverApi.ackMessage(msgStatus.msgId);
-        await serverApi.broadcast(msgStatus);
+        await serverApi.broadcastResponse(msgStatus);
       }
     }
   }

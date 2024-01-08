@@ -36,12 +36,12 @@ const serverApi = {
       throw e;
     }
   },
-  broadcast: async ({ requestId, signedPayload, payload, type }: MessageStatus): Promise<void> => {
+  broadcastResponse: async ({ requestId, signedPayload, payload, type }: MessageStatus): Promise<void> => {
     try {
       const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
       const res = await axios.post(
         `${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`,
-        { requestId, signedPayload, payload, type },
+        { requestId, signedPayload, payload, type: `${type}_RESPONSE` },
         buildHeaders(accessToken),
       );
       return res.data;
