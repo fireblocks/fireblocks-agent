@@ -1,5 +1,5 @@
-import logger from 'services/logger';
 import customerServerApi from './services/customerServer.api';
+import logger from './services/logger';
 import messagesService from './services/messages.service';
 
 class CustomerClient {
