@@ -1,3 +1,4 @@
+import logger from 'services/logger';
 import customerServerApi from './services/customerServer.api';
 import messagesService from './services/messages.service';
 
@@ -7,10 +8,13 @@ class CustomerClient {
   constructor() {}
 
   pullMessagesStatus = async () => {
-    const msgIds = messagesService.getPendingMessages();
-    const status = await customerServerApi.messagesStatus({ msgIds });
-    messagesService.updateStatus(status.messages);
-
+    try {
+      const msgIds = messagesService.getPendingMessages();
+      const status = await customerServerApi.messagesStatus({ msgIds });
+      messagesService.updateStatus(status.messages);
+    } catch (e) {
+      logger.error('Got error from customer server', e);
+    }
     setTimeout(this.pullMessagesStatus, this.HALF_A_MINUTE);
   };
 }
