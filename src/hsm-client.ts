@@ -35,11 +35,12 @@ const runAgentMainLoop = async () => {
       messageService.handleMessages(messages);
       logger.info(`Got Message after ${Date.now() - start}ms`);
       logger.debug(`Got Message:`, messages);
-    } catch (e) {//ignore errors as they are logged in server.api. fetch new messages}
-
+    } catch (e) {
+      //ignore errors as they are logged in server.api. fetch new messages}
+      setTimeout(loopFunc);
+    }
     setTimeout(loopFunc);
   };
-  setTimeout(loopFunc);
 };
 
 const pairDevice = async (): Promise<boolean> => {
