@@ -1,7 +1,6 @@
 services:
   customer-server:
-    build:
-      context: .
+    image: softhsm2:2.6.1
     depends_on:
       - customer-database
     environment:
@@ -11,9 +10,9 @@ services:
       - 35729:35729
   customer-database:
     image: mongo:6
-    volumes:
-     - database:/data/db
+    # volumes:
+    #   - database:/data/db
     ports:
       - 27017:27017
-#volumes:
-#database:
+# volumes:
+# database:

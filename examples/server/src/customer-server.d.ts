@@ -89,20 +89,6 @@ export interface components {
       /** @description Original message payload */
       payload: string;
     };
-    SigningData: {
-      /**
-       * Format: uuid
-       * @description keyId that is associated with the HSM private key
-       * @example 0ba9efb7-73cc-4ea5-9219-2aed45b06364
-       */
-      keyId: string;
-      /**
-       * @description payload to sign
-       * @example dc93a3b504f2ede4e03e60758571be627b2512aafa1c5e21db4c6b88d0813e9e
-       */
-      payload: string;
-      algorithm: components["schemas"]["Algorithm"];
-    };
     /**
      * @example EXTERNAL_KEY_PROOF_OF_OWNERSHIP
      * @enum {string}
@@ -110,10 +96,10 @@ export interface components {
     TxType: "EXTERNAL_KEY_PROOF_OF_OWNERSHIP" | "TX";
     /**
      * @description algorithm to sign with
-     * @example ECDSA
+     * @example ECDSA_SECP256K1
      * @enum {string}
      */
-    Algorithm: "ECDSA" | "EDDSA_ED25519";
+    Algorithm: "ECDSA_SECP256K1" | "EDDSA_ED25519";
     Message: {
       /**
        * Format: uuid

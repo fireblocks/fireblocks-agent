@@ -132,8 +132,8 @@ components:
     Algorithm:
       description: algorithm to sign with
       type: string
-      enum: [ECDSA, EDDSA_ED25519]
-      example: ECDSA
+      enum: [ECDSA_SECP256K1, EDDSA_ED25519]
+      example: ECDSA_SECP256K1
     Message:
       required:
         - tenantId
