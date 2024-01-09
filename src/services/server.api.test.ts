@@ -129,11 +129,15 @@ describe('Server API', () => {
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
     serverApiDriver.mock.accessToken(deviceData, accessToken);
 
-    const expectedResponseStatus = {
-      ...signedMessageStatus,
+    const expectedRequestObject = {
       type: `${signedMessageStatus.type}_RESPONSE`,
+      payload: {
+        payload: JSON.parse(signedMessageStatus.payload),
+        signedPayload: signedMessageStatus.signedPayload,
+      },
     };
-    serverApiDriver.mock.broadcast(accessToken, expectedResponseStatus, 'ok');
+
+    serverApiDriver.mock.broadcast(accessToken, expectedRequestObject, 'ok');
 
     const res = await serverApi.broadcastResponse(signedMessageStatus);
 
@@ -146,7 +150,7 @@ export function aSignedMessageStatus(): MessageStatus {
     msgId: c.guid(),
     requestId: c.guid(),
     status: 'SIGNED',
-    payload: 'original message payload',
+    payload: JSON.stringify(messageBuilder.aMessage()),
     signedPayload: 'signed payload',
     type: 'TX',
   };
@@ -263,16 +267,7 @@ export const serverApiDriver = {
       serverApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
     },
     broadcast: (accessToken: AccessToken, status: any, response: string) => {
-      const { requestId, signedPayload, payload, type } = status;
-      serverApiDriver
-        .axiosMock()
-        .onPost(`${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`, {
-          requestId,
-          signedPayload,
-          payload,
-          type,
-        })
-        .reply(200, response);
+      serverApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`, status).reply(200, response);
     },
     accessToken: (accessTokenReq?: Partial<AccessTokenReuest>, resultAccessToken: string = c.string()) => {
       const generatedReq = serverApiDriver.given.accessTokenRequst();

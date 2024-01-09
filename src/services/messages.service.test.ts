@@ -81,14 +81,12 @@ describe('messages service', () => {
     expect(pendingMessages).toEqual([msgId]);
   });
 
-  it('should report ack on signed tx status update', () => {
+  it('should report ack on signed tx status update', async () => {
     const signedMessageStatus = aSignedMessageStatus();
-    // @ts-ignore
-    jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn);
-    // @ts-ignore
-    jest.spyOn(serverApi, 'broadcastResponse').mockImplementation(jest.fn);
+    jest.spyOn(serverApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
 
-    service.updateStatus([signedMessageStatus]);
+    await service.updateStatus([signedMessageStatus]);
 
     expect(serverApi.ackMessage).toHaveBeenCalledWith(signedMessageStatus.msgId);
   });

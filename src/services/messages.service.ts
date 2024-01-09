@@ -31,11 +31,15 @@ class MessageService {
   }
 
   async updateStatus(messagesStatus: MessageStatus[]) {
-    for (const msgStatus of messagesStatus) {
-      if (msgStatus.status === 'SIGNED') {
-        await serverApi.ackMessage(msgStatus.msgId);
-        await serverApi.broadcastResponse(msgStatus);
+    try {
+      for (const msgStatus of messagesStatus) {
+        if (msgStatus.status === 'SIGNED') {
+          await serverApi.broadcastResponse(msgStatus);
+          await serverApi.ackMessage(msgStatus.msgId);
+        }
       }
+    } catch (e) {
+      throw new Error('Error updating status to firblocks', e);
     }
   }
 

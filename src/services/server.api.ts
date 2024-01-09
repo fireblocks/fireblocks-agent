@@ -6,6 +6,7 @@ import {
   CertificatesMap,
   FBMessageEnvlope,
   GUID,
+  Message,
   MessageStatus,
   PairDeviceRequest,
   PairDeviceResponse,
@@ -36,12 +37,20 @@ const serverApi = {
       throw e;
     }
   },
-  broadcastResponse: async ({ requestId, signedPayload, payload, type }: MessageStatus): Promise<void> => {
+  broadcastResponse: async (msgStatus: MessageStatus): Promise<void> => {
     try {
       const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
+      const message = JSON.parse(msgStatus.payload) as Message;
+      const requestObject = {
+        type: `${msgStatus.type}_RESPONSE`,
+        payload: {
+          payload: message,
+          signedPayload: msgStatus.signedPayload,
+        },
+      };
       const res = await axios.post(
         `${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`,
-        { requestId, signedPayload, payload, type: `${type}_RESPONSE` },
+        requestObject,
         buildHeaders(accessToken),
       );
       return res.data;
