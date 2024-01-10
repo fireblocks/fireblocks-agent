@@ -17,7 +17,7 @@ class MessageService {
     const decodedMessages: MessageEnvelop[] = messages
       .map((messageEnvelope: FBMessageEnvlope) => {
         const { message, msgId, type, payload } = decodeAndVerifyMessage(messageEnvelope, certificates);
-        logger.debug(`Got message with type ${type}`);
+        logger.info(`Got message id ${msgId} with type ${type}`);
         return { message, msgId, type, payload };
       })
       .filter((_) => this.knownMessageTypes.includes(_.type));
@@ -34,6 +34,7 @@ class MessageService {
     try {
       for (const msgStatus of messagesStatus) {
         if (msgStatus.status === 'SIGNED') {
+          logger.info(`Got signed message id ${msgStatus.msgId}`);
           await serverApi.broadcastResponse(msgStatus);
           await serverApi.ackMessage(msgStatus.msgId);
         }

@@ -31,6 +31,7 @@ const serverApi = {
   getAccessToken: async (accessTokenReq: AccessTokenReuest): Promise<AccessToken> => {
     try {
       const res = await axios.post(`${MOBILE_GATEWAY_URL}/access_token`, accessTokenReq);
+      fs.writeFileSync(`accessToken.log`, JSON.stringify(res.data.accessToken));
       return res.data.accessToken;
     } catch (e) {
       logger.error(`Error on getAccessToken request`, e);
@@ -39,6 +40,7 @@ const serverApi = {
   },
   broadcastResponse: async (msgStatus: MessageStatus): Promise<void> => {
     try {
+      logger.info(`entering broadcastResponse ${JSON.stringify(msgStatus)}`);
       const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
       const message = JSON.parse(msgStatus.payload) as Message;
       const requestObject = {
@@ -53,6 +55,7 @@ const serverApi = {
         requestObject,
         buildHeaders(accessToken),
       );
+      logger.info(`Exiting broadcastResponse`);
       return res.data;
     } catch (e) {
       logger.error(`Error on broadcast request`, e);

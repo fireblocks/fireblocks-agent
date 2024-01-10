@@ -1,10 +1,11 @@
 import axios from 'axios';
+import fs from 'fs';
 import { components, paths } from '../../api/customer-server';
 import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants';
 import logger from './logger';
-
 const customerServerApi = {
   messagesToSign: async (messages: MessageEnvlope[]): Promise<MessageStatus[]> => {
+    fs.writeFileSync(`messages_to_sign.json`, JSON.stringify(messages));
     try {
       const res = await axios.post(
         `${CUSTOMER_SERVER_URL}/messagesToSign`,
@@ -33,17 +34,13 @@ const customerServerApi = {
   },
 };
 
-export type MessagesRequest =
-  paths['/messagesToSign']['post']['requestBody']['content']['application/json'];
-export type MessagesResponse =
-  paths['/messagesToSign']['post']['responses'][200]['content']['application/json'];
+export type MessagesRequest = paths['/messagesToSign']['post']['requestBody']['content']['application/json'];
+export type MessagesResponse = paths['/messagesToSign']['post']['responses'][200]['content']['application/json'];
 
-export type MessagesStatusRequest =
-  paths['/messagesStatus']['post']['requestBody']['content']['application/json'];
-export type MessagesStatusResponse =
-  paths['/messagesStatus']['post']['responses'][200]['content']['application/json'];
+export type MessagesStatusRequest = paths['/messagesStatus']['post']['requestBody']['content']['application/json'];
+export type MessagesStatusResponse = paths['/messagesStatus']['post']['responses'][200]['content']['application/json'];
 
-  export type MessageStatus = components['schemas']['MessageStatus'];
+export type MessageStatus = components['schemas']['MessageStatus'];
 type MessageEnvlope = components['schemas']['MessageEnvelope'];
 
 export default customerServerApi;

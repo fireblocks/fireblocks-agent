@@ -1,4 +1,5 @@
 import { Collection, MongoClient } from 'mongodb';
+import logger from '../services/logger';
 import { GUID, Message, MessageEnvelope, MessageStatus } from '../types';
 import { getMongoUri } from './mongo.connect';
 
@@ -25,9 +26,11 @@ export const updateMessageStatus = async (msg: MessageStatus) => {
 
 export const insertMessages = async (messages: MessageEnvelope[]): Promise<MessageStatus[]> => {
   const msgRef = await getMessagesCollection();
-  const dbMsgs = messages.map(({msgId, type, message, payload}: MessageEnvelope) => {
+  const dbMsgs = messages.map(({ msgId, type, message, payload }: MessageEnvelope) => {
     return {
       _id: msgId,
+      msgId,
+      requestId: message.requestId,
       type,
       message,
       payload,
@@ -40,6 +43,7 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
 };
 
 export const getMessagesStatus = async (msgIds: GUID[]): Promise<MessageStatus[]> => {
+  logger.info(`entering getMessagesStatus ${JSON.stringify(msgIds)}`);
   const txRef = await getMessagesCollection();
   const cursor = await txRef.find({ _id: { $in: msgIds } });
   const res = await cursor.toArray();

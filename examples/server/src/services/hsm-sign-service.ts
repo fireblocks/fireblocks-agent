@@ -26,7 +26,7 @@ export async function randomlySignOrFailMessagesAsync(msgIds: GUID[]) {
 }
 
 export async function signMessages(msgIds: GUID[]) {
-  logger.info('enter signing messages');
+  logger.info(`enter signing messages ${msgIds}`);
   const messages = await getMessages(msgIds);
   messages.forEach(async (msg) => {
     const algorithm = msg.message.algorithm === 'EDDSA_ED25519' ? 'EDDSA' : 'ECDSA';
