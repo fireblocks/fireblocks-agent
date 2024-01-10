@@ -1,6 +1,6 @@
 import { Collection, MongoClient } from 'mongodb';
 import logger from '../services/logger';
-import { GUID, Message, MessageEnvelope, MessageStatus } from '../types';
+import { Message, MessageEnvelope, MessageStatus } from '../types';
 import { getMongoUri } from './mongo.connect';
 
 let _msgRef: Collection<DbMsg>;
@@ -42,7 +42,7 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
   return messagesRes;
 };
 
-export const getMessagesStatus = async (msgIds: GUID[]): Promise<MessageStatus[]> => {
+export const getMessagesStatus = async (msgIds: number[]): Promise<MessageStatus[]> => {
   logger.info(`entering getMessagesStatus ${JSON.stringify(msgIds)}`);
   const txRef = await getMessagesCollection();
   const cursor = await txRef.find({ _id: { $in: msgIds } });
@@ -50,7 +50,7 @@ export const getMessagesStatus = async (msgIds: GUID[]): Promise<MessageStatus[]
   return toMsgStatus(res);
 };
 
-export const getMessages = async (msgIds: GUID[]): Promise<DbMsg[]> => {
+export const getMessages = async (msgIds: number[]): Promise<DbMsg[]> => {
   const txRef = await getMessagesCollection();
   const cursor = await txRef.find({ _id: { $in: msgIds } });
   const res = await cursor.toArray();
@@ -66,6 +66,6 @@ function toMsgStatus(dbMsgs: Partial<DbMsg>[]): MessageStatus[] {
 }
 
 interface DbMsg extends MessageStatus {
-  _id: GUID;
+  _id: number;
   message: Message;
 }

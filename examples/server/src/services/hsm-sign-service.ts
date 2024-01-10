@@ -1,10 +1,9 @@
 import * as messagesDao from '../dao/messages.dao';
 import { getMessages } from '../dao/messages.dao';
-import { GUID } from '../types';
 import hsmFacade from './hsm-facade';
 import logger from './logger';
 
-export async function randomlySignOrFailMessagesAsync(msgIds: GUID[]) {
+export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
   const messages = await getMessages(msgIds);
   messages.forEach((msg) => {
     const oneToFiveSeconds = Math.ceil(Math.random() * 5) * 1000;
@@ -25,7 +24,7 @@ export async function randomlySignOrFailMessagesAsync(msgIds: GUID[]) {
   });
 }
 
-export async function signMessages(msgIds: GUID[]) {
+export async function signMessages(msgIds: number[]) {
   logger.info(`enter signing messages ${msgIds}`);
   const messages = await getMessages(msgIds);
   messages.forEach(async (msg) => {

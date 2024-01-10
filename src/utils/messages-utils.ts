@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { CertificatesMap, FBMessage, FBMessageEnvlope, GUID, JWT, Message, MessageEnvelop } from '../types';
+import { CertificatesMap, FBMessage, FBMessageEnvlope, JWT, Message, MessageEnvelop } from '../types';
 
 let certMap;
 export const decodeAndVerifyMessage = (
@@ -21,7 +21,7 @@ export const decodeAndVerifyMessage = (
   }
 };
 
-const toMessage = (msgId: GUID, fbMessage: FBMessage): MessageEnvelop => {
+const toMessage = (msgId: number, fbMessage: FBMessage): MessageEnvelop => {
   const shared = {
     msgId,
     type: fbMessage.type,

@@ -54,9 +54,8 @@ components:
         msgIds:
           type: array
           items:
-            type: string
-            format: uuid
-            example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
+            type: number
+            example: 425878000014
     MessagesStatusResponse:
       type: object
       required:
@@ -84,9 +83,8 @@ components:
         - payload 
       properties:
         msgId:
-          type: string
-          format: uuid
-          example: 9eca83b5-5936-4eef-89cc-51bec0f49945
+          type: number
+          example: 425878000014
         type:
           $ref: '#/components/schemas/TxType'
         message:
@@ -107,9 +105,8 @@ components:
         type:
           $ref: '#/components/schemas/TxType'
         msgId:
-          type: string
-          format: uuid
-          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
+          type: number
+          example: 425878000014
         requestId:
           type: string
         status:

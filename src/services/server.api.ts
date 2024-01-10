@@ -5,7 +5,6 @@ import {
   AccessTokenReuest,
   CertificatesMap,
   FBMessageEnvlope,
-  GUID,
   Message,
   MessageStatus,
   PairDeviceRequest,
@@ -94,7 +93,7 @@ const serverApi = {
     }
   },
 
-  ackMessage: async (msgId: GUID) => {
+  ackMessage: async (msgId: number) => {
     try {
       const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
       const res = await axios.put(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }, buildHeaders(accessToken));

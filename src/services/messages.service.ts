@@ -1,15 +1,15 @@
-import { FBMessageEnvlope, GUID, MessageEnvelop, MessageStatus, TxType } from '../types';
+import { FBMessageEnvlope, MessageEnvelop, MessageStatus, TxType } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customerServer.api';
 import logger from './logger';
 import serverApi from './server.api';
 
 class MessageService {
-  private msgCache: { [msgId: GUID]: MessageStatus } = {};
+  private msgCache: { [msgId: number]: MessageStatus } = {};
   private knownMessageTypes: TxType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP', 'TX'];
 
-  getPendingMessages(): GUID[] {
-    return Object.keys(this.msgCache);
+  getPendingMessages(): number[] {
+    return Object.keys(this.msgCache).map((key) => Number(key));
   }
 
   async handleMessages(messages: FBMessageEnvlope[]) {

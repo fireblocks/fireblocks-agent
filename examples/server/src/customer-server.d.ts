@@ -49,7 +49,7 @@ export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
     MessagesStatusRequest: {
-      msgIds: string[];
+      msgIds: number[];
     };
     MessagesStatusResponse: {
       messages: components["schemas"]["MessageStatus"][];
@@ -58,11 +58,8 @@ export interface components {
       messages: components["schemas"]["MessageEnvelope"][];
     };
     MessageEnvelope: {
-      /**
-       * Format: uuid
-       * @example 9eca83b5-5936-4eef-89cc-51bec0f49945
-       */
-      msgId: string;
+      /** @example 425878000014 */
+      msgId: number;
       type: components["schemas"]["TxType"];
       message: components["schemas"]["Message"];
       /**
@@ -73,11 +70,8 @@ export interface components {
     };
     MessageStatus: {
       type: components["schemas"]["TxType"];
-      /**
-       * Format: uuid
-       * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
-       */
-      msgId: string;
+      /** @example 425878000014 */
+      msgId: number;
       requestId: string;
       /**
        * @example SIGNED

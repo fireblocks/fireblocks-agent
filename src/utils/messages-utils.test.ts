@@ -99,7 +99,7 @@ function buildASignedMessage(innerMessage: FBMessage, zsCertificate): FBMessageE
   const jwtMessage = jwt.sign(JSON.stringify(innerMessage), zsCertificate);
   return {
     deviceId: 'some-device-id',
-    msgId: 'some-message-id',
+    msgId: 1,
     msg: jwtMessage,
     internalMessageId: 'internal-message-id',
   };

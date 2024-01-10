@@ -18,7 +18,7 @@ describe('messages service', () => {
 
   const types: TxType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP', 'TX'];
   it.each(types)('should send the customer server the messages to sign', async (type: TxType) => {
-    const msgId = c.guid();
+    const msgId = c.natural();
     const aTxToSignMessage = messageBuilder.aMessage();
     const fbMessage = messageBuilder.fbMessage('TX', aTxToSignMessage);
     const fbMessageEnvlope = messageBuilder.fbMsgEnvelope({ msgId }, fbMessage);
@@ -34,7 +34,7 @@ describe('messages service', () => {
   });
 
   it('should ignore non whitelist messages', async () => {
-    const msgId = c.guid();
+    const msgId = c.natural();
     const aTxToSignMessage = messageBuilder.aMessage();
     //@ts-ignore
     const fbMessage = messageBuilder.fbMessage('UNKNOWN_TYPE', aTxToSignMessage);
@@ -58,7 +58,7 @@ describe('messages service', () => {
   });
 
   it('should get pending messages', async () => {
-    const msgId = c.guid();
+    const msgId = c.natural();
     const aTxToSignMessage = messageBuilder.aMessage();
     const fbMessage = messageBuilder.fbMessage('TX', aTxToSignMessage);
     const fbMessageEnvlope = messageBuilder.fbMsgEnvelope({ msgId }, fbMessage);

@@ -49,7 +49,7 @@ export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
     MessagesStatusRequest: {
-      msgIds: string[];
+      msgIds: number[];
     };
     MessagesStatusResponse: {
       messages: components["schemas"]["MessageStatus"][];
@@ -58,11 +58,8 @@ export interface components {
       messages: components["schemas"]["MessageEnvelope"][];
     };
     MessageEnvelope: {
-      /**
-       * Format: uuid
-       * @example 9eca83b5-5936-4eef-89cc-51bec0f49945
-       */
-      msgId: string;
+      /** @example 425878000014 */
+      msgId: number;
       type: components["schemas"]["TxType"];
       message: components["schemas"]["Message"];
       /**
@@ -73,11 +70,8 @@ export interface components {
     };
     MessageStatus: {
       type: components["schemas"]["TxType"];
-      /**
-       * Format: uuid
-       * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
-       */
-      msgId: string;
+      /** @example 425878000014 */
+      msgId: number;
       requestId: string;
       /**
        * @example SIGNED
@@ -89,20 +83,6 @@ export interface components {
       /** @description Original message payload */
       payload: string;
     };
-    SigningData: {
-      /**
-       * Format: uuid
-       * @description keyId that is associated with the HSM private key
-       * @example 0ba9efb7-73cc-4ea5-9219-2aed45b06364
-       */
-      keyId: string;
-      /**
-       * @description payload to sign
-       * @example dc93a3b504f2ede4e03e60758571be627b2512aafa1c5e21db4c6b88d0813e9e
-       */
-      payload: string;
-      algorithm: components["schemas"]["Algorithm"];
-    };
     /**
      * @example EXTERNAL_KEY_PROOF_OF_OWNERSHIP
      * @enum {string}
@@ -110,10 +90,10 @@ export interface components {
     TxType: "EXTERNAL_KEY_PROOF_OF_OWNERSHIP" | "TX";
     /**
      * @description algorithm to sign with
-     * @example ECDSA
+     * @example ECDSA_SECP256K1
      * @enum {string}
      */
-    Algorithm: "ECDSA" | "EDDSA_ED25519";
+    Algorithm: "ECDSA_SECP256K1" | "EDDSA_ED25519";
     Message: {
       /**
        * Format: uuid

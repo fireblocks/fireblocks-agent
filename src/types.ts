@@ -21,7 +21,7 @@ export interface AccessTokenReuest {
 
 export interface FBMessageEnvlope {
   msg: JWT | FBMessage;
-  msgId: GUID;
+  msgId: number;
   deviceId: GUID;
   internalMessageId: GUID;
 }

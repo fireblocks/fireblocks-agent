@@ -3,14 +3,14 @@ import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import Chance from 'chance';
 import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants';
-import { GUID, Message, MessageEnvelop, MessageStatus } from '../types';
+import { Message, MessageEnvelop, MessageStatus } from '../types';
 import service, { MessagesResponse, MessagesStatusRequest, MessagesStatusResponse } from './customerServer.api';
 import { messageBuilder } from './server.api.test';
 const c = new Chance();
 
 describe('Customer Server API', () => {
   it('should send tx to sign', async () => {
-    const msgId = c.guid();
+    const msgId = c.natural();
     const aMessage = messageBuilder.aMessage();
     const messagesToSign = customerServerApiDriver.given.aMessageRequest(msgId, aMessage);
     const expectedRes: MessageStatus[] = [
@@ -28,15 +28,14 @@ describe('Customer Server API', () => {
 
     expect(res).toEqual(expectedRes);
   });
-
 });
 
 export const customerServerApiDriver = {
   given: {
-    aMessageRequest: (msgId: string, message: Message): MessageEnvelop[] => {
+    aMessageRequest: (msgId: number, message: Message): MessageEnvelop[] => {
       return [{ msgId, message, type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP', payload: JSON.stringify(message) }];
     },
-    aTxStatusRequest: (msgIds: GUID[] = []): MessagesStatusRequest => {
+    aTxStatusRequest: (msgIds: number[] = []): MessagesStatusRequest => {
       return {
         msgIds,
       };

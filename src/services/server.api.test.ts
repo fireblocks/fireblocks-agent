@@ -11,7 +11,6 @@ import {
   FBMessage,
   FBMessageEnvlope,
   FBMessagePayload,
-  GUID,
   Message,
   MessageEnvelop,
   MessageStatus,
@@ -110,7 +109,7 @@ describe('Server API', () => {
 
   it('shuold ack message', async () => {
     const accessToken = serverApiDriver.given.accessToken();
-    const aMessage = messageBuilder.fbMsgEnvelope({ msgId: c.guid() });
+    const aMessage = messageBuilder.fbMsgEnvelope({ msgId: c.natural() });
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
     serverApiDriver.mock.accessToken(deviceData, accessToken);
@@ -147,7 +146,7 @@ describe('Server API', () => {
 
 export function aSignedMessageStatus(): MessageStatus {
   return {
-    msgId: c.guid(),
+    msgId: c.natural(),
     requestId: c.guid(),
     status: 'SIGNED',
     payload: JSON.stringify(messageBuilder.aMessage()),
@@ -166,7 +165,7 @@ export const messageBuilder = {
       : fbMsg || messageBuilder.fbMessage('TX', messageBuilder.aMessage());
     return {
       msg,
-      msgId: c.guid(),
+      msgId: c.natural(),
       deviceId: c.guid(),
       internalMessageId: c.guid(),
       ...fbMsgEnvelope,
@@ -185,7 +184,7 @@ export const messageBuilder = {
       payload: fbMessagePayload,
     };
   },
-  anMessageEnvelope: (msgId: string, type: TxType, message: Message): MessageEnvelop => {
+  anMessageEnvelope: (msgId: number, type: TxType, message: Message): MessageEnvelop => {
     return {
       msgId,
       payload: JSON.stringify(message),
@@ -201,7 +200,7 @@ export const messageBuilder = {
       fbKeyId: c.guid(),
       requestId: c.guid(),
       externalKeyId: c.guid(),
-      algorithm: 'ECDSA',
+      algorithm: 'ECDSA_SECP256K1',
       data: c.string(),
       ...message,
     };
@@ -263,7 +262,7 @@ export const serverApiDriver = {
         })
         .reply(200, certificates);
     },
-    ackMessage: (accessToken: AccessToken, msgId: GUID, response: string) => {
+    ackMessage: (accessToken: AccessToken, msgId: number, response: string) => {
       serverApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
     },
     broadcast: (accessToken: AccessToken, status: any, response: string) => {

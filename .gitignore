@@ -5,3 +5,4 @@ coverage
 .env.dev*
 messages*.json
 *.log
+.DS_Store
