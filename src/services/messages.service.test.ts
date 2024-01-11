@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import Chance from 'chance';
-import { TxType } from '../types';
+import { MessageStatus, TxType } from '../types';
 import * as messagesUtils from '../utils/messages-utils';
 import customerServerApi from './customerServer.api';
 import service from './messages.service';
@@ -57,7 +57,7 @@ describe('messages service', () => {
     expect(customerServerApi.messagesToSign).not.toBeCalled();
   });
 
-  it('should get pending messages', async () => {
+  it('should get pending messages from cache', async () => {
     const msgId = c.natural();
     const aTxToSignMessage = messageBuilder.aMessage();
     const fbMessage = messageBuilder.fbMessage('TX', aTxToSignMessage);
@@ -98,5 +98,38 @@ describe('messages service', () => {
     await service.updateStatus([signedMessageStatus]);
 
     expect(serverApi.broadcastResponse).toHaveBeenCalledWith(signedMessageStatus);
+  });
+
+  it('shuold remove acked messages from the cache', async () => {
+    const msgId = c.natural();
+    const aTxToSignMessage = messageBuilder.aMessage();
+    const fbMessage = messageBuilder.fbMessage('TX', aTxToSignMessage);
+    const fbMessageEnvlope = messageBuilder.fbMsgEnvelope({ msgId }, fbMessage);
+    const msgEnvelop = messageBuilder.anMessageEnvelope(msgId, 'TX', aTxToSignMessage);
+
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
+
+    const msgStatus: MessageStatus = {
+      msgId,
+      requestId: aTxToSignMessage.requestId,
+      status: 'PENDING_SIGN',
+      payload: fbMessage.payload.payload,
+      type: fbMessage.type,
+    };
+
+    jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([msgStatus]);
+
+    await service.handleMessages([fbMessageEnvlope]);
+    let pendingMessages = service.getPendingMessages();
+    expect(pendingMessages).toEqual([msgId]);
+
+    jest.spyOn(serverApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+
+    msgStatus.status = 'SIGNED';
+    await service.updateStatus([msgStatus]);
+
+    pendingMessages = service.getPendingMessages();
+    expect(pendingMessages).toEqual([]);
   });
 });

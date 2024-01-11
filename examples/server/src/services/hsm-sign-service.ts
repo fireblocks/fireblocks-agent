@@ -11,7 +11,7 @@ export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
       const previousStatus = msg.status;
       msg.status = Math.round(Math.random()) ? 'FAILED' : 'SIGNED';
       if (msg.status === 'FAILED') {
-        msg.errorMessage = `Simulate error while signing this message`;
+        msg.errorMessage = `Simulate error while signing this message ${msg.msgId}`;
       }
       const algorithm = msg.message.algorithm === 'EDDSA_ED25519' ? 'EDDSA' : 'ECDSA';
       const { externalKeyId, data } = msg.message;

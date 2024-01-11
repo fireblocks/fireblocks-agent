@@ -37,6 +37,7 @@ class MessageService {
           logger.info(`Got signed message id ${msgStatus.msgId}`);
           await serverApi.broadcastResponse(msgStatus);
           await serverApi.ackMessage(msgStatus.msgId);
+          delete this.msgCache[msgStatus.msgId];
         }
       }
     } catch (e) {
