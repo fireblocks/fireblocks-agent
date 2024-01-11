@@ -138,7 +138,7 @@ components:
         - version
         - fbKeyId
         - requestId
-        - externalKeyId
+        - signingDeviceKeyId
         - algorithm
         - data
       properties:
@@ -160,7 +160,7 @@ components:
           type: string
           format: uuid
           example: b015f35e-5d44-4d68-a0df-a1c625255abc
-        externalKeyId:
+        signingDeviceKeyId:
           type: string
           example: 70721651-a7f3-42f6-a984-6e058269495f
         algorithm:

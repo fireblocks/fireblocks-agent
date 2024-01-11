@@ -112,7 +112,7 @@ export interface components {
        */
       requestId: string;
       /** @example 70721651-a7f3-42f6-a984-6e058269495f */
-      externalKeyId: string;
+      signingDeviceKeyId: string;
       algorithm: components["schemas"]["Algorithm"];
       /**
        * @description The string to sign

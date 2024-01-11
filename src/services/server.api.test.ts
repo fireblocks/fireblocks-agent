@@ -199,7 +199,7 @@ export const messageBuilder = {
       version: 1,
       fbKeyId: c.guid(),
       requestId: c.guid(),
-      externalKeyId: c.guid(),
+      signingDeviceKeyId: c.guid(),
       algorithm: 'ECDSA_SECP256K1',
       data: c.string(),
       ...message,

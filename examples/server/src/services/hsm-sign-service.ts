@@ -14,9 +14,9 @@ export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
         msg.errorMessage = `Simulate error while signing this message ${msg.msgId}`;
       }
       const algorithm = msg.message.algorithm === 'EDDSA_ED25519' ? 'EDDSA' : 'ECDSA';
-      const { externalKeyId, data } = msg.message;
+      const { signingDeviceKeyId, data } = msg.message;
       if (msg.status === 'SIGNED') {
-        msg.signedPayload = await hsmFacade.sign(externalKeyId, data, algorithm);
+        msg.signedPayload = await hsmFacade.sign(signingDeviceKeyId, data, algorithm);
       }
       await messagesDao.updateMessageStatus(msg);
       console.log(`Set ${msg.msgId} from status ${previousStatus} to ${msg.status}`);
@@ -29,8 +29,8 @@ export async function signMessages(msgIds: number[]) {
   const messages = await getMessages(msgIds);
   messages.forEach(async (msg) => {
     const algorithm = msg.message.algorithm === 'EDDSA_ED25519' ? 'EDDSA' : 'ECDSA';
-    const { externalKeyId, data } = msg.message;
-    msg.signedPayload = await hsmFacade.sign(externalKeyId, data, algorithm);
+    const { signingDeviceKeyId, data } = msg.message;
+    msg.signedPayload = await hsmFacade.sign(signingDeviceKeyId, data, algorithm);
     msg.status = 'SIGNED';
     logger.info(`signed message ${msg.msgId}. signature: ${msg.signedPayload}`);
     await messagesDao.updateMessageStatus(msg);

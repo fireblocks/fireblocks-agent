@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:api": "openapi-typescript ../../api/customer-server.api.yml -o ./src/customer-server.d.ts",
-    "build": "tsc",
+    "build": "npm run build:api && tsc",
     "start": "NODE_ENV=dev node ./dist/server.js",
     "dev": "NODE_ENV=dev ts-node ./src/server.ts",
     "build:docker": "npm run build:api && docker build -t softhsm2:2.6.1 .",
