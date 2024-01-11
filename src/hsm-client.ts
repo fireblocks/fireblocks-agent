@@ -32,7 +32,7 @@ const runAgentMainLoop = async () => {
       const start = Date.now();
       logger.info(`Waiting for a message`);
       const messages = await serverApi.getMessages();
-      messageService.handleMessages(messages);
+      await messageService.handleMessages(messages);
       logger.info(`Got Message after ${Date.now() - start}ms`);
       logger.debug(`Got Message:`, messages);
     } catch (e) {
