@@ -7,6 +7,7 @@ services:
       NODE_ENV: production
     volumes:
       - softhsm:/usr/local/lib/softhsm/
+      - tokens:/tokens/
     ports:
       - 3000:3000
       - 35729:35729
@@ -20,4 +21,6 @@ volumes:
   database:
     external: true
   softhsm:
+    external: true
+  tokens:
     external: true
