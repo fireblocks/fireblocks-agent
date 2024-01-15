@@ -41,7 +41,7 @@ class MessageService {
         }
       }
     } catch (e) {
-      throw new Error('Error updating status to firblocks', e);
+      throw new Error(`Error updating status to fireblocks ${e.message}`);
     }
   }
 

@@ -5,7 +5,7 @@ import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants
 import logger from './logger';
 const customerServerApi = {
   messagesToSign: async (messages: MessageEnvlope[]): Promise<MessageStatus[]> => {
-    fs.writeFileSync(`messages_to_sign.json`, JSON.stringify(messages));
+    fs.writeFileSync(`messages_to_sign.json`, JSON.stringify(messages)); //TODO: delete
     try {
       const res = await axios.post(
         `${CUSTOMER_SERVER_URL}/messagesToSign`,
@@ -21,9 +21,9 @@ const customerServerApi = {
     }
   },
 
-  messagesStatus: async (txStatus: MessagesStatusRequest): Promise<MessagesStatusResponse> => {
+  messagesStatus: async (pendingMessasges: MessagesStatusRequest): Promise<MessagesStatusResponse> => {
     try {
-      const res = await axios.post(`${CUSTOMER_SERVER_URL}/messagesStatus`, txStatus, {
+      const res = await axios.post(`${CUSTOMER_SERVER_URL}/messagesStatus`, pendingMessasges, {
         headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
       });
       return res.data;

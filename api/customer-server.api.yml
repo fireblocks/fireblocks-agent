@@ -124,7 +124,7 @@ components:
           description: Original message payload
     TxType:
       type: string
-      enum: [EXTERNAL_KEY_PROOF_OF_OWNERSHIP, TX]
+      enum: [EXTERNAL_KEY_PROOF_OF_OWNERSHIP, EXTERNAL_KEY_SIGNING_REQUEST]
       example: EXTERNAL_KEY_PROOF_OF_OWNERSHIP
     Algorithm:
       description: algorithm to sign with

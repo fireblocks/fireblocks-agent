@@ -8,6 +8,7 @@
     "build:api": "openapi-typescript ../../api/customer-server.api.yml -o ./src/customer-server.d.ts",
     "build": "tsc",
     "start": "NODE_ENV=dev node ./dist/server.js",
+    "start:dev": "NODE_ENV=dev nodemon ./src/server.ts",
     "dev": "NODE_ENV=dev ts-node ./src/server.ts",
     "build:docker": "npm run build:api && docker build -t softhsm2:2.6.1 .",
     "start:docker": "docker compose up -d",
@@ -25,6 +26,7 @@
     "mongodb": "6.3",
     "morgan": "^1.10.0",
     "node-webcrypto-p11": "^2.6.3",
+    "nodemon": "^3.0.2",
     "ts-command-line-args": "^2.5.1",
     "typescript": "^5.3.2",
     "winston": "^3.11.0"
@@ -34,6 +36,6 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.10.5",
     "openapi-typescript": "^6.7.2",
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.2"
   }
 }

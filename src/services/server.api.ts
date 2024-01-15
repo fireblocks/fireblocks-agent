@@ -22,7 +22,7 @@ const serverApi = {
       const res = await axios.post(`${MOBILE_GATEWAY_URL}/pair_device`, pairDevice);
       return res.data;
     } catch (e) {
-      logger.error(`Error on pairDevice request`, e);
+      logger.error(`Error on pairDevice request ${e.message}`);
       throw e;
     }
   },
@@ -33,7 +33,7 @@ const serverApi = {
       fs.writeFileSync(`accessToken.log`, JSON.stringify(res.data.accessToken));
       return res.data.accessToken;
     } catch (e) {
-      logger.error(`Error on getAccessToken request`, e);
+      logger.error(`Error on getAccessToken request ${e.message}`);
       throw e;
     }
   },
@@ -57,7 +57,7 @@ const serverApi = {
       logger.info(`Exiting broadcastResponse`);
       return res.data;
     } catch (e) {
-      logger.error(`Error on broadcast request`, e);
+      logger.error(`Error on broadcast request ${e.message}`);
       throw e;
     }
   },
@@ -88,7 +88,7 @@ const serverApi = {
       certificatesMapCache = res.data;
       return certificatesMapCache;
     } catch (e) {
-      logger.error(`Error on getMessages request`, e);
+      logger.error(`Error on getMessages request ${e.message}`);
       throw e;
     }
   },
@@ -99,7 +99,7 @@ const serverApi = {
       const res = await axios.put(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }, buildHeaders(accessToken));
       return res.data;
     } catch (e) {
-      logger.error(`Error on ackMessage request`, e);
+      logger.error(`Error on ackMessage request ${e.message}`);
       throw e;
     }
   },

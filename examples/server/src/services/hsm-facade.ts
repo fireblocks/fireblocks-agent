@@ -43,12 +43,14 @@ class HSM implements HSMFacade {
       privateKey,
       Buffer.from(payload),
     );
-    return Buffer.from(signature).toString('hex');
+    const signatureInHex = Buffer.from(signature).toString('hex');
+    logger.info(`signature hex: ${signatureInHex}`);
+    return signatureInHex;
   }
 
   async verify(keyId: GUID, signature: string, payload: string, algorithm: string): Promise<boolean> {
     const publicKey = await this.getKeyById(keyId, false);
-    const signatureArrayBuffer = this.toArrayBuffer(Buffer.from(signature, 'hex'));
+    const signatureArrayBuffer = new Uint8Array(Buffer.from(signature, 'hex')).buffer;
     const ok = await this.crypto.subtle.verify(
       { name: algorithm, hash: 'SHA-256' },
       publicKey,
@@ -81,15 +83,6 @@ class HSM implements HSMFacade {
         },
       );
     });
-  }
-
-  private toArrayBuffer(buffer: Buffer) {
-    const arrayBuffer = new ArrayBuffer(buffer.length);
-    const view = new Uint8Array(arrayBuffer);
-    for (let i = 0; i < buffer.length; ++i) {
-      view[i] = buffer[i];
-    }
-    return arrayBuffer;
   }
 
   private async getKeyById(keyId: string, isPrivateKey: boolean = true): Promise<CryptoKey> {

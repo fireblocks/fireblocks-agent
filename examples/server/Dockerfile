@@ -61,4 +61,5 @@ RUN npm install \
 USER root
 
 EXPOSE 5000
-CMD npm start
+# CMD npm run start
+CMD npm run start:dev

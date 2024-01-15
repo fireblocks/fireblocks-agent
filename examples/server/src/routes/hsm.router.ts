@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { Algorithm } from '../types';
 import hsm from '../services/hsm-facade';
 const hsmRouter = Router();
 
@@ -24,7 +23,7 @@ hsmRouter.post('/sign', async (req, res) => {
 hsmRouter.post('/verify', async (req, res) => {
   try {
     const { keyId, payload, signature, algorithm } = req.body;
-    console.log(`got keyid: ${keyId}, payload ${payload}, signature: ${signature}`);
+    console.log(`got keyid: ${keyId}, payload ${payload}, signature: ${signature}, algorithm: ${algorithm}`);
     const isVerified = await hsm.verify(keyId, signature, payload, algorithm);
     res.status(200).json({ isVerified });
   } catch (e) {

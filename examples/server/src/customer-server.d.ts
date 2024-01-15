@@ -87,7 +87,7 @@ export interface components {
      * @example EXTERNAL_KEY_PROOF_OF_OWNERSHIP
      * @enum {string}
      */
-    TxType: "EXTERNAL_KEY_PROOF_OF_OWNERSHIP" | "TX";
+    TxType: "EXTERNAL_KEY_PROOF_OF_OWNERSHIP" | "EXTERNAL_KEY_SIGNING_REQUEST";
     /**
      * @description algorithm to sign with
      * @example ECDSA_SECP256K1

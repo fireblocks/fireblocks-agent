@@ -24,7 +24,7 @@ const deviceService = {
 
   getDeviceData: (): DeviceData => {
     return deviceService.isPaired()
-      ? JSON.parse(fs.readFileSync(TOKEN_PATH).toString())
+      ? JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'))
       : undefined;
   },
 };
