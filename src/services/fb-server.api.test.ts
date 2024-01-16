@@ -19,114 +19,114 @@ import {
 } from '../types';
 import deviceService from './device.service';
 import { deviceDriver } from './device.service.test';
-import serverApi from './server.api';
+import fbServerApi from './fb-server.api';
 
 const c = new Chance();
 
 describe('Server API', () => {
   beforeEach(() => {
-    serverApiDriver.reset();
+    fbServerApiDriver.reset();
   });
 
   it('should pair device', async () => {
-    const pairDeviceReq = serverApiDriver.given.pairDeviceRequst();
+    const pairDeviceReq = fbServerApiDriver.given.pairDeviceRequst();
     const refreshToken = `some-valid-refresh-token`;
-    serverApiDriver.mock.pairDevice(pairDeviceReq, refreshToken);
+    fbServerApiDriver.mock.pairDevice(pairDeviceReq, refreshToken);
 
-    const pairDeviceRes = await serverApi.pairDevice(pairDeviceReq);
+    const pairDeviceRes = await fbServerApi.pairDevice(pairDeviceReq);
 
     expect(pairDeviceRes.refreshToken).toBe(refreshToken);
   });
 
   it('should get access token', async () => {
-    const accessTokenReq = serverApiDriver.given.accessTokenRequst();
+    const accessTokenReq = fbServerApiDriver.given.accessTokenRequst();
     const accessToken = 'my-access-token';
-    serverApiDriver.mock.accessToken(accessTokenReq, accessToken);
+    fbServerApiDriver.mock.accessToken(accessTokenReq, accessToken);
 
-    const accessTokenRes = await serverApi.getAccessToken(accessTokenReq);
+    const accessTokenRes = await fbServerApi.getAccessToken(accessTokenReq);
 
     expect(accessTokenRes).toBe(accessToken);
   });
 
   it('should pull messages', async () => {
-    const accessToken = serverApiDriver.given.accessToken();
+    const accessToken = fbServerApiDriver.given.accessToken();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
     const someMessages = [messageBuilder.fbMsgEnvelope()];
-    serverApiDriver.mock.accessToken(deviceData, accessToken);
-    serverApiDriver.mock.messages(accessToken, someMessages);
+    fbServerApiDriver.mock.accessToken(deviceData, accessToken);
+    fbServerApiDriver.mock.messages(accessToken, someMessages);
 
-    const messages = await serverApi.getMessages();
+    const messages = await fbServerApi.getMessages();
 
     expect(messages).toStrictEqual(someMessages);
   });
 
   it('should handle messages in non batch mode as well', async () => {
-    const accessToken = serverApiDriver.given.accessToken();
+    const accessToken = fbServerApiDriver.given.accessToken();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
     const someMessage = messageBuilder.fbMsgEnvelope();
-    serverApiDriver.mock.accessToken(deviceData, accessToken);
-    serverApiDriver.mock.messages(accessToken, someMessage);
+    fbServerApiDriver.mock.accessToken(deviceData, accessToken);
+    fbServerApiDriver.mock.messages(accessToken, someMessage);
 
-    const messages = await serverApi.getMessages();
+    const messages = await fbServerApi.getMessages();
 
     expect(messages).toStrictEqual([someMessage]);
   });
 
   it('should get certificates', async () => {
-    const accessToken = serverApiDriver.given.accessToken();
+    const accessToken = fbServerApiDriver.given.accessToken();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
     const certificatesMap = { zs: 'certificate for zService', vs: 'certificate for vault service' };
-    serverApiDriver.mock.accessToken(deviceData, accessToken);
+    fbServerApiDriver.mock.accessToken(deviceData, accessToken);
 
-    serverApiDriver.mock.certificates(accessToken, certificatesMap);
+    fbServerApiDriver.mock.certificates(accessToken, certificatesMap);
 
-    const certificates = await serverApi.getCertificates();
+    const certificates = await fbServerApi.getCertificates();
 
     expect(certificates).toStrictEqual(certificatesMap);
   });
 
   it('should cache certificates map', async () => {
-    const accessToken = serverApiDriver.given.accessToken();
+    const accessToken = fbServerApiDriver.given.accessToken();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
     const certificatesMap = { zs: 'certificate for zService', vs: 'certificate for vault service' };
-    serverApiDriver.mock.accessToken(deviceData, accessToken);
-    serverApiDriver.mock.certificates(accessToken, certificatesMap);
+    fbServerApiDriver.mock.accessToken(deviceData, accessToken);
+    fbServerApiDriver.mock.certificates(accessToken, certificatesMap);
 
-    const certificates = await serverApi.getCertificates();
+    const certificates = await fbServerApi.getCertificates();
 
     const someOtherCertificatesMap = { zs: 'other certificate' };
-    serverApiDriver.reset();
-    serverApiDriver.mock.certificates(accessToken, someOtherCertificatesMap);
+    fbServerApiDriver.reset();
+    fbServerApiDriver.mock.certificates(accessToken, someOtherCertificatesMap);
 
-    const certificates2 = await serverApi.getCertificates();
+    const certificates2 = await fbServerApi.getCertificates();
 
     expect(certificates).toStrictEqual(certificates2);
   });
 
   it('shuold ack message', async () => {
-    const accessToken = serverApiDriver.given.accessToken();
+    const accessToken = fbServerApiDriver.given.accessToken();
     const aMessage = messageBuilder.fbMsgEnvelope({ msgId: c.natural() });
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
-    serverApiDriver.mock.accessToken(deviceData, accessToken);
+    fbServerApiDriver.mock.accessToken(deviceData, accessToken);
 
-    serverApiDriver.mock.ackMessage(accessToken, aMessage.msgId, 'ok');
+    fbServerApiDriver.mock.ackMessage(accessToken, aMessage.msgId, 'ok');
 
-    const res = await serverApi.ackMessage(aMessage.msgId);
+    const res = await fbServerApi.ackMessage(aMessage.msgId);
 
     expect(res).toEqual('ok');
   });
 
   it('shuold broadcast message', async () => {
-    const accessToken = serverApiDriver.given.accessToken();
+    const accessToken = fbServerApiDriver.given.accessToken();
     const signedMessageStatus = aSignedMessageStatus();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
-    serverApiDriver.mock.accessToken(deviceData, accessToken);
+    fbServerApiDriver.mock.accessToken(deviceData, accessToken);
 
     const expectedRequestObject = {
       type: `${signedMessageStatus.type}_RESPONSE`,
@@ -136,9 +136,9 @@ describe('Server API', () => {
       },
     };
 
-    serverApiDriver.mock.broadcast(accessToken, expectedRequestObject, 'ok');
+    fbServerApiDriver.mock.broadcast(accessToken, expectedRequestObject, 'ok');
 
-    const res = await serverApi.broadcastResponse(signedMessageStatus);
+    const res = await fbServerApi.broadcastResponse(signedMessageStatus);
 
     expect(res).toEqual('ok');
   });
@@ -208,7 +208,7 @@ export const messageBuilder = {
 };
 
 let instance;
-export const serverApiDriver = {
+export const fbServerApiDriver = {
   axiosMock: () => {
     if (instance) {
       return instance;
@@ -216,7 +216,7 @@ export const serverApiDriver = {
     instance = new MockAdapter(axios);
     return instance;
   },
-  reset: () => serverApiDriver.axiosMock().reset(),
+  reset: () => fbServerApiDriver.axiosMock().reset(),
   given: {
     pairDeviceRequst: (): PairDeviceRequest => {
       return {
@@ -236,18 +236,18 @@ export const serverApiDriver = {
   },
   mock: {
     pairDevice: (pairDeviceReq?: Partial<PairDeviceRequest>, resultRefreshToken: string = c.string()) => {
-      const generatedReq = serverApiDriver.given.pairDeviceRequst();
+      const generatedReq = fbServerApiDriver.given.pairDeviceRequst();
       const pairRequest = {
         ...generatedReq,
         ...pairDeviceReq,
       };
-      serverApiDriver
+      fbServerApiDriver
         .axiosMock()
         .onPost(`${MOBILE_GATEWAY_URL}/pair_device`, pairRequest)
         .reply(200, { refreshToken: resultRefreshToken });
     },
     messages: (accessToken: AccessToken, message: FBMessageEnvlope[] | FBMessageEnvlope) => {
-      serverApiDriver
+      fbServerApiDriver
         .axiosMock()
         .onGet(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, {
           headers: { 'x-access-token': accessToken },
@@ -255,7 +255,7 @@ export const serverApiDriver = {
         .reply(200, message);
     },
     certificates: (accessToken: AccessToken, certificates: CertificatesMap) => {
-      serverApiDriver
+      fbServerApiDriver
         .axiosMock()
         .onGet(`${MOBILE_GATEWAY_URL}/get_service_certificates`, {
           headers: { 'x-access-token': accessToken },
@@ -263,18 +263,18 @@ export const serverApiDriver = {
         .reply(200, certificates);
     },
     ackMessage: (accessToken: AccessToken, msgId: number, response: string) => {
-      serverApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
+      fbServerApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
     },
     broadcast: (accessToken: AccessToken, status: any, response: string) => {
-      serverApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`, status).reply(200, response);
+      fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`, status).reply(200, response);
     },
     accessToken: (accessTokenReq?: Partial<AccessTokenReuest>, resultAccessToken: string = c.string()) => {
-      const generatedReq = serverApiDriver.given.accessTokenRequst();
+      const generatedReq = fbServerApiDriver.given.accessTokenRequst();
       const accessTokenRequest: AccessTokenReuest = {
         ...generatedReq,
         ...accessTokenReq,
       };
-      serverApiDriver
+      fbServerApiDriver
         .axiosMock()
         .onPost(`${MOBILE_GATEWAY_URL}/access_token`, accessTokenRequest)
         .reply(200, { accessToken: resultAccessToken });

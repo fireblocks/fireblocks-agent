@@ -41,7 +41,7 @@ class HSM implements HSMFacade {
     const signature = await this.crypto.subtle.sign(
       { name: algorithm, hash: 'SHA-256' },
       privateKey,
-      Buffer.from(payload),
+      Buffer.from(payload, 'hex'),
     );
     const signatureInHex = Buffer.from(signature).toString('hex');
     logger.info(`signature hex: ${signatureInHex}`);

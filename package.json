@@ -19,7 +19,7 @@
     "start:pm2": "NODE_ENV=prod pm2 start dist/hsm-client.js && pm2 attach 0",
     "start:docker": "docker run -t hsm-agent",
     "build:docker": "docker build -t hsm-agent .",
-    "test": "jest --runInBand --coverage --detectOpenHandles --forceExit",
+    "test": "NODE_ENV=prod jest --runInBand --coverage --detectOpenHandles --forceExit",
     "prepack": "npm run build",
     "test:watch": "jest --watch --runInBand",
     "semantic-release": "semantic-release",

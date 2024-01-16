@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { messageBuilder } from '../services/server.api.test';
+import { messageBuilder } from '../services/fb-server.api.test';
 import { FBMessage, FBMessageEnvlope, FBMessagePayload, Message, MessageEnvelop } from '../types';
 import * as utils from './messages-utils';
 

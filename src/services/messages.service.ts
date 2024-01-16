@@ -1,10 +1,16 @@
 import { FBMessageEnvlope, MessageEnvelop, MessageStatus, TxType } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customerServer.api';
+import fbServerApi from './fb-server.api';
 import logger from './logger';
-import serverApi from './server.api';
 
-class MessageService {
+interface IMessageService {
+  getPendingMessages(): number[];
+  handleMessages(messages: FBMessageEnvlope[]): Promise<void>;
+  updateStatus(messagesStatus: MessageStatus[]): Promise<void>;
+}
+
+class MessageService implements IMessageService {
   private msgCache: { [msgId: number]: MessageStatus } = {};
   private knownMessageTypes: TxType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP', 'TX'];
 
@@ -13,7 +19,7 @@ class MessageService {
   }
 
   async handleMessages(messages: FBMessageEnvlope[]) {
-    const certificates = await serverApi.getCertificates();
+    const certificates = await fbServerApi.getCertificates();
     const decodedMessages: MessageEnvelop[] = messages
       .map((messageEnvelope: FBMessageEnvlope) => {
         const { message, msgId, type, payload } = decodeAndVerifyMessage(messageEnvelope, certificates);
@@ -24,19 +30,21 @@ class MessageService {
 
     if (decodedMessages.length > 0) {
       const status = await customerServerApi.messagesToSign(decodedMessages);
-      status.forEach((messageStatus) => {
-        this.msgCache[messageStatus.msgId] = messageStatus;
-      });
+      await this.updateStatus(status);
     }
   }
 
   async updateStatus(messagesStatus: MessageStatus[]) {
     try {
       for (const msgStatus of messagesStatus) {
+        const isInCache = this.msgCache[msgStatus.msgId];
+        if (!isInCache) {
+          this.msgCache[msgStatus.msgId] = msgStatus;
+        }
         if (msgStatus.status === 'SIGNED') {
           logger.info(`Got signed message id ${msgStatus.msgId}`);
-          await serverApi.broadcastResponse(msgStatus);
-          await serverApi.ackMessage(msgStatus.msgId);
+          await fbServerApi.broadcastResponse(msgStatus);
+          await fbServerApi.ackMessage(msgStatus.msgId);
           delete this.msgCache[msgStatus.msgId];
         }
       }

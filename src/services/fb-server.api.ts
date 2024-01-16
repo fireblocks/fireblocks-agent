@@ -14,9 +14,9 @@ import { MOBILE_GATEWAY_URL } from '../constants';
 import deviceService from './device.service';
 import logger from './logger';
 
-let i = 21;
+let i = 21; //TODO: remove
 let certificatesMapCache;
-const serverApi = {
+const fbServerApi = {
   pairDevice: async (pairDevice: PairDeviceRequest): Promise<PairDeviceResponse> => {
     try {
       const res = await axios.post(`${MOBILE_GATEWAY_URL}/pair_device`, pairDevice);
@@ -40,7 +40,7 @@ const serverApi = {
   broadcastResponse: async (msgStatus: MessageStatus): Promise<void> => {
     try {
       logger.info(`entering broadcastResponse ${JSON.stringify(msgStatus)}`);
-      const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
+      const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
       const message = JSON.parse(msgStatus.payload) as Message;
       const requestObject = {
         type: `${msgStatus.type}_RESPONSE`,
@@ -64,7 +64,7 @@ const serverApi = {
 
   getMessages: async (): Promise<FBMessageEnvlope[]> => {
     try {
-      const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
+      const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
       const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, buildHeaders(accessToken));
       const messages = res.data;
       if (messages) {
@@ -83,7 +83,7 @@ const serverApi = {
       if (certificatesMapCache) {
         return certificatesMapCache;
       }
-      const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
+      const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
       const res = await axios.get(`${MOBILE_GATEWAY_URL}/get_service_certificates`, buildHeaders(accessToken));
       certificatesMapCache = res.data;
       return certificatesMapCache;
@@ -95,7 +95,7 @@ const serverApi = {
 
   ackMessage: async (msgId: number) => {
     try {
-      const accessToken = await serverApi.getAccessToken(deviceService.getDeviceData());
+      const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
       const res = await axios.put(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }, buildHeaders(accessToken));
       return res.data;
     } catch (e) {
@@ -112,4 +112,4 @@ function buildHeaders(accessToken: AccessToken) {
   return { headers };
 }
 
-export default serverApi;
+export default fbServerApi;

@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { GUID, JWT } from '../types';
 import deviceService from './device.service';
 import agent from './hsm-agent';
-import { serverApiDriver } from './server.api.test';
+import { fbServerApiDriver } from './fb-server.api.test';
 const chance = new Chance();
 
 describe('HSM Agent', () => {
@@ -13,7 +13,7 @@ describe('HSM Agent', () => {
     const pairingToken = hsmAgentDriver.given.jwtToken({ userId });
     const deviceId = chance.guid();
 
-    serverApiDriver.mock.pairDevice({ userId, pairingToken, deviceId });
+    fbServerApiDriver.mock.pairDevice({ userId, pairingToken, deviceId });
     await agent.pairDevice(pairingToken, deviceId);
 
     expect(deviceService.isPaired()).toBe(true);

@@ -5,7 +5,7 @@ import Chance from 'chance';
 import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants';
 import { Message, MessageEnvelop, MessageStatus } from '../types';
 import service, { MessagesResponse, MessagesStatusRequest, MessagesStatusResponse } from './customerServer.api';
-import { messageBuilder } from './server.api.test';
+import { messageBuilder } from './fb-server.api.test';
 const c = new Chance();
 
 describe('Customer Server API', () => {

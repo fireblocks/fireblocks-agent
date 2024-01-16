@@ -3,14 +3,14 @@ import Chance from 'chance';
 import { MessageStatus, TxType } from '../types';
 import * as messagesUtils from '../utils/messages-utils';
 import customerServerApi from './customerServer.api';
+import fbServerApi from './fb-server.api';
 import service from './messages.service';
-import serverApi from './server.api';
-import { aSignedMessageStatus, messageBuilder } from './server.api.test';
+import { aSignedMessageStatus, messageBuilder } from './fb-server.api.test';
 const c = new Chance();
 describe('messages service', () => {
   beforeEach(() => {
     service._clearCache();
-    jest.spyOn(serverApi, 'getCertificates').mockResolvedValue({});
+    jest.spyOn(fbServerApi, 'getCertificates').mockResolvedValue({});
   });
   afterEach(() => {
     jest.clearAllMocks();
@@ -83,21 +83,21 @@ describe('messages service', () => {
 
   it('should report ack on signed tx status update', async () => {
     const signedMessageStatus = aSignedMessageStatus();
-    jest.spyOn(serverApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
-    jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
 
     await service.updateStatus([signedMessageStatus]);
 
-    expect(serverApi.ackMessage).toHaveBeenCalledWith(signedMessageStatus.msgId);
+    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(signedMessageStatus.msgId);
   });
 
   it('should broadcast result to mobile api gw', async () => {
     const signedMessageStatus = aSignedMessageStatus();
-    jest.spyOn(serverApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
-    jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
     await service.updateStatus([signedMessageStatus]);
 
-    expect(serverApi.broadcastResponse).toHaveBeenCalledWith(signedMessageStatus);
+    expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(signedMessageStatus);
   });
 
   it('shuold remove acked messages from the cache', async () => {
@@ -123,8 +123,8 @@ describe('messages service', () => {
     let pendingMessages = service.getPendingMessages();
     expect(pendingMessages).toEqual([msgId]);
 
-    jest.spyOn(serverApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
-    jest.spyOn(serverApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
 
     msgStatus.status = 'SIGNED';
     await service.updateStatus([msgStatus]);

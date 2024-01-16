@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { GUID, JWT, PairingToken } from 'types';
 import deviceService from './device.service';
-import serverApi from './server.api';
+import fbServerApi from './fb-server.api';
 
 interface HsmAgent {
   pairDevice(pairingToken: JWT, deviceId: GUID): void;
@@ -10,12 +10,12 @@ interface HsmAgent {
 class HsmAgentImpl implements HsmAgent {
   async pairDevice(pairingToken: string, deviceId: GUID) {
     const { userId } = jwt.decode(pairingToken) as PairingToken;
-    const { refreshToken } = await serverApi.pairDevice({
+    const { refreshToken } = await fbServerApi.pairDevice({
       userId,
       pairingToken,
       deviceId,
     });
-    deviceService.saveDeviceData({userId, deviceId, refreshToken});
+    deviceService.saveDeviceData({ userId, deviceId, refreshToken });
   }
 }
 

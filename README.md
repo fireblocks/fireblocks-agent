@@ -33,6 +33,7 @@
 The HSM-Agent expect a configuration file (for production it's called `.env.prod`) with several parameters:
 * `MOBILE_GATEWAY_URL` - In production this value should be `https://mobile-api.fireblocks.io`
 * `CUSTOMER_SERVER_URL` - The client's custom server url
+* `CUSTOMER_SERVER_PULL_CADENCE` - Cadence of pulling messages status
 * `CUSTOMER_SERVER_AUTHORIZATION` - If exists, the HSM-Agent will send its value on the `Authorization` header for each request. The client can use it for authorizing the HSM-Agent or keep track on which agent is calling it
 
 
