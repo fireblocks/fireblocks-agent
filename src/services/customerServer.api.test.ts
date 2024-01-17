@@ -22,7 +22,7 @@ describe('Customer Server API', () => {
         type: messagesToSign[0].type,
       },
     ];
-    customerServerApiDriver.mock.messagesToSign(messagesToSign, { messages: expectedRes });
+    customerServerApiDriver.mock.messagesToSign(messagesToSign, { statuses: expectedRes });
 
     const res = await service.messagesToSign(messagesToSign);
 

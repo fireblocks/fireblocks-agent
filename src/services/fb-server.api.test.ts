@@ -151,7 +151,7 @@ export function aSignedMessageStatus(): MessageStatus {
     status: 'SIGNED',
     payload: JSON.stringify(messageBuilder.aMessage()),
     signedPayload: 'signed payload',
-    type: 'TX',
+    type: 'EXTERNAL_KEY_SIGNING_REQUEST',
   };
 }
 export const messageBuilder = {
@@ -162,7 +162,7 @@ export const messageBuilder = {
   ): FBMessageEnvlope => {
     const msg = shouldEncode
       ? jwt.sign(JSON.stringify(fbMsg || c.string()), 'shhhhh')
-      : fbMsg || messageBuilder.fbMessage('TX', messageBuilder.aMessage());
+      : fbMsg || messageBuilder.fbMessage('EXTERNAL_KEY_SIGNING_REQUEST', messageBuilder.aMessage());
     return {
       msg,
       msgId: c.natural(),

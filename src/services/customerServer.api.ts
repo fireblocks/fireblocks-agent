@@ -14,7 +14,7 @@ const customerServerApi = {
           headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
         },
       );
-      return res.data.messages;
+      return res.data.statuses;
     } catch (e) {
       logger.error(`Error on customer server api {txToSign} request`, e);
       throw e;
