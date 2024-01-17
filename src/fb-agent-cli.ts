@@ -1,14 +1,11 @@
 import password from '@inquirer/password';
 import chalk from 'chalk';
 import figlet from 'figlet';
-import jwt from 'jsonwebtoken';
 import ora from 'ora';
 import { v4 as uuid } from 'uuid';
-import deviceService, { DeviceData } from './services/device.service';
-import fbServerApi from './services/fb-server.api';
+import deviceService from './services/device.service';
 import hsmAgent from './services/hsm-agent';
 import logger from './services/logger';
-import messageService from './services/messages.service';
 
 async function main() {
   console.clear();
@@ -18,31 +15,16 @@ async function main() {
   while (!deviceService.isPaired()) {
     await pairDevice();
   }
-  runAgentMainLoop();
+  hsmAgent.runAgentMainLoop();
 }
-
-const runAgentMainLoop = async () => {
-  const loopFunc = async () => {
-    try {
-      const start = Date.now();
-      logger.info(`Waiting for a message`);
-      const messages = await fbServerApi.getMessages();
-      logger.info(`Got ${messages.length} messages after ${Date.now() - start}ms`);
-      await messageService.handleMessages(messages);
-    } catch (e) {
-      logger.error(`Error in agent main loop ${e}`);
-    }
-    setTimeout(loopFunc);
-  };
-  setTimeout(loopFunc);
-};
 
 const pairDevice = async (): Promise<boolean> => {
   let spinner;
   try {
-    const token = await promptPairDeviceFlow();
+    const token = await promptPairingToken();
     spinner = ora('Pairing device with Fireblocks').start();
-    await hsmAgent.pairDevice(token, uuid());
+    const deviceId = uuid();
+    await hsmAgent.pairDevice(token, deviceId);
     spinner.succeed(chalk.green(`Great! your device is now paired!`));
     return true;
   } catch (e) {
@@ -52,17 +34,15 @@ const pairDevice = async (): Promise<boolean> => {
   }
 };
 
-const promptPairDeviceFlow = async () => {
+const promptPairingToken = async () => {
   const token = await password({
     message: 'Enter pairing token',
     mask: true,
     validate: (pairingToken) => {
-      try {
-        const { userId } = jwt.decode(pairingToken) as DeviceData;
-        return userId.length > 0;
-      } catch (e) {
+      if (!hsmAgent.isValidPairingToken(pairingToken)) {
         return 'Please enter a valid pairing token in JWT format.';
       }
+      return true;
     },
   });
   return token;
@@ -70,7 +50,7 @@ const promptPairDeviceFlow = async () => {
 
 export const start = async () => {
   const spinner = ora('Fireblocks HSM Agent is loading please wait').start();
-  const TIME_TO_LET_PM2_START_AND_ATTACH = 200;
+  const TIME_TO_LET_PM2_START_AND_ATTACH = process.env.NODE_ENV === 'prod' ? 2000 : 0;
   setTimeout(() => {
     spinner.stop();
     main();

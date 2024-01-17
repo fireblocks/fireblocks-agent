@@ -33,7 +33,7 @@ const fbServerApi = {
       fs.writeFileSync(`accessToken.log`, JSON.stringify(res.data.accessToken));
       return res.data.accessToken;
     } catch (e) {
-      logger.error(`Error on getAccessToken request ${e.message}`);
+      logger.error(`Error on getAccessToken request ${e}`);
       throw e;
     }
   },

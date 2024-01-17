@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import hsm from '../services/hsm-facade';
+import logger from '../services/logger';
 const hsmRouter = Router();
 
 hsmRouter.get('/generateKeyPair', async (req, res) => {
@@ -16,7 +17,8 @@ hsmRouter.post('/sign', async (req, res) => {
     const signature = await hsm.sign(keyId, payload, algorithm);
     res.status(200).json({ signature });
   } catch (e) {
-    res.status(500).json({ e });
+    logger.error(e);
+    res.status(500).json({ e: e.toString() });
   }
 });
 
@@ -27,6 +29,7 @@ hsmRouter.post('/verify', async (req, res) => {
     const isVerified = await hsm.verify(keyId, signature, payload, algorithm);
     res.status(200).json({ isVerified });
   } catch (e) {
+    logger.error(e);
     res.status(500).json({ e: e.toString() });
   }
 });
