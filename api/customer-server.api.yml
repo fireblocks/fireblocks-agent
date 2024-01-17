@@ -59,9 +59,9 @@ components:
     MessagesStatusResponse:
       type: object
       required:
-        - messages
+        - statuses
       properties:
-        messages:
+        statuses:
           type: array
           items:
             $ref: '#/components/schemas/MessageStatus'

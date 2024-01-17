@@ -14,7 +14,7 @@ msgRouter.post('/messagesToSign', async (req: Request<{}, {}, MessagesRequest>, 
   await hsmSignService.signMessages(msgIds);
   const messagesStatusAfterSign = await messagesDao.getMessagesStatus(msgIds);
 
-  res.status(200).json({ messages: messagesStatusAfterSign });
+  res.status(200).json({ statuses: messagesStatusAfterSign });
 });
 
 msgRouter.post(
@@ -22,7 +22,7 @@ msgRouter.post(
   async (req: Request<{}, {}, MessagesStatusRequest>, res: Response<MessagesStatusResponse>) => {
     const { msgIds } = req.body;
     const messagesStatus = await messagesDao.getMessagesStatus(msgIds);
-    res.status(200).json({ messages: messagesStatus });
+    res.status(200).json({ statuses: messagesStatus });
   },
 );
 

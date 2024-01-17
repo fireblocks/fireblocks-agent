@@ -7,7 +7,7 @@ class CustomerClient {
     try {
       const msgIds = messagesService.getPendingMessages();
       const status = await customerServerApi.messagesStatus({ msgIds });
-      await messagesService.updateStatus(status.messages);
+      await messagesService.updateStatus(status.statuses);
     } catch (e) {
       logger.error(`Got error from customer server ${e.message}`);
     }

@@ -52,7 +52,7 @@ export interface components {
       msgIds: number[];
     };
     MessagesStatusResponse: {
-      messages: components["schemas"]["MessageStatus"][];
+      statuses: components["schemas"]["MessageStatus"][];
     };
     MessagesRequest: {
       messages: components["schemas"]["MessageEnvelope"][];
