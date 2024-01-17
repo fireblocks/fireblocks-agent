@@ -3,8 +3,7 @@ import Chance from 'chance';
 import fs from 'fs';
 import { TOKEN_PATH } from '../constants';
 import service, { DeviceData } from './device.service';
-
-const chance = new Chance();
+const c = new Chance();
 describe('device service', () => {
   beforeEach(() => {
     if (fs.existsSync(TOKEN_PATH)) {
@@ -33,15 +32,24 @@ describe('device service', () => {
     const fetchedData = service.getDeviceData();
     expect(fetchedData).toStrictEqual(deviceData);
   });
+
+  it('should save device data in cache', () => {
+    const deviceData = deviceDriver.given.deviceData();
+    service.saveDeviceData(deviceData);
+    jest.spyOn(fs, 'readFileSync');
+
+    service.getDeviceData();
+    expect(fs.readFileSync).not.toHaveBeenCalled();
+  });
 });
 
 export const deviceDriver = {
   given: {
     deviceData: (): DeviceData => {
       return {
-        userId: chance.guid(),
-        deviceId: chance.guid(),
-        refreshToken: chance.string(),
+        userId: c.guid(),
+        deviceId: c.guid(),
+        refreshToken: c.string(),
       };
     },
   },

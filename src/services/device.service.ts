@@ -8,24 +8,26 @@ export interface DeviceData {
   deviceId: GUID;
   refreshToken: RefreshToken;
 }
-
+let deviceDataCache;
 const deviceService = {
   isPaired: (): boolean => {
-    return fs.existsSync(TOKEN_PATH);
+    return !!deviceDataCache || fs.existsSync(TOKEN_PATH);
   },
 
   saveDeviceData: (deviceData: DeviceData) => {
     try {
       fs.writeFileSync(TOKEN_PATH, JSON.stringify(deviceData));
+      deviceDataCache = deviceData;
     } catch (e) {
       logger.error(`Error saving refresh token`, e);
     }
   },
 
   getDeviceData: (): DeviceData => {
-    return deviceService.isPaired()
-      ? JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8'))
-      : undefined;
+    if (deviceDataCache) {
+      return deviceDataCache;
+    }
+    return deviceService.isPaired() ? JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8')) : undefined;
   },
 };
 
