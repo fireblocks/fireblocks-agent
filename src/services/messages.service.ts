@@ -1,6 +1,6 @@
 import { FBMessageEnvlope, MessageEnvelop, MessageStatus, TxType } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
-import customerServerApi from './customerServer.api';
+import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
 import logger from './logger';
 

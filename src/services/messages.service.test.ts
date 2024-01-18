@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import Chance from 'chance';
 import { MessageStatus, TxType } from '../types';
 import * as messagesUtils from '../utils/messages-utils';
-import customerServerApi from './customerServer.api';
+import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
 import { aSignedMessageStatus, messageBuilder } from './fb-server.api.test';
 import service from './messages.service';

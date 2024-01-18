@@ -1,5 +1,5 @@
 import { CUSTOMER_SERVER_PULL_CADENCE } from './constants';
-import customerServerApi from './services/customerServer.api';
+import customerServerApi from './services/customer-server.api';
 import logger from './services/logger';
 import messagesService from './services/messages.service';
 class CustomerClient {

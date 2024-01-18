@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import service from './customer-server-client';
-import customerServerApi from './services/customerServer.api';
+import customerServerApi from './services/customer-server.api';
 
 describe('Customer server client', () => {
   beforeEach(() => {

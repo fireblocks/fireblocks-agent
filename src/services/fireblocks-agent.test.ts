@@ -5,7 +5,7 @@ import { GUID, JWT } from '../types';
 import deviceService from './device.service';
 import fbServerApi from './fb-server.api';
 import { fbServerApiDriver, messageBuilder } from './fb-server.api.test';
-import agent from './hsm-agent';
+import agent from './fireblocks-agent';
 import messagesService from './messages.service';
 const c = new Chance();
 
