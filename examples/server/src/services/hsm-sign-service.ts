@@ -27,7 +27,7 @@ export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
 export async function signMessages(msgIds: number[]) {
   logger.info(`enter signing messages ${msgIds}`);
   const messages = await getMessages(msgIds);
-  messages.forEach(async (msg) => {
+  for (const msg of messages) {
     const algorithm = msg.message.algorithm === 'EDDSA_ED25519' ? 'EDDSA' : 'ECDSA';
     const { signingDeviceKeyId, data } = msg.message;
     msg.signedPayload = await hsmFacade.sign(signingDeviceKeyId, data, algorithm);
@@ -35,5 +35,5 @@ export async function signMessages(msgIds: number[]) {
     logger.info(`signed message ${msg.msgId}. signature: ${msg.signedPayload}`);
     await messagesDao.updateMessageStatus(msg);
     logger.info(`Set ${msg.msgId} to ${msg.status}`);
-  });
+  }
 }
