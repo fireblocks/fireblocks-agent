@@ -24,7 +24,10 @@
 - install dependencies `npm i`
 
 ### Running
-- Build and run example customer server docker `npm run start:example-server`
+- Build and run example customer server docker:
+  - `cd examples/server`
+  - `npm run build:docker`
+  - `npm run start:docker`
 - Copy `.env.prod` and name it `.env.{env}` for example `.env.dev9`
 - Edit your newly created `.env.{env}` file with the right config
 - Start fireblocks agent with your desired env i.e `npm run start --env=dev9`
