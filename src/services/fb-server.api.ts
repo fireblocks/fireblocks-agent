@@ -41,12 +41,15 @@ const fbServerApi = {
     try {
       logger.info(`entering broadcastResponse ${JSON.stringify(msgStatus)}`);
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
-      const message = JSON.parse(msgStatus.payload) as Message;
+      const { status, type, signedPayload, errorMessage, payload } = msgStatus;
+      const message = JSON.parse(payload) as Message;
       const requestObject = {
-        type: `${msgStatus.type}_RESPONSE`,
+        type: `${type}_RESPONSE`,
+        status,
         payload: {
           payload: message,
-          signedPayload: msgStatus.signedPayload,
+          ...(signedPayload && { signedPayload }),
+          ...(errorMessage && { errorMessage }),
         },
       };
       const res = await axios.post(

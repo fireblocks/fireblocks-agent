@@ -28,7 +28,7 @@ class MessageService implements IMessageService {
       })
       .filter((_) => this.knownMessageTypes.includes(_.type));
 
-    if (decodedMessages.length > 0) {
+    if (!!decodedMessages.length) {
       const msgStatuses = await customerServerApi.messagesToSign(decodedMessages);
       await this.updateStatus(msgStatuses);
     }
@@ -41,7 +41,7 @@ class MessageService implements IMessageService {
         if (!isInCache) {
           this.msgCache[msgStatus.msgId] = msgStatus;
         }
-        if (msgStatus.status === 'SIGNED') {
+        if (msgStatus.status === 'SIGNED' || msgStatus.status === 'FAILED') {
           logger.info(`Got signed message id ${msgStatus.msgId}`);
           await fbServerApi.broadcastResponse(msgStatus);
           await fbServerApi.ackMessage(msgStatus.msgId);

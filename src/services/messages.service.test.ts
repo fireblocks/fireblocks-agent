@@ -4,7 +4,7 @@ import { MessageStatus, TxType } from '../types';
 import * as messagesUtils from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
-import { aSignedMessageStatus, messageBuilder } from './fb-server.api.test';
+import { aFailedMessageStatus, aSignedMessageStatus, messageBuilder } from './fb-server.api.test';
 import service from './messages.service';
 const c = new Chance();
 describe('messages service', () => {
@@ -89,6 +89,17 @@ describe('messages service', () => {
     await service.updateStatus([signedMessageStatus]);
 
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(signedMessageStatus.msgId);
+  });
+
+  it('should report ack on failed tx status update', async () => {
+    const failedMessageStatus = aFailedMessageStatus();
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+
+    await service.updateStatus([failedMessageStatus]);
+
+    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(failedMessageStatus.msgId);
+    expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(failedMessageStatus);
   });
 
   it('should broadcast result to mobile api gw', async () => {

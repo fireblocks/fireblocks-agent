@@ -130,6 +130,7 @@ describe('Server API', () => {
 
     const expectedRequestObject = {
       type: `${signedMessageStatus.type}_RESPONSE`,
+      status: signedMessageStatus.status,
       payload: {
         payload: JSON.parse(signedMessageStatus.payload),
         signedPayload: signedMessageStatus.signedPayload,
@@ -151,6 +152,16 @@ export function aSignedMessageStatus(): MessageStatus {
     status: 'SIGNED',
     payload: JSON.stringify(messageBuilder.aMessage()),
     signedPayload: 'signed payload',
+    type: 'EXTERNAL_KEY_SIGNING_REQUEST',
+  };
+}
+export function aFailedMessageStatus(): MessageStatus {
+  return {
+    msgId: c.natural(),
+    requestId: c.guid(),
+    status: 'FAILED',
+    payload: JSON.stringify(messageBuilder.aMessage()),
+    errorMessage: 'tx not authorized',
     type: 'EXTERNAL_KEY_SIGNING_REQUEST',
   };
 }
