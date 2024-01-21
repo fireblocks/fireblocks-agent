@@ -1,7 +1,7 @@
 dist
 node_modules
 coverage
-.hsm-refresh-token*
+.fireblocks-refresh-token*
 .env.dev*
 messages*.json
 *.log

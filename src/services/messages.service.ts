@@ -29,8 +29,8 @@ class MessageService implements IMessageService {
       .filter((_) => this.knownMessageTypes.includes(_.type));
 
     if (decodedMessages.length > 0) {
-      const status = await customerServerApi.messagesToSign(decodedMessages);
-      await this.updateStatus(status);
+      const msgStatuses = await customerServerApi.messagesToSign(decodedMessages);
+      await this.updateStatus(msgStatuses);
     }
   }
 

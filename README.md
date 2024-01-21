@@ -5,7 +5,7 @@
 ![Statements](https://github.com/fireblocks/fireblocks-agent/blob/badges/badges/coverage-statements.svg)
 ![Jest coverage](https://github.com/fireblocks/fireblocks-agent/blob/badges/badges/coverage-jest%20coverage.svg)
 
-# Welcome to Fireblocks HSM Agent
+# Welcome to Fireblocks Agent
 
 # Develop (Run Locally)
 
@@ -18,8 +18,8 @@
 
 ### Installation 
 
-- `git clone git@gitlab.com:fireblocks/shell/common/hsm-agent.git`
-- `cd hsm-agent`
+- `git clone https://github.com/fireblocks/fireblocks-agent.git`
+- `cd fireblocks-agent`
 - `nvm use`
 - install dependencies `npm i`
 
@@ -27,14 +27,14 @@
 - Build and run example customer server docker `npm run start:example-server`
 - Copy `.env.prod` and name it `.env.{env}` for example `.env.dev9`
 - Edit your newly created `.env.{env}` file with the right config
-- Start hsm agent with your desired env i.e `npm run start --env=dev9`
+- Start fireblocks agent with your desired env i.e `npm run start --env=dev9`
 
-### HSM-Agent environment parameters
-The HSM-Agent expect a configuration file (for production it's called `.env.prod`) with several parameters:
+### fireblocks agent environment parameters
+The fireblocks agent expect a configuration file (for production it's called `.env.prod`) with several parameters:
 * `MOBILE_GATEWAY_URL` - In production this value should be `https://mobile-api.fireblocks.io`
 * `CUSTOMER_SERVER_URL` - The client's custom server url
 * `CUSTOMER_SERVER_PULL_CADENCE` - Cadence of pulling messages status
-* `CUSTOMER_SERVER_AUTHORIZATION` - If exists, the HSM-Agent will send its value on the `Authorization` header for each request. The client can use it for authorizing the HSM-Agent or keep track on which agent is calling it
+* `CUSTOMER_SERVER_AUTHORIZATION` - If exists, the fireblocks agent will send its value on the `Authorization` header for each request. The client can use it for authorizing the fireblocks agent or keep track on which agent is calling it
 
 
 # Fireblocks External Keys Workspace
@@ -44,22 +44,22 @@ The Fireblocks external keys workspace consists of several components (aka actor
 
 * Console - Fireblocks web console. [Link](https://console.fireblocks.io/v2/)
 * Mobile App - Fireblocks mobile app.
-* Mobile API Gateway - Fireblocks's REST API Server. The HSM-Agent communicates with this server in the registration flow and for receiving new messages.
+* Mobile API Gateway - Fireblocks's REST API Server. The firblocks agent communicates with this server in the registration flow and for receiving new messages.
 * Developer API - Fireblock's back office server for workspace setup and configuration.
-* HSM-Agent - An on-prem service written in Typescript which is responsible for receiving new messages to sign from Fireblocks, relay these messages to the client HSM and return the signed result back to Fireblocks.
-* Customer Server - The client's own server which receives messages to sign from the HSM-Agent. Sign them via the client's HSM and provide the HSM-Agent with the signed messages.
+* Fireblocks agent - An on-prem service written in Typescript which is responsible for receiving new messages to sign from Fireblocks, relay these messages to the client's HSM and return the signed result back to Fireblocks.
+* Customer Server - The client's own server which receives messages to sign from the fireblocks agent. Sign them via the client's HSM and provide the fireblocks agent with the signed messages.
 * HSM component - The actual HSM implementation. Can be on prem or a cloud based HSM.
 
-## HSM API User Main Flows
+## Fireblocks Agent Main Flows
 
-#### Register a new HSM API user
+#### Register a new fireblocks agent API user
 
-![Register a new HSM API user flow](docs/flows/register_new_hsm_api_user.jpg)
+![Register a new fireblocks agent API user flow](docs/flows/register_new_fireblocks_agent_api_user.jpg)
 
 
-#### HSM API user main logic
+#### Fireblocks agent main logic
 
-![HSM API user main logic flow](docs/flows/hsm_main_flow.jpg)
+![fireblocks agent main logic flow](docs/flows/fireblocks_agent_main_flow.jpg)
 
 
 #### Add validator key

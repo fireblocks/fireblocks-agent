@@ -1,5 +1,5 @@
 import customerServerclient from './customer-server-client';
-import * as hsmClient from './fb-agent-cli';
+import * as fbAgentCli from './fb-agent-cli';
 
-hsmClient.start();
+fbAgentCli.start();
 customerServerclient.pullMessagesStatus();

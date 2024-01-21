@@ -4,13 +4,13 @@ import deviceService, { DeviceData } from './device.service';
 import fbServerApi from './fb-server.api';
 import logger from './logger';
 import messageService from './messages.service';
-export interface HsmAgent {
+export interface FireblocksAgent {
   pairDevice(pairingToken: JWT, deviceId: GUID): void;
   runAgentMainLoop(): Promise<void>;
   isValidPairingToken(pairingToken: JWT): boolean;
 }
 
-class HsmAgentImpl implements HsmAgent {
+class FireblocksAgentImpl implements FireblocksAgent {
   async pairDevice(pairingToken: string, deviceId: GUID) {
     const { userId } = jwt.decode(pairingToken) as PairingToken;
     const { refreshToken } = await fbServerApi.pairDevice({
@@ -22,12 +22,13 @@ class HsmAgentImpl implements HsmAgent {
   }
 
   runAgentMainLoop = async () => {
-    try {
-      await this._runLoopStep();
-    } catch (e) {
-      logger.error(`Error in agent main loop ${e}`);
+    while (true) {
+      try {
+        await this._runLoopStep();
+      } catch (e) {
+        logger.error(`Error in agent main loop ${e}`);
+      }
     }
-    setTimeout(this.runAgentMainLoop);
   };
 
   isValidPairingToken(pairingToken: JWT): boolean {
@@ -48,4 +49,4 @@ class HsmAgentImpl implements HsmAgent {
   };
 }
 
-export default new HsmAgentImpl();
+export default new FireblocksAgentImpl();

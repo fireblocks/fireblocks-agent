@@ -10,7 +10,7 @@ import logger from './services/logger';
 async function main() {
   console.clear();
   console.log(chalk.blue(figlet.textSync('FIREBLOCKS', { horizontalLayout: 'full' })));
-  console.log(chalk.blue('Welcome to the Fireblocks HSM Agent'));
+  console.log(chalk.blue('Welcome to the Fireblocks Agent'));
 
   while (!deviceService.isPaired()) {
     await pairDevice();
