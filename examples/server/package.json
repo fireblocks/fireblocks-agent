@@ -8,7 +8,7 @@
     "build:api": "openapi-typescript ../../api/customer-server.api.yml -o ./src/customer-server.d.ts",
     "build": "tsc",
     "start": "NODE_ENV=dev node ./dist/server.js",
-    "docker:volumes": "docker volume create tokens && docker volume create softhsm",
+    "docker:volumes": "docker volume create tokens && docker volume create softhsm && docker volume create database",
     "start:dev": "NODE_ENV=dev nodemon ./src/server.ts",
     "dev": "NODE_ENV=dev ts-node ./src/server.ts",
     "build:docker": "npm run build:api && docker build -t softhsm2:2.6.1 .",
