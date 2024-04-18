@@ -20,6 +20,7 @@ paths:
               $ref: '#/components/schemas/MessagesStatusRequest'
       responses:
         200:
+          description: Messages Status
           content:
             application/json: 
               schema:
@@ -115,10 +116,10 @@ components:
           example: SIGNED
         errorMessage:
           type: string
-          exmaple: Transction 8c2b2b3d-fb83-497e-8138-72446b9184b6 failed due to insufficient funds
+          example: Transction 8c2b2b3d-fb83-497e-8138-72446b9184b6 failed due to insufficient funds
         signedPayload:
           type: string
-          exmaple: singed-tx-string
+          example: singed-tx-string
         payload:
           type: string
           description: Original message payload
@@ -155,7 +156,7 @@ components:
         fbKeyId:
           type: string
           format: uuid
-          exmaple: 70721651-a7f3-42f6-a984-6e058269495f
+          example: 70721651-a7f3-42f6-a984-6e058269495f
         requestId:
           type: string
           format: uuid
