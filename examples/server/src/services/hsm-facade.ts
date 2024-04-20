@@ -16,15 +16,6 @@ function hashSha256(inBuffer: Buffer): string {
     return hashHex;
 }
 
-interface ASN1OctetString {
-    // The ASN.1 definition doesn't change, but you're now explicitly stating the expected type
-    octstr: () => void;
-}
-
-const ASN1OctetString = asn1.define('ASN1OctetString', function (this: ASN1OctetString) {
-    this.octstr();
-});
-
 export interface HSMFacade {
     generateKeyPair(algorithm: Algorithm): Promise<{ keyId: string; pem: string }>;
     sign(keyId: string, payload: string, algorithm: Algorithm): Promise<string>;
@@ -32,6 +23,15 @@ export interface HSMFacade {
 }
 const LIBRARY = '/usr/local/lib/softhsm/libsofthsm2.so';
 const PIN = '1234';
+
+// Define an ASN.1 structure using asn1.js that can handle both bit string and octet string
+const GenericASN1Data = asn1.define('GenericASN1Data', function () {
+    this.choice({
+        bitString: this.bitstr(),
+        octetString: this.octstr()
+    });
+});
+
 
 class HSM implements HSMFacade {
 
@@ -68,16 +68,34 @@ class HSM implements HSMFacade {
         this.pkcs11.C_Finalize();
     }
 
-    // the public key value which is received from HSM is DER encoded.
-    // this removes DER encoding leaving plain public key
-    private fixEcpt(ecpt: Buffer): Buffer {
-        if ((ecpt.length & 1) === 0 &&
-            (ecpt[0] === 0x04) && (ecpt[ecpt.length - 1] === 0x04)) {
-            ecpt = ecpt.slice(0, ecpt.length - 1);
-        } else if (ecpt[0] === 0x04 && ecpt[2] === 0x04) {
-            ecpt = ecpt.slice(2);
+    // the public key value which is received from HSM is DER encoded (octet string)
+    // this is a dirty fix to decoder der
+    // private fixEcpt(ecpt: Buffer): Buffer {
+    //     if ((ecpt.length & 1) === 0 &&
+    //         (ecpt[0] === 0x04) && (ecpt[ecpt.length - 1] === 0x04)) {
+    //         ecpt = ecpt.slice(0, ecpt.length - 1);
+    //     } else if (ecpt[0] === 0x04 && ecpt[2] === 0x04) {
+    //         ecpt = ecpt.slice(2);
+    //     }
+    //     return ecpt;
+    // }
+
+    // And this is a more elegant way, but requires use of the ASN1 external library
+    private decodeASN1Data(buffer: Buffer): Buffer {
+
+        // Attempt to decode the buffer using the defined ASN.1 structure
+        try {
+            const decoded = GenericASN1Data.decode(buffer, 'der');
+            // Return the data based on the type that was successfully decoded
+            if (decoded.type === 'bitString') {
+                return decoded.value.data; // For bitString, return the data portion
+            } else if (decoded.type === 'octetString') {
+                return decoded.value; // For octetString, return the Buffer directly
+            }
+        } catch (error) {
+            console.error('Failed to decode ASN.1 data:', error);
+            throw error;
         }
-        return ecpt;
     }
 
     // this function DER encodes public key and than encodes it again as PEM
@@ -157,10 +175,9 @@ class HSM implements HSMFacade {
 
             //convert der encoded public key into hex buffer containing EC (X, Y) coordinates
             const ec = attrs[0].value;
-            const ecpt = this.fixEcpt(ec);
-            const ecpt1 = ASN1OctetString.decode(ec, 'der');
+            const ecpt = this.decodeASN1Data(ec);
 
-            logger.info(`ec=${ec.toString('hex')}, ecpt=${ecpt.toString('hex')}, ecpt1=${ecpt1.toString('hex')}`);
+            logger.info(`ec=${ec.toString('hex')}, ecpt=${ecpt.toString('hex')}}`);
 
             //generate key id based on public key
             const keyId: string = hashSha256(ecpt);
