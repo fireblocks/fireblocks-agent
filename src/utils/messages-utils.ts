@@ -14,7 +14,7 @@ export const decodeAndVerifyMessage = (
       const zsCertificate = certMap['zs'];
       fbMessage = jwt.verify(fbMsgEnvelope.msg as JWT, zsCertificate) as FBMessage;
     }
-    verifyMpcMessage(fbMessage);
+    verifyFbMessage(fbMessage);
     return toMessage(fbMsgEnvelope.msgId, fbMessage);
   } catch (e) {
     throw new Error('Message signature is invalid');
@@ -39,7 +39,7 @@ const toMessage = (msgId: number, fbMessage: FBMessage): MessageEnvelop => {
   }
 };
 
-const verifyMpcMessage = (message: FBMessage): boolean => {
+const verifyFbMessage = (message: FBMessage): boolean => {
   const toVerify = getDataToVerify(message);
   for (const verifying of toVerify) {
     const isSignatureValid = verifyRSASignatureFromCertificate(
