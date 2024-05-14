@@ -44,7 +44,7 @@ const fbServerApi = {
       const { status, type, signedPayload, errorMessage, payload } = msgStatus;
       const message = JSON.parse(payload) as Message;
       const requestObject = {
-        type: `${type}_RESPONSE`,
+        type: type.replace('_REQUEST', '_RESPONSE'),
         status,
         payload: {
           payload: message,
