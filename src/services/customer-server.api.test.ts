@@ -33,7 +33,7 @@ describe('Customer Server API', () => {
 export const customerServerApiDriver = {
   given: {
     aMessageRequest: (msgId: number, message: Message): MessageEnvelop[] => {
-      return [{ msgId, message, type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP', payload: JSON.stringify(message) }];
+      return [{ msgId, message, type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', payload: JSON.stringify(message) }];
     },
     aTxStatusRequest: (msgIds: number[] = []): MessagesStatusRequest => {
       return {

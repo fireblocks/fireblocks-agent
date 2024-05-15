@@ -129,7 +129,7 @@ describe('Server API', () => {
     fbServerApiDriver.mock.accessToken(deviceData, accessToken);
 
     const expectedRequestObject = {
-      type: `${signedMessageStatus.type}_RESPONSE`,
+      type: `${signedMessageStatus.type.replace('_REQUEST', '_RESPONSE')}`,
       status: signedMessageStatus.status,
       payload: {
         payload: JSON.parse(signedMessageStatus.payload),
