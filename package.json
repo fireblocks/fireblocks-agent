@@ -12,7 +12,7 @@
     "build": "npm run build:api && tsc && npm run copy:env",
     "copy:env": "cp .env.prod ./dist",
     "build:api": "openapi-typescript ./api/customer-server.api.yml -o ./api/customer-server.d.ts",
-    "start": "NODE_ENV=${npm_config_env} ts-node src/index.ts",
+    "start": "NODE_ENV=${npm_config_env:-prod} ts-node src/index.ts",
     "start:debug": "NODE_ENV=dev9 node --inspect-brk -r ts-node/register src/index.ts",
     "start:example-server": "cd ./examples/server && npm run start:docker",
     "start:prod": "NODE_ENV=prod node dist/hsm-client.js",
