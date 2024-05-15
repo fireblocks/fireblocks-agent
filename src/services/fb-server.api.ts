@@ -19,6 +19,7 @@ let certificatesMapCache;
 const fbServerApi = {
   pairDevice: async (pairDevice: PairDeviceRequest): Promise<PairDeviceResponse> => {
     try {
+      logger.info(`Pairing using ${MOBILE_GATEWAY_URL}/pair_device`)
       const res = await axios.post(`${MOBILE_GATEWAY_URL}/pair_device`, pairDevice);
       return res.data;
     } catch (e) {
