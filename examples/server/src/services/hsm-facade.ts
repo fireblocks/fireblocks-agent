@@ -9,6 +9,7 @@ import logger from './logger';
 // Assuming that the shared object and the hardware supports EDDSA
 const CKK_EC_EDWARDS = 0x00000040;
 const CKM_EDDSA = 0x00001057;
+const CKM_EC_EDWARDS_KEY_PAIR_GEN = 0x00001055
 
 function hashSha256(inBuffer: Buffer): string {
     // Create a SHA-256 hash of the input string
@@ -192,10 +193,13 @@ class HSM implements HSMFacade {
                 { type: pkcs11js.CKA_DERIVE, value: true },
             ];
 
+            // Use the appropriate mechanism for key pair generation
+            const mechanism = algorithm === "ECDSA_SECP256K1" ? pkcs11js.CKM_EC_KEY_PAIR_GEN : CKM_EC_EDWARDS_KEY_PAIR_GEN;
+
             //create a new key pair object
             const keys = this.pkcs11.C_GenerateKeyPair(
                 this.session,
-                { mechanism: pkcs11js.CKM_EC_KEY_PAIR_GEN },
+                { mechanism },
                 publicKeyTemplate,
                 privateKeyTemplate
             );
