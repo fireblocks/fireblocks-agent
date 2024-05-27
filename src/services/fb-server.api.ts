@@ -14,6 +14,10 @@ import { MOBILE_GATEWAY_URL } from '../constants';
 import deviceService from './device.service';
 import logger from './logger';
 
+const TYPE_TO_ENDPOINT = {
+  EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE: 'keylink_proof_of_ownership_response',
+};
+
 let i = 21; //TODO: remove
 let certificatesMapCache;
 const fbServerApi = {
@@ -40,12 +44,13 @@ const fbServerApi = {
   },
   broadcastResponse: async (msgStatus: MessageStatus): Promise<void> => {
     try {
-      logger.info(`entering broadcastResponse ${JSON.stringify(msgStatus)}`);
+      logger.info(`entering broadcastResponse`);
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
       const { status, type, signedPayload, errorMessage, payload } = msgStatus;
       const message = JSON.parse(payload) as Message;
+      const responseType = type.replace('_REQUEST', '_RESPONSE');
       const requestObject = {
-        type: type.replace('_REQUEST', '_RESPONSE'),
+        type: responseType,
         status,
         payload: {
           payload: message,
@@ -53,8 +58,10 @@ const fbServerApi = {
           ...(errorMessage && { errorMessage }),
         },
       };
+      const url = `${MOBILE_GATEWAY_URL}/${TYPE_TO_ENDPOINT[responseType]}`;
+      logger.info(`broadcasting to ${url} response ${JSON.stringify(requestObject)}`);
       const res = await axios.post(
-        `${MOBILE_GATEWAY_URL}/broadcast_zservice_msg`,
+        url,
         requestObject,
         buildHeaders(accessToken),
       );
