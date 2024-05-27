@@ -157,7 +157,7 @@ class HSM implements HSMFacade {
                 }
             }, 'der');
         } else {
-            throw new Error("Unsupported algorithm");
+            throw new Error(`Unsupported algorithm ${algorithm}`);
         }
 
         // Convert the DER-encoded public key to PEM format
