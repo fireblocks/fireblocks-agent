@@ -7,7 +7,15 @@ const c = new Chance();
 describe('device service', () => {
   beforeEach(() => {
     if (fs.existsSync(TOKEN_PATH)) {
+      fs.copyFileSync(TOKEN_PATH, `${TOKEN_PATH}.bak`);
       fs.unlinkSync(TOKEN_PATH);
+    }
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(`${TOKEN_PATH}.bak`)) {
+      fs.copyFileSync(`${TOKEN_PATH}.bak`, TOKEN_PATH);
+      fs.unlinkSync(`${TOKEN_PATH}.bak`);
     }
   });
 
