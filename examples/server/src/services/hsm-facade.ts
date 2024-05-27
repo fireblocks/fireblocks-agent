@@ -4,6 +4,8 @@ import * as pkcs11js from "pkcs11js";
 import { Algorithm } from '../types';
 import logger from './logger';
 
+export const SUPPORTED_ALGORITHMS = ['ECDSA_SECP256K1', 'EDDSA_ED25519'];
+
 // current pkcs11js  aligned with pkcs11 spec 2.40 which does not include EDDSA.
 // It is included in 3.0 which can be found https://docs.oasis-open.org/pkcs11/pkcs11-curr/v3.0/csprd01/pkcs11-curr-v3.0-csprd01.html#_Toc10560880
 // Assuming that the shared object and the hardware supports EDDSA

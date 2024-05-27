@@ -1,20 +1,23 @@
 import { Router } from 'express';
-import hsm from '../services/hsm-facade';
+import hsm, { SUPPORTED_ALGORITHMS } from '../services/hsm-facade';
 import logger from '../services/logger';
 const hsmRouter = Router();
 
-const SUPPORTED_ALGORITHMS = ['ECDSA_SECP256K1', 'EDDSA_ED25519'];
-
 hsmRouter.get('/generateKeyPair', async (req, res) => {
-  const algorithm = req.query.algorithm
-  if (typeof algorithm !== 'string' || !SUPPORTED_ALGORITHMS.includes(algorithm)) {
-    res.status(400).json({ error: `Unsupported algorithm: ${algorithm}` });
-    return;
-  }
+  try {
+    const algorithm = req.query.algorithm
+    if (typeof algorithm !== 'string' || !SUPPORTED_ALGORITHMS.includes(algorithm)) {
+      res.status(400).json({ error: `Unsupported algorithm: ${algorithm}` });
+      return;
+    }
 
-  const { keyId, pem } = await hsm.generateKeyPair(algorithm);
-  console.log(`keyId`, keyId);
-  res.status(200).json({ keyId, pem });
+    const { keyId, pem } = await hsm.generateKeyPair(algorithm);
+    console.log(`keyId`, keyId);
+    res.status(200).json({ keyId, pem });
+  } catch (e) {
+    logger.error(e);
+    res.status(500).json({ e: e.toString() });
+  }
 });
 
 hsmRouter.post('/sign', async (req, res) => {
