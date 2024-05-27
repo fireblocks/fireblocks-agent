@@ -4,7 +4,7 @@ import { MessageStatus, TxType } from '../types';
 import * as messagesUtils from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
-import { aFailedMessageStatus, aSignedMessageStatus, messageBuilder } from './fb-server.api.test';
+import { aProofOfOwnershipFailedMessageStatus, aProofOfOwnershipSignedMessageStatus, messageBuilder } from './fb-server.api.test';
 import service from './messages.service';
 const c = new Chance();
 describe('messages service', () => {
@@ -82,7 +82,7 @@ describe('messages service', () => {
   });
 
   it('should report ack on signed tx status update', async () => {
-    const signedMessageStatus = aSignedMessageStatus();
+    const signedMessageStatus = aProofOfOwnershipSignedMessageStatus();
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
 
@@ -92,7 +92,7 @@ describe('messages service', () => {
   });
 
   it('should report ack on failed tx status update', async () => {
-    const failedMessageStatus = aFailedMessageStatus();
+    const failedMessageStatus = aProofOfOwnershipFailedMessageStatus();
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
 
@@ -103,7 +103,7 @@ describe('messages service', () => {
   });
 
   it('should broadcast result to mobile api gw', async () => {
-    const signedMessageStatus = aSignedMessageStatus();
+    const signedMessageStatus = aProofOfOwnershipSignedMessageStatus();
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
     await service.updateStatus([signedMessageStatus]);
