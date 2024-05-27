@@ -296,31 +296,22 @@ class HSM implements HSMFacade {
 
     //implemented only for ECDSA
     async sign(keyId: string, payload: string, algorithm: string): Promise<string> {
-        try {
+        logger.info(`Request to sign with key ${keyId} payload: ${payload} algo: ${algorithm}`);
 
-            logger.info(`Request to sign with key ${keyId} payload: ${payload} algo: ${algorithm}`);
+        // Find the private key by ID
+        let provKeyObj = this.getPrivateKeyObject(keyId);
 
-            // Find the private key by ID
-            let provKeyObj = this.getPrivateKeyObject(keyId);
+        const mechanism = algorithm === "ECDSA_SECP256K1" ? pkcs11js.CKM_ECDSA : CKM_EDDSA;
 
-            const mechanism = algorithm === "ECDSA_SECP256K1" ? pkcs11js.CKM_ECDSA : CKM_EDDSA;
+        // Sign the payload. Algorithm is provided here and curve is defined on the private key attributes
+        this.pkcs11.C_SignInit(this.session, { mechanism }, provKeyObj);
+        //EC signatures are represented as a 32-bit R followed by a 32-bit S value, and not ASN.1 encoded.
+        const signature: Buffer = this.pkcs11.C_Sign(this.session, Buffer.from(payload, 'hex'), Buffer.alloc(64));
+        const signatureInHex: string = signature.toString('hex');
 
-            // Sign the payload. Algorithm is provided here and curve is defined on the private key attributes
-            this.pkcs11.C_SignInit(this.session, { mechanism }, provKeyObj);
-            //EC signatures are represented as a 32-bit R followed by a 32-bit S value, and not ASN.1 encoded.
-            const signature: Buffer = this.pkcs11.C_Sign(this.session, Buffer.from(payload, 'hex'), Buffer.alloc(64));
-            const signatureInHex: string = signature.toString('hex');
+        logger.info(`Signed with key id ${keyId} signature hex: ${signatureInHex}`);
 
-            logger.info(`Signed with key id ${keyId} signature hex: ${signatureInHex}`);
-
-            return signatureInHex;
-        }
-        catch (error) {
-            console.error("An error occurred:", error);
-
-            return "";
-        }
-
+        return signatureInHex;
     }
 
     //implemented only for ECDSA
