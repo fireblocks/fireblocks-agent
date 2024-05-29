@@ -34,10 +34,10 @@ describe('HSM Agent', () => {
   });
 
   it('should validate a valid pairing token', () => {
-    const aValidPairingToken = jwt.sign({ userId: c.guid() }, 'shhh');
+    const aValidPairingToken = jwt.sign({ userId: c.guid() }, 'PairingToken');
     expect(agent.isValidPairingToken(aValidPairingToken)).toBe(true);
 
-    const nonValidToken = 'blaa';
+    const nonValidToken = 'InvalidPairingToken';
     expect(agent.isValidPairingToken(nonValidToken)).toBe(false);
   });
 });
@@ -59,7 +59,7 @@ const hsmAgentDriver = {
         type: 'devicePairing',
         ...tokenData,
       };
-      const jwtToken = jwt.sign(token, 'shhhhh');
+      const jwtToken = jwt.sign(token, 'HsmAgentJWTToken');
       return jwtToken;
     },
   },
