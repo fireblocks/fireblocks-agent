@@ -84,10 +84,10 @@ export interface components {
       payload: string;
     };
     /**
-     * @example EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST
+     * @example KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST
      * @enum {string}
      */
-    TxType: "EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST" | "EXTERNAL_KEY_SIGNING_REQUEST";
+    TxType: "KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST" | "EXTERNAL_KEY_SIGNING_REQUEST";
     /**
      * @description algorithm to sign with
      * @example ECDSA_SECP256K1

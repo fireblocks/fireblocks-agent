@@ -16,7 +16,7 @@ describe('messages service', () => {
     jest.clearAllMocks();
   });
 
-  const types: TxType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_SIGNING_REQUEST'];
+  const types: TxType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_SIGNING_REQUEST'];
   it.each(types)('should send the customer server the messages to sign', async (type: TxType) => {
     const msgId = c.natural();
     const aTxToSignMessage = messageBuilder.aMessage();
@@ -49,7 +49,7 @@ describe('messages service', () => {
   });
 
   it('should ignore non encoded messages', async () => {
-    const aNonEncodedMessage = messageBuilder.fbMessage('EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', messageBuilder.aMessage());
+    const aNonEncodedMessage = messageBuilder.fbMessage('KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', messageBuilder.aMessage());
     const messageEnvlope = messageBuilder.fbMsgEnvelope({}, aNonEncodedMessage, false);
     jest.spyOn(customerServerApi, 'messagesToSign');
     await service.handleMessages([messageEnvlope]);

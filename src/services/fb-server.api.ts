@@ -15,7 +15,7 @@ import deviceService from './device.service';
 import logger from './logger';
 
 const TYPE_TO_ENDPOINT = {
-  EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE: 'keylink_proof_of_ownership_response',
+  KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE: 'keylink_proof_of_ownership_response',
 };
 
 let i = 21; //TODO: remove
