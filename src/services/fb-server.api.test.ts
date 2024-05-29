@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import { MOBILE_GATEWAY_URL } from '../constants';
 import {
   AccessToken,
-  AccessTokenReuest,
+  AccessTokenRequest,
   CertificatesMap,
   FBMessage,
   FBMessageEnvlope,
@@ -264,7 +264,7 @@ export const fbServerApiDriver = {
       };
     },
     accessToken: (): AccessToken => c.string(),
-    accessTokenRequst: (): AccessTokenReuest => {
+    accessTokenRequst: (): AccessTokenRequest => {
       return {
         userId: c.guid(),
         deviceId: c.guid(),
@@ -306,9 +306,9 @@ export const fbServerApiDriver = {
     broadcast_proof_of_ownership: (accessToken: AccessToken, status: any, response: string) => {
       fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/keylink_proof_of_ownership_response`, status).reply(200, response);
     },
-    accessToken: (accessTokenReq?: Partial<AccessTokenReuest>, resultAccessToken: string = c.string()) => {
+    accessToken: (accessTokenReq?: Partial<AccessTokenRequest>, resultAccessToken: string = c.string()) => {
       const generatedReq = fbServerApiDriver.given.accessTokenRequst();
-      const accessTokenRequest: AccessTokenReuest = {
+      const accessTokenRequest: AccessTokenRequest = {
         ...generatedReq,
         ...accessTokenReq,
       };
