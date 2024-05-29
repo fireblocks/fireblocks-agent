@@ -9,7 +9,7 @@ import {
   AccessTokenRequest,
   CertificatesMap,
   FBMessage,
-  FBMessageEnvlope,
+  FBMessageEnvelope,
   FBMessagePayload,
   Message,
   MessageEnvelop,
@@ -194,10 +194,10 @@ export function aProofOfOwnershipFailedMessageStatus(): MessageStatus {
 }
 export const messageBuilder = {
   fbMsgEnvelope: (
-    fbMsgEnvelope?: Partial<FBMessageEnvlope>,
+    fbMsgEnvelope?: Partial<FBMessageEnvelope>,
     fbMsg?: FBMessage,
     shouldEncode: boolean = true,
-  ): FBMessageEnvlope => {
+  ): FBMessageEnvelope => {
     const msg = shouldEncode
       ? jwt.sign(JSON.stringify(fbMsg || c.string()), 'shhhhh')
       : fbMsg || messageBuilder.fbMessage('KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', messageBuilder.aMessage());
@@ -284,7 +284,7 @@ export const fbServerApiDriver = {
         .onPost(`${MOBILE_GATEWAY_URL}/pair_device`, pairRequest)
         .reply(200, { refreshToken: resultRefreshToken });
     },
-    messages: (accessToken: AccessToken, message: FBMessageEnvlope[] | FBMessageEnvlope) => {
+    messages: (accessToken: AccessToken, message: FBMessageEnvelope[] | FBMessageEnvelope) => {
       fbServerApiDriver
         .axiosMock()
         .onGet(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, {

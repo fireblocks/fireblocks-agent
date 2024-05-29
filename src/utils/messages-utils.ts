@@ -1,10 +1,10 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { CertificatesMap, FBMessage, FBMessageEnvlope, JWT, Message, MessageEnvelop } from '../types';
+import { CertificatesMap, FBMessage, FBMessageEnvelope, JWT, Message, MessageEnvelop } from '../types';
 
 let certMap;
 export const decodeAndVerifyMessage = (
-  fbMsgEnvelope: FBMessageEnvlope,
+  fbMsgEnvelope: FBMessageEnvelope,
   certificates: CertificatesMap,
 ): MessageEnvelop => {
   try {

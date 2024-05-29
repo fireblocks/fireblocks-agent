@@ -1,4 +1,4 @@
-import { FBMessageEnvlope, MessageEnvelop, MessageStatus, TxType } from '../types';
+import { FBMessageEnvelope, MessageEnvelop, MessageStatus, TxType } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
@@ -6,7 +6,7 @@ import logger from './logger';
 
 interface IMessageService {
   getPendingMessages(): number[];
-  handleMessages(messages: FBMessageEnvlope[]): Promise<void>;
+  handleMessages(messages: FBMessageEnvelope[]): Promise<void>;
   updateStatus(messagesStatus: MessageStatus[]): Promise<void>;
 }
 
@@ -18,10 +18,10 @@ class MessageService implements IMessageService {
     return Object.keys(this.msgCache).map((key) => Number(key));
   }
 
-  async handleMessages(messages: FBMessageEnvlope[]) {
+  async handleMessages(messages: FBMessageEnvelope[]) {
     const certificates = await fbServerApi.getCertificates();
     const decodedMessages: MessageEnvelop[] = messages
-      .map((messageEnvelope: FBMessageEnvlope) => {
+      .map((messageEnvelope: FBMessageEnvelope) => {
         const { message, msgId, type, payload } = decodeAndVerifyMessage(messageEnvelope, certificates);
         logger.info(`Got message id ${msgId} with type ${type}`);
         return { message, msgId, type, payload };
