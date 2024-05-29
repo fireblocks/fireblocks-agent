@@ -12,7 +12,7 @@ interface IMessageService {
 
 class MessageService implements IMessageService {
   private msgCache: { [msgId: number]: MessageStatus } = {};
-  private knownMessageTypes: TxType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_SIGNING_REQUEST'];
+  private knownMessageTypes: TxType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_SIGNING_REQUEST'];
 
   getPendingMessages(): number[] {
     return Object.keys(this.msgCache).map((key) => Number(key));

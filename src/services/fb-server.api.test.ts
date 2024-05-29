@@ -179,7 +179,7 @@ export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
     status: 'SIGNED',
     payload: JSON.stringify(messageBuilder.aMessage()),
     signedPayload: 'signed payload',
-    type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST',
+    type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
   };
 }
 export function aProofOfOwnershipFailedMessageStatus(): MessageStatus {
@@ -189,7 +189,7 @@ export function aProofOfOwnershipFailedMessageStatus(): MessageStatus {
     status: 'FAILED',
     payload: JSON.stringify(messageBuilder.aMessage()),
     errorMessage: 'tx not authorized',
-    type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST',
+    type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
   };
 }
 export const messageBuilder = {
@@ -200,7 +200,7 @@ export const messageBuilder = {
   ): FBMessageEnvelope => {
     const msg = shouldEncode
       ? jwt.sign(JSON.stringify(fbMsg || c.string()), 'MessageData')
-      : fbMsg || messageBuilder.fbMessage('EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', messageBuilder.aMessage());
+      : fbMsg || messageBuilder.fbMessage('KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', messageBuilder.aMessage());
     return {
       msg,
       msgId: c.natural(),

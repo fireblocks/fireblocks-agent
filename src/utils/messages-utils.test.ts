@@ -18,7 +18,7 @@ describe('Messages utils', () => {
 
     const expectedMessage: MessageEnvelop = {
       msgId: fbMessageEnvelope.msgId,
-      type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST',
+      type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
       message: internalMessage,
       payload: fbMessage.payload.payload,
     };
@@ -72,7 +72,7 @@ function aKeyPair(): KeyPair {
 function aFbProofOfOwnershipMessage(privateKey: string): FBMessage {
   const fbMsgPayload = aFbMessagePayload(privateKey);
   return {
-    type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST',
+    type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
     payload: fbMsgPayload,
   };
 }

@@ -27,7 +27,7 @@ const toMessage = (msgId: number, fbMessage: FBMessage): MessageEnvelop => {
     type: fbMessage.type,
   };
   switch (fbMessage.type) {
-    case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
+    case 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST': {
       const fbMsgPayload = fbMessage.payload;
       const parsedMessage = JSON.parse(fbMsgPayload.payload) as Message;
       return {
@@ -70,7 +70,7 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   const res: VerifyDetails[] = [];
 
   switch (fbMessage.type) {
-    case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
+    case 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST': {
       const fbMsgPayload = fbMessage.payload;
       const messageVerifier = KEY_TO_VERIFIER_MAP[fbMsgPayload.signatureData.service.toLowerCase()];
       const certificate = certMap[messageVerifier];

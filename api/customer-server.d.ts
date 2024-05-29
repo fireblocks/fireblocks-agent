@@ -14,6 +14,7 @@ export interface paths {
         };
       };
       responses: {
+        /** @description Messages Status */
         200: {
           content: {
             "application/json": components["schemas"]["MessagesStatusResponse"];
@@ -78,16 +79,18 @@ export interface components {
        * @enum {string}
        */
       status: "PENDING_SIGN" | "SIGNED" | "FAILED";
+      /** @example Transction 8c2b2b3d-fb83-497e-8138-72446b9184b6 failed due to insufficient funds */
       errorMessage?: string;
+      /** @example singed-tx-string */
       signedPayload?: string;
       /** @description Original message payload */
       payload: string;
     };
     /**
-     * @example EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST
+     * @example KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST
      * @enum {string}
      */
-    TxType: "EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST" | "EXTERNAL_KEY_SIGNING_REQUEST";
+    TxType: "KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST" | "EXTERNAL_KEY_SIGNING_REQUEST";
     /**
      * @description algorithm to sign with
      * @example ECDSA_SECP256K1
@@ -104,7 +107,10 @@ export interface components {
       timestamp: number;
       /** @example 1 */
       version: number;
-      /** Format: uuid */
+      /**
+       * Format: uuid
+       * @example 70721651-a7f3-42f6-a984-6e058269495f
+       */
       fbKeyId: string;
       /**
        * Format: uuid
