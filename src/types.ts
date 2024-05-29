@@ -13,7 +13,7 @@ export interface PairDeviceResponse {
   refreshToken: RefreshToken;
 }
 
-export interface AccessTokenReuest {
+export interface AccessTokenRequest {
   userId: GUID;
   deviceId: GUID;
   refreshToken: RefreshToken;

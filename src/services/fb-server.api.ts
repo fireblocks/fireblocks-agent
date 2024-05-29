@@ -2,7 +2,7 @@ import axios from 'axios';
 import fs from 'fs';
 import {
   AccessToken,
-  AccessTokenReuest,
+  AccessTokenRequest,
   CertificatesMap,
   FBMessageEnvlope,
   Message,
@@ -32,7 +32,7 @@ const fbServerApi = {
     }
   },
 
-  getAccessToken: async (accessTokenReq: AccessTokenReuest): Promise<AccessToken> => {
+  getAccessToken: async (accessTokenReq: AccessTokenRequest): Promise<AccessToken> => {
     try {
       const res = await axios.post(`${MOBILE_GATEWAY_URL}/access_token`, accessTokenReq);
       fs.writeFileSync(`accessToken.log`, JSON.stringify(res.data.accessToken));
