@@ -19,7 +19,7 @@ export interface AccessTokenRequest {
   refreshToken: RefreshToken;
 }
 
-export interface FBMessageEnvlope {
+export interface FBMessageEnvelope {
   msg: JWT | FBMessage;
   msgId: number;
   deviceId: GUID;

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { messageBuilder } from '../services/fb-server.api.test';
-import { FBMessage, FBMessageEnvlope, FBMessagePayload, Message, MessageEnvelop } from '../types';
+import { FBMessage, FBMessageEnvelope, FBMessagePayload, Message, MessageEnvelop } from '../types';
 import * as utils from './messages-utils';
 
 describe('Messages utils', () => {
@@ -95,7 +95,7 @@ function aFbMessagePayload(privateKey: string): FBMessagePayload {
   return innerMessage;
 }
 
-function buildASignedMessage(innerMessage: FBMessage, zsCertificate): FBMessageEnvlope {
+function buildASignedMessage(innerMessage: FBMessage, zsCertificate): FBMessageEnvelope {
   const jwtMessage = jwt.sign(JSON.stringify(innerMessage), zsCertificate);
   return {
     deviceId: 'some-device-id',

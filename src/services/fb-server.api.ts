@@ -4,7 +4,7 @@ import {
   AccessToken,
   AccessTokenRequest,
   CertificatesMap,
-  FBMessageEnvlope,
+  FBMessageEnvelope,
   Message,
   MessageStatus,
   PairDeviceRequest,
@@ -73,7 +73,7 @@ const fbServerApi = {
     }
   },
 
-  getMessages: async (): Promise<FBMessageEnvlope[]> => {
+  getMessages: async (): Promise<FBMessageEnvelope[]> => {
     try {
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
       const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, buildHeaders(accessToken));
