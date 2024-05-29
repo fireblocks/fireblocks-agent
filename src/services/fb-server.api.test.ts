@@ -29,7 +29,7 @@ describe('Server API', () => {
   });
 
   it('should pair device', async () => {
-    const pairDeviceReq = fbServerApiDriver.given.pairDeviceRequst();
+    const pairDeviceReq = fbServerApiDriver.given.pairDeviceRequest();
     const refreshToken = `some-valid-refresh-token`;
     fbServerApiDriver.mock.pairDevice(pairDeviceReq, refreshToken);
 
@@ -39,7 +39,7 @@ describe('Server API', () => {
   });
 
   it('should get access token', async () => {
-    const accessTokenReq = fbServerApiDriver.given.accessTokenRequst();
+    const accessTokenReq = fbServerApiDriver.given.accessTokenRequest();
     const accessToken = 'my-access-token';
     fbServerApiDriver.mock.accessToken(accessTokenReq, accessToken);
 
@@ -199,7 +199,7 @@ export const messageBuilder = {
     shouldEncode: boolean = true,
   ): FBMessageEnvelope => {
     const msg = shouldEncode
-      ? jwt.sign(JSON.stringify(fbMsg || c.string()), 'shhhhh')
+      ? jwt.sign(JSON.stringify(fbMsg || c.string()), 'MessageData')
       : fbMsg || messageBuilder.fbMessage('EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', messageBuilder.aMessage());
     return {
       msg,
@@ -256,7 +256,7 @@ export const fbServerApiDriver = {
   },
   reset: () => fbServerApiDriver.axiosMock().reset(),
   given: {
-    pairDeviceRequst: (): PairDeviceRequest => {
+    pairDeviceRequest: (): PairDeviceRequest => {
       return {
         userId: c.guid(),
         deviceId: c.guid(),
@@ -264,7 +264,7 @@ export const fbServerApiDriver = {
       };
     },
     accessToken: (): AccessToken => c.string(),
-    accessTokenRequst: (): AccessTokenRequest => {
+    accessTokenRequest: (): AccessTokenRequest => {
       return {
         userId: c.guid(),
         deviceId: c.guid(),
@@ -274,7 +274,7 @@ export const fbServerApiDriver = {
   },
   mock: {
     pairDevice: (pairDeviceReq?: Partial<PairDeviceRequest>, resultRefreshToken: string = c.string()) => {
-      const generatedReq = fbServerApiDriver.given.pairDeviceRequst();
+      const generatedReq = fbServerApiDriver.given.pairDeviceRequest();
       const pairRequest = {
         ...generatedReq,
         ...pairDeviceReq,
@@ -307,7 +307,7 @@ export const fbServerApiDriver = {
       fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/keylink_proof_of_ownership_response`, status).reply(200, response);
     },
     accessToken: (accessTokenReq?: Partial<AccessTokenRequest>, resultAccessToken: string = c.string()) => {
-      const generatedReq = fbServerApiDriver.given.accessTokenRequst();
+      const generatedReq = fbServerApiDriver.given.accessTokenRequest();
       const accessTokenRequest: AccessTokenRequest = {
         ...generatedReq,
         ...accessTokenReq,
