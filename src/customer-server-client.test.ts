@@ -30,7 +30,7 @@ describe('Customer server client', () => {
       };
     });
 
-    //set a reponse for an empty request
+    //set a response for an empty request
     await service.pullMessagesStatus();
     expect(customerServerApi.messagesStatus).toHaveBeenCalledTimes(1);
 
@@ -38,7 +38,7 @@ describe('Customer server client', () => {
     await jest.advanceTimersByTimeAsync(29 * 1000);
     expect(customerServerApi.messagesStatus).toHaveBeenCalledTimes(1);
 
-    //pass 30 secondss
+    //pass 30 seconds
     await jest.advanceTimersByTimeAsync(2000);
     expect(customerServerApi.messagesStatus).toHaveBeenCalledTimes(2);
   });

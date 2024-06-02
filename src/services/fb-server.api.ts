@@ -2,9 +2,9 @@ import axios from 'axios';
 import fs from 'fs';
 import {
   AccessToken,
-  AccessTokenReuest,
+  AccessTokenRequest,
   CertificatesMap,
-  FBMessageEnvlope,
+  FBMessageEnvelope,
   Message,
   MessageStatus,
   PairDeviceRequest,
@@ -32,7 +32,7 @@ const fbServerApi = {
     }
   },
 
-  getAccessToken: async (accessTokenReq: AccessTokenReuest): Promise<AccessToken> => {
+  getAccessToken: async (accessTokenReq: AccessTokenRequest): Promise<AccessToken> => {
     try {
       const res = await axios.post(`${MOBILE_GATEWAY_URL}/access_token`, accessTokenReq);
       fs.writeFileSync(`accessToken.log`, JSON.stringify(res.data.accessToken));
@@ -73,7 +73,7 @@ const fbServerApi = {
     }
   },
 
-  getMessages: async (): Promise<FBMessageEnvlope[]> => {
+  getMessages: async (): Promise<FBMessageEnvelope[]> => {
     try {
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
       const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, buildHeaders(accessToken));

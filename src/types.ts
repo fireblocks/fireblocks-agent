@@ -13,13 +13,13 @@ export interface PairDeviceResponse {
   refreshToken: RefreshToken;
 }
 
-export interface AccessTokenReuest {
+export interface AccessTokenRequest {
   userId: GUID;
   deviceId: GUID;
   refreshToken: RefreshToken;
 }
 
-export interface FBMessageEnvlope {
+export interface FBMessageEnvelope {
   msg: JWT | FBMessage;
   msgId: number;
   deviceId: GUID;
