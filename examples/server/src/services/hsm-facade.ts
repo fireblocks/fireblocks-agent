@@ -4,14 +4,43 @@ import * as pkcs11js from "pkcs11js";
 import { Algorithm } from '../types';
 import logger from './logger';
 
-export const SUPPORTED_ALGORITHMS = ['ECDSA_SECP256K1', 'EDDSA_ED25519'];
-
 // current pkcs11js  aligned with pkcs11 spec 2.40 which does not include EDDSA.
 // It is included in 3.0 which can be found https://docs.oasis-open.org/pkcs11/pkcs11-curr/v3.0/csprd01/pkcs11-curr-v3.0-csprd01.html#_Toc10560880
 // Assuming that the shared object and the hardware supports EDDSA
 const CKK_EC_EDWARDS = 0x00000040;
 const CKM_EDDSA = 0x00001057;
 const CKM_EC_EDWARDS_KEY_PAIR_GEN = 0x00001055
+
+interface PKCSAlgorithmInfo {
+    oid: Buffer;
+    type: number;
+    generateKeyMechanism: number;
+    signMechanism: number;
+    verifyMechanism: number;
+}
+
+const EcdsaSecp256k1Info: PKCSAlgorithmInfo = {
+    oid: Buffer.from("06052b8104000A", "hex"),
+    type: pkcs11js.CKK_EC,
+    generateKeyMechanism: pkcs11js.CKM_EC_KEY_PAIR_GEN,
+    signMechanism: pkcs11js.CKM_ECDSA,
+    verifyMechanism: pkcs11js.CKM_ECDSA,
+};
+
+const EddsaInfo: PKCSAlgorithmInfo = {
+    oid: Buffer.from("06032b6570", "hex"),
+    type: CKK_EC_EDWARDS,
+    generateKeyMechanism: CKM_EC_EDWARDS_KEY_PAIR_GEN,
+    signMechanism: CKM_EDDSA,
+    verifyMechanism: CKM_EDDSA,
+};
+
+const ALGORITHM_TO_INFO = new Map<string, PKCSAlgorithmInfo>([
+    ['ECDSA_SECP256K1', EcdsaSecp256k1Info],
+    ['EDDSA_ED25519', EddsaInfo],
+]);
+
+export const SUPPORTED_ALGORITHMS = Array.from(ALGORITHM_TO_INFO.keys());
 
 function hashSha256(inBuffer: Buffer): string {
     // Create a SHA-256 hash of the input string
@@ -170,38 +199,35 @@ class HSM implements HSMFacade {
 
     // generates ECDSA secp256k1 keypair. Should be adjusted to generate other key pairs
     async generateKeyPair(algorithm: string): Promise<{ keyId: string; pem: string }> {
-        //const secp256r1 = Buffer.from("06082A8648CE3D030107", "hex") //der encoded OID  1.2.840.10045.3.1.7 
+        if (!SUPPORTED_ALGORITHMS.includes(algorithm)) {
+            throw new Error(`Unsupported algorithm ${algorithm}`);
+        }
 
-        const ecParams = algorithm === "ECDSA_SECP256K1" ?
-            Buffer.from("06052b8104000A", "hex") : //der encoded  OID 1.3.132.0.10 
-            Buffer.from("06032b6570", "hex"); // OID for Ed25519
+        const algoInfo = ALGORITHM_TO_INFO[algorithm];
 
         try {
             const publicKeyTemplate = [
                 { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_PUBLIC_KEY },
-                { type: pkcs11js.CKA_KEY_TYPE, value: algorithm === "ECDSA_SECP256K1" ? pkcs11js.CKK_EC : CKK_EC_EDWARDS },
+                { type: pkcs11js.CKA_KEY_TYPE, value: algoInfo.type },
                 { type: pkcs11js.CKA_TOKEN, value: true }, //controls if the key is session scope or global
                 { type: pkcs11js.CKA_PRIVATE, value: false },
                 { type: pkcs11js.CKA_VERIFY, value: true },
-                { type: pkcs11js.CKA_EC_PARAMS, value: ecParams },
+                { type: pkcs11js.CKA_EC_PARAMS, value: algoInfo.oid },
             ];
 
             const privateKeyTemplate = [
                 { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_PRIVATE_KEY },
-                { type: pkcs11js.CKA_KEY_TYPE, value: algorithm === "ECDSA_SECP256K1" ? pkcs11js.CKK_EC : CKK_EC_EDWARDS },
+                { type: pkcs11js.CKA_KEY_TYPE, value: algoInfo.type },
                 { type: pkcs11js.CKA_PRIVATE, value: true },
                 { type: pkcs11js.CKA_TOKEN, value: true },//controls if the key is session scope or global
                 { type: pkcs11js.CKA_SIGN, value: true },
                 { type: pkcs11js.CKA_DERIVE, value: true },
             ];
 
-            // Use the appropriate mechanism for key pair generation
-            const mechanism = algorithm === "ECDSA_SECP256K1" ? pkcs11js.CKM_EC_KEY_PAIR_GEN : CKM_EC_EDWARDS_KEY_PAIR_GEN;
-
             //create a new key pair object
             const keys = this.pkcs11.C_GenerateKeyPair(
                 this.session,
-                { mechanism },
+                { mechanism: algoInfo.generateKeyMechanism },
                 publicKeyTemplate,
                 privateKeyTemplate
             );
@@ -298,12 +324,16 @@ class HSM implements HSMFacade {
 
     //implemented only for ECDSA
     async sign(keyId: string, payload: string, algorithm: string): Promise<string> {
+        if (!SUPPORTED_ALGORITHMS.includes(algorithm)) {
+            throw new Error(`Unsupported algorithm ${algorithm}`);
+        }
+
+        const { signMechanism: mechanism } = ALGORITHM_TO_INFO[algorithm];
+
         logger.info(`Request to sign with key ${keyId} payload: ${payload} algo: ${algorithm}`);
 
         // Find the private key by ID
         let provKeyObj = this.getPrivateKeyObject(keyId);
-
-        const mechanism = algorithm === "ECDSA_SECP256K1" ? pkcs11js.CKM_ECDSA : CKM_EDDSA;
 
         // Sign the payload. Algorithm is provided here and curve is defined on the private key attributes
         this.pkcs11.C_SignInit(this.session, { mechanism }, provKeyObj);
@@ -319,8 +349,13 @@ class HSM implements HSMFacade {
     //implemented only for ECDSA
     async verify(keyId: string, signature: string, payload: string, algorithm: string): Promise<boolean> {
         try {
+            if (!SUPPORTED_ALGORITHMS.includes(algorithm)) {
+                throw new Error(`Unsupported algorithm ${algorithm}`);
+            }
+
+            const { verifyMechanism: mechanism } = ALGORITHM_TO_INFO[algorithm];
+
             let provKeyObj = this.getPrivateKeyObject(keyId);
-            const mechanism = algorithm === "ECDSA_SECP256K1" ? pkcs11js.CKM_ECDSA : CKM_EDDSA;
             this.pkcs11.C_VerifyInit(this.session, { mechanism }, provKeyObj);
             const ok = this.pkcs11.C_Verify(this.session, Buffer.from(payload, 'hex'), Buffer.from(signature, 'hex'));
             logger.info(`Verified with key id ${keyId} is ${ok}`);
