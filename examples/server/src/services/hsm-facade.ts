@@ -199,105 +199,98 @@ class HSM implements HSMFacade {
 
     // generates ECDSA secp256k1 keypair. Should be adjusted to generate other key pairs
     async generateKeyPair(algorithm: string): Promise<{ keyId: string; pem: string }> {
-        if (!SUPPORTED_ALGORITHMS.includes(algorithm)) {
+        logger.info(`Request to generate ${algorithm} key pair`);
+
+        const algoInfo: PKCSAlgorithmInfo = ALGORITHM_TO_INFO.get(algorithm);
+        if (!SUPPORTED_ALGORITHMS.includes(algorithm) || algoInfo === undefined) {
             throw new Error(`Unsupported algorithm ${algorithm}`);
         }
 
-        const algoInfo = ALGORITHM_TO_INFO[algorithm];
+        const publicKeyTemplate = [
+            { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_PUBLIC_KEY },
+            { type: pkcs11js.CKA_KEY_TYPE, value: algoInfo.type },
+            { type: pkcs11js.CKA_TOKEN, value: true }, //controls if the key is session scope or global
+            { type: pkcs11js.CKA_PRIVATE, value: false },
+            { type: pkcs11js.CKA_VERIFY, value: true },
+            { type: pkcs11js.CKA_EC_PARAMS, value: algoInfo.oid },
+        ];
 
-        try {
-            const publicKeyTemplate = [
-                { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_PUBLIC_KEY },
-                { type: pkcs11js.CKA_KEY_TYPE, value: algoInfo.type },
-                { type: pkcs11js.CKA_TOKEN, value: true }, //controls if the key is session scope or global
-                { type: pkcs11js.CKA_PRIVATE, value: false },
-                { type: pkcs11js.CKA_VERIFY, value: true },
-                { type: pkcs11js.CKA_EC_PARAMS, value: algoInfo.oid },
-            ];
+        const privateKeyTemplate = [
+            { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_PRIVATE_KEY },
+            { type: pkcs11js.CKA_KEY_TYPE, value: algoInfo.type },
+            { type: pkcs11js.CKA_PRIVATE, value: true },
+            { type: pkcs11js.CKA_TOKEN, value: true },//controls if the key is session scope or global
+            { type: pkcs11js.CKA_SIGN, value: true },
+            { type: pkcs11js.CKA_DERIVE, value: true },
+        ];
 
-            const privateKeyTemplate = [
-                { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_PRIVATE_KEY },
-                { type: pkcs11js.CKA_KEY_TYPE, value: algoInfo.type },
-                { type: pkcs11js.CKA_PRIVATE, value: true },
-                { type: pkcs11js.CKA_TOKEN, value: true },//controls if the key is session scope or global
-                { type: pkcs11js.CKA_SIGN, value: true },
-                { type: pkcs11js.CKA_DERIVE, value: true },
-            ];
+        //create a new key pair object
+        const keys = this.pkcs11.C_GenerateKeyPair(
+            this.session,
+            { mechanism: algoInfo.generateKeyMechanism },
+            publicKeyTemplate,
+            privateKeyTemplate
+        );
 
-            //create a new key pair object
-            const keys = this.pkcs11.C_GenerateKeyPair(
-                this.session,
-                { mechanism: algoInfo.generateKeyMechanism },
-                publicKeyTemplate,
-                privateKeyTemplate
-            );
+        //retrieve public key
+        const attrs = this.pkcs11.C_GetAttributeValue(this.session, keys.publicKey, [{ type: pkcs11js.CKA_EC_POINT }])
 
-            //retrieve public key
-            const attrs = this.pkcs11.C_GetAttributeValue(this.session, keys.publicKey, [{ type: pkcs11js.CKA_EC_POINT }])
+        if (!(attrs[0].value instanceof Buffer)) {
+            throw new Error("ec is not buffer");
+        }
 
-            if (!(attrs[0].value instanceof Buffer)) {
-                throw new Error("ec is not buffer");
-            }
+        //convert der encoded public key into hex buffer containing EC (X, Y) coordinates
+        const ec = attrs[0].value;
+        const ecpt = this.decodeASN1Data(ec);
 
-            //convert der encoded public key into hex buffer containing EC (X, Y) coordinates
-            const ec = attrs[0].value;
-            const ecpt = this.decodeASN1Data(ec);
+        logger.info(`ec=${ec.toString('hex')}, ecpt=${ecpt.toString('hex')}}`);
 
-            logger.info(`ec=${ec.toString('hex')}, ecpt=${ecpt.toString('hex')}}`);
+        //generate key id based on public key
+        const keyId: string = hashSha256(ecpt);
+        const ski = Buffer.from(keyId, 'hex');
+        logger.debug('ski=' + ski.toString('hex'));
 
-            //generate key id based on public key
-            const keyId: string = hashSha256(ecpt);
-            const ski = Buffer.from(keyId, 'hex');
-            logger.debug('ski=' + ski.toString('hex'));
+        //define key id and label based on the public key
+        this.pkcs11.C_SetAttributeValue(
+            this.session,
+            keys.publicKey,
+            [
+                { type: pkcs11js.CKA_ID, value: ski }, //this is bytes buffer
+                { type: pkcs11js.CKA_LABEL, value: ski.toString('hex') }  //and this is a hex string
+            ]
+        );
 
-            //define key id and label based on the public key
-            this.pkcs11.C_SetAttributeValue(
+        // same id and label for private key as for public key
+        this.pkcs11.C_SetAttributeValue(
+            this.session,
+            keys.privateKey,
+            [
+                { type: pkcs11js.CKA_ID, value: ski },
+                { type: pkcs11js.CKA_LABEL, value: ski.toString('hex') }
+            ]
+        );
+
+        logger.debug('pub  CKA_ID: ' + JSON.stringify(
+            (this.pkcs11.C_GetAttributeValue(
                 this.session,
                 keys.publicKey,
-                [
-                    { type: pkcs11js.CKA_ID, value: ski }, //this is bytes buffer
-                    { type: pkcs11js.CKA_LABEL, value: ski.toString('hex') }  //and this is a hex string
-                ]
-            );
+                [{ type: pkcs11js.CKA_ID }]))[0].value)
+        );
 
-            // same id and label for private key as for public key
-            this.pkcs11.C_SetAttributeValue(
+        logger.debug('pub  CKA_LABEL: ' + JSON.stringify(
+            (this.pkcs11.C_GetAttributeValue(
                 this.session,
-                keys.privateKey,
-                [
-                    { type: pkcs11js.CKA_ID, value: ski },
-                    { type: pkcs11js.CKA_LABEL, value: ski.toString('hex') }
-                ]
-            );
-
-            logger.debug('pub  CKA_ID: ' + JSON.stringify(
-                (this.pkcs11.C_GetAttributeValue(
-                    this.session,
-                    keys.publicKey,
-                    [{ type: pkcs11js.CKA_ID }]))[0].value)
-            );
-
-            logger.debug('pub  CKA_LABEL: ' + JSON.stringify(
-                (this.pkcs11.C_GetAttributeValue(
-                    this.session,
-                    keys.publicKey,
-                    [{ type: pkcs11js.CKA_LABEL }]))[0].value)
-            );
+                keys.publicKey,
+                [{ type: pkcs11js.CKA_LABEL }]))[0].value)
+        );
 
 
-            //PEM encode pure public key. The result contains key and the curve type.
-            const pem = this.pemEncode(ecpt, algorithm);
+        //PEM encode pure public key. The result contains key and the curve type.
+        const pem = this.pemEncode(ecpt, algorithm);
 
-            logger.info('Generated Key ' + keyId + ', pub key: ' + ec.toString('hex') + ', Pem encoded: ' + pem);
+        logger.info('Generated Key ' + keyId + ', pub key: ' + ec.toString('hex') + ', Pem encoded: ' + pem);
 
-            return { keyId, pem }
-        }
-        catch (error) {
-            //consider how to handle error in the client
-            console.error("An error occurred:", error);
-
-            return { keyId: "", pem: "" };
-        }
+        return { keyId, pem }
     }
 
     private getPrivateKeyObject(keyId: string) {
@@ -324,13 +317,14 @@ class HSM implements HSMFacade {
 
     //implemented only for ECDSA
     async sign(keyId: string, payload: string, algorithm: string): Promise<string> {
-        if (!SUPPORTED_ALGORITHMS.includes(algorithm)) {
+        logger.info(`Request to sign with key ${keyId} payload: ${payload} algo: ${algorithm}`);
+
+        const algoInfo: PKCSAlgorithmInfo = ALGORITHM_TO_INFO.get(algorithm);
+        if (!SUPPORTED_ALGORITHMS.includes(algorithm) || algoInfo === undefined) {
             throw new Error(`Unsupported algorithm ${algorithm}`);
         }
 
-        const { signMechanism: mechanism } = ALGORITHM_TO_INFO[algorithm];
-
-        logger.info(`Request to sign with key ${keyId} payload: ${payload} algo: ${algorithm}`);
+        const { signMechanism: mechanism } = algoInfo;
 
         // Find the private key by ID
         let provKeyObj = this.getPrivateKeyObject(keyId);
@@ -348,25 +342,21 @@ class HSM implements HSMFacade {
 
     //implemented only for ECDSA
     async verify(keyId: string, signature: string, payload: string, algorithm: string): Promise<boolean> {
-        try {
-            if (!SUPPORTED_ALGORITHMS.includes(algorithm)) {
-                throw new Error(`Unsupported algorithm ${algorithm}`);
-            }
+        logger.info(`Request to verify with key ${keyId} payload: ${payload} signature: ${signature} algo: ${algorithm}`);
 
-            const { verifyMechanism: mechanism } = ALGORITHM_TO_INFO[algorithm];
-
-            let provKeyObj = this.getPrivateKeyObject(keyId);
-            this.pkcs11.C_VerifyInit(this.session, { mechanism }, provKeyObj);
-            const ok = this.pkcs11.C_Verify(this.session, Buffer.from(payload, 'hex'), Buffer.from(signature, 'hex'));
-            logger.info(`Verified with key id ${keyId} is ${ok}`);
-
-            return ok;
+        const algoInfo: PKCSAlgorithmInfo = ALGORITHM_TO_INFO.get(algorithm);
+        if (!SUPPORTED_ALGORITHMS.includes(algorithm) || algoInfo === undefined) {
+            throw new Error(`Unsupported algorithm ${algorithm}`);
         }
-        catch (error) {
-            console.error("An error occurred:", error);
 
-            return false;
-        }
+        const { verifyMechanism: mechanism } = algoInfo;
+
+        let provKeyObj = this.getPrivateKeyObject(keyId);
+        this.pkcs11.C_VerifyInit(this.session, { mechanism }, provKeyObj);
+        const ok = this.pkcs11.C_Verify(this.session, Buffer.from(payload, 'hex'), Buffer.from(signature, 'hex'));
+        logger.info(`Verified with key id ${keyId} is ${ok}`);
+
+        return ok;
     }
 }
 
