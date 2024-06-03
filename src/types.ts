@@ -26,54 +26,21 @@ export interface FBMessageEnvelope {
   internalMessageId: GUID;
 }
 
-export type ProofOfOwnershipPayloadStringify = string;
-export type SignatureId = 'configuration_manager' | 'zs';
-
-export type MessageStringify = string;
-export interface FBMessagePayload {
-  payload: MessageStringify;
-  signatureData: {
-    service: string;
-    signature: string;
-  };
-}
-
 export interface FBMessage {
-  type: TxType;
+  type: RequestType;
   payload: FBMessagePayload;
 }
-
-export interface MPCPayload {
-  phase: TxType;
-  tenantId: GUID;
-  txId: GUID;
-  keyId: GUID;
-  payload: string;
-  algorithm: number;
-  metadata: TransactionMetadata;
-  userAccessToken: string;
-}
-
-export type Message = components['schemas']['Message'];
-export type Algorithm = components['schemas']['Algorithm'];
-export type TxType = components['schemas']['TxType'];
 
 export interface PairingToken {
   userId: GUID;
 }
 
-export interface TransactionMetadata {
-  signInfo: Array<{ path: number[]; payload: string }>;
-  chaincode: string;
-  txMetaData: string;
-  txMetaDataSignatures: {
-    id: string;
-    type: string;
-    signature: string;
-  }[];
-}
-
 export type CertificatesMap = { [service: string]: string };
 
+export type RequestType = components['schemas']['RequestType'];
+export type ResponseType = components['schemas']['ResponseType'];
+export type FBMessagePayload = components['schemas']['Message'];
 export type MessageStatus = components['schemas']['MessageStatus'];
 export type MessageEnvelop = components['schemas']['MessageEnvelope'];
+export type MessagePayload = components['schemas']['MessagePayload'];
+export type TransportMetadata = components['schemas']['TransportMetadata'];
