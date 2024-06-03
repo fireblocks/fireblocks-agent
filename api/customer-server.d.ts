@@ -58,74 +58,119 @@ export interface components {
     MessagesRequest: {
       messages: components["schemas"]["MessageEnvelope"][];
     };
+    /** @description Contains the message and transportMetadata necessary for internal Fireblocks operations. */
     MessageEnvelope: {
-      /** @example 425878000014 */
-      msgId: number;
-      type: components["schemas"]["TxType"];
       message: components["schemas"]["Message"];
+      transportMetadata: components["schemas"]["TransportMetadata"];
+    };
+    /** @description Metadata necessary for internal Fireblocks operations. */
+    TransportMetadata: {
+      msgId: number;
+      deviceId: string;
+      internalMessageId: string;
+      type: components["schemas"]["RequestType"];
+    };
+    Message: {
+      payloadSignatureData: components["schemas"]["PayloadSignatureData"];
       /**
-       * Format: string
-       * @description Original message payload
+       * @description Stringified JSON that holds the message payload. Parsed object will be of type '#/components/schemas/MessagePayload'
+       * @example { "type": "KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST", "tenantId": "ea7d0d9a-6a10-4288-9b91-da8fb0b149f2" }
        */
       payload: string;
     };
+    PayloadSignatureData: {
+      /** @example 0x */
+      signature: string;
+      /** @example signing_service */
+      service: string;
+    };
+    MessagePayload: {
+      /**
+       * Format: uuid
+       * @description The identifier of customer's Fireblocks tenant/workspace
+       * @example ea7d0d9a-6a10-4288-9b91-da8fb0b149f2
+       */
+      tenantId: string;
+      type: components["schemas"]["RequestType"];
+      algorithm: components["schemas"]["Algorithm"];
+      /**
+       * @description The identifier of the signing key on the customer's servers
+       * @example 70721651-a7f3-42f6-a984-6e058269495f
+       */
+      signingDeviceKeyId: string;
+      /**
+       * Format: uuid
+       * @description The identifier of the signing key on Fireblocks
+       * @example 70721651-a7f3-42f6-a984-6e058269495f
+       */
+      keyId: string;
+      /** @description An array including the messages to be signed */
+      messagesToSign: components["schemas"]["MessageToSign"][];
+      /**
+       * Format: uuid
+       * @description The unique request ID used exclusively for Proof of Ownership requests.
+       * @example b015f35e-5d44-4d68-a0df-a1c625255abc
+       */
+      requestId?: string;
+      /**
+       * Format: uuid
+       * @description The unique transaction ID used exclusively for transaction signing requests.
+       * @example 8c2b2b3d-fb83-497e-8138-72446b9184b6
+       */
+      txId?: string;
+      /** @example 1704122262 */
+      timestamp?: number;
+      /** @example 1.0.0 */
+      version?: string;
+      /** @description The metadata provides comprehensive information about the transaction, policy outcomes, and other pertinent details. */
+      metadata?: Record<string, never>;
+    };
+    /** @description A message that needs to be signed by the customer's key. */
+    MessageToSign: {
+      /** @description The message to be signed. */
+      message: string;
+      /** @description The index of the message. */
+      index: number;
+    };
     MessageStatus: {
-      type: components["schemas"]["TxType"];
-      /** @example 425878000014 */
-      msgId: number;
-      requestId: string;
+      type: components["schemas"]["ResponseType"];
       /**
        * @example SIGNED
        * @enum {string}
        */
       status: "PENDING_SIGN" | "SIGNED" | "FAILED";
-      /** @example Transction 8c2b2b3d-fb83-497e-8138-72446b9184b6 failed due to insufficient funds */
+      request: components["schemas"]["MessageEnvelope"];
+      response: components["schemas"]["MessageResponse"];
+    };
+    MessageResponse: {
+      signedMessages?: components["schemas"]["SignedMessage"][];
+      /** @example Error signing the request. */
       errorMessage?: string;
-      /** @example singed-tx-string */
-      signedPayload?: string;
-      /** @description Original message payload */
-      payload: string;
+    };
+    SignedMessage: {
+      message: string;
+      index: number;
+      /** @example 0x */
+      signature: string;
     };
     /**
-     * @example EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST
+     * @description The type of the message.
+     * @example KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST
      * @enum {string}
      */
-    TxType: "EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST" | "EXTERNAL_KEY_SIGNING_REQUEST";
+    RequestType: "EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST" | "KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST";
     /**
-     * @description algorithm to sign with
+     * @description Indicates the type of message for which the status is provided.
+     * @example KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE
+     * @enum {string}
+     */
+    ResponseType: "EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE" | "KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE";
+    /**
+     * @description The cryptographic algorithm used for signing.
      * @example ECDSA_SECP256K1
      * @enum {string}
      */
     Algorithm: "ECDSA_SECP256K1" | "EDDSA_ED25519";
-    Message: {
-      /**
-       * Format: uuid
-       * @example ea7d0d9a-6a10-4288-9b91-da8fb0b149f2
-       */
-      tenantId: string;
-      /** @example 1704122262 */
-      timestamp: number;
-      /** @example 1 */
-      version: number;
-      /**
-       * Format: uuid
-       * @example 70721651-a7f3-42f6-a984-6e058269495f
-       */
-      fbKeyId: string;
-      /**
-       * Format: uuid
-       * @example b015f35e-5d44-4d68-a0df-a1c625255abc
-       */
-      requestId: string;
-      /** @example 70721651-a7f3-42f6-a984-6e058269495f */
-      signingDeviceKeyId: string;
-      algorithm: components["schemas"]["Algorithm"];
-      /**
-       * @description The string to sign
-       * @example 3de97a18822d06fd19bea82522917c634c134a13ace2b887cf12e37dfd343d30
-       */
-      data: string;
-    };
     Error: {
       message: string;
     };
