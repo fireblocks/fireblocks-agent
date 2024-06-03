@@ -13,6 +13,7 @@ interface IMessageService {
 class MessageService implements IMessageService {
   private msgCache: { [msgId: number]: MessageStatus } = {};
   private knownMessageTypes: RequestType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'];
+  private deprecatedMessageTypes: RequestType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST'];
   private requestTypeToResponseType = new Map<RequestType, ResponseType>([
     ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE'],
     ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE'],
@@ -32,9 +33,31 @@ class MessageService implements IMessageService {
       })
       .filter((_) => this.knownMessageTypes.includes(_.transportMetadata.type));
 
-    if (!!decodedMessages.length) {
-      const msgStatuses = await customerServerApi.messagesToSign(decodedMessages);
+    const deprecatedMessages: MessageEnvelop[] = [];
+    const messagesToHandle: MessageEnvelop[] = [];
+    decodedMessages.forEach((decodedMessage) => {
+      if (this.deprecatedMessageTypes.includes(decodedMessage.transportMetadata.type)) {
+        deprecatedMessages.push(decodedMessage);
+      } else {
+        messagesToHandle.push(decodedMessage);
+      }
+    });
+
+    if (!!messagesToHandle.length) {
+      const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle);
       await this.updateStatus(msgStatuses);
+    }
+
+    if (!!deprecatedMessages.length) {
+      const errorStatuses = deprecatedMessages.map((msg): MessageStatus => ({
+        type: this.requestTypeToResponseType.get(msg.transportMetadata.type),
+        status: 'FAILED',
+        request: msg,
+        response: {
+          errorMessage: 'Deprecated message type',
+        },
+      }));
+      await this.updateStatus(errorStatuses);
     }
   }
 
