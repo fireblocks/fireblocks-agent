@@ -58,6 +58,36 @@ describe('Messages utils', () => {
 
     expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Message signature is invalid"');
   });
+
+  it('should not verify a proof of ownership message without version', () => {
+    const { privateKey, publicKey } = aKeyPair();
+    const certificates = {
+      zs: 'my-zs-secret',
+      vs: publicKey,
+    };
+    const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
+    const fbMessage = aFbMessagePayload(privateKey, type);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+
+    const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Unsupported message version"');
+  });
+
+  it('should not verify a proof of ownership message with unsupported version', () => {
+    const { privateKey, publicKey } = aKeyPair();
+    const certificates = {
+      zs: 'my-zs-secret',
+      vs: publicKey,
+    };
+    const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
+    const fbMessage = aFbMessagePayload(privateKey, type, { version: "0.0.0" });
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+
+    const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Unsupported message version"');
+  });
 });
 
 interface KeyPair {
