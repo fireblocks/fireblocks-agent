@@ -68,19 +68,6 @@ class HSM implements HSMFacade {
         this.pkcs11.C_Finalize();
     }
 
-    // the public key value which is received from HSM is DER encoded (octet string)
-    // this is a dirty fix to decoder der
-    // private fixEcpt(ecpt: Buffer): Buffer {
-    //     if ((ecpt.length & 1) === 0 &&
-    //         (ecpt[0] === 0x04) && (ecpt[ecpt.length - 1] === 0x04)) {
-    //         ecpt = ecpt.slice(0, ecpt.length - 1);
-    //     } else if (ecpt[0] === 0x04 && ecpt[2] === 0x04) {
-    //         ecpt = ecpt.slice(2);
-    //     }
-    //     return ecpt;
-    // }
-
-    // And this is a more elegant way, but requires use of the ASN1 external library
     private decodeASN1Data(buffer: Buffer): Buffer {
 
         // Attempt to decode the buffer using the defined ASN.1 structure
@@ -98,9 +85,7 @@ class HSM implements HSMFacade {
         }
     }
 
-    // this function DER encodes public key and than encodes it again as PEM
-    // This works only for ECDSA, but a simple change can be made to support other protocols 
-    private pemEncode(publicPoint: Buffer, algorithm: string) {
+    private derEncodeEcdsaPublicKey(publicPoint: Buffer) {
         // Define an ASN.1 structure for the ECDSA public key
         const ECPublicKeyASN = asn1.define('ECPublicKey', function () {
             this.seq().obj(
@@ -112,6 +97,21 @@ class HSM implements HSMFacade {
             );
         });
 
+        const secp256k1Oid = [1, 3, 132, 0, 10];
+
+        return ECPublicKeyASN.encode({
+            algorithm: {
+                id: [1, 2, 840, 10045, 2, 1],
+                curve: secp256k1Oid
+            },
+            pubKey: {
+                data: publicPoint,
+                unused: 0
+            }
+        }, 'der');
+    }
+
+    private derEncodeEddsaPublicKey(publicPoint: Buffer) {
         // Define an ASN.1 structure for the EDDSA public key
         const EdDSAPublicKeyASN = asn1.define('EdDSAPublicKey', function () {
             this.seq().obj(
@@ -122,34 +122,26 @@ class HSM implements HSMFacade {
             );
         });
 
+        const ed25519Oid = [1, 3, 101, 112];
+
+        return EdDSAPublicKeyASN.encode({
+            algorithm: {
+                id: ed25519Oid
+            },
+            pubKey: {
+                data: publicPoint,
+                unused: 0
+            }
+        }, 'der');
+    }
+
+    // this function DER encodes public key and than encodes it again as PEM
+    private pemEncode(publicPoint: Buffer, algorithm: string) {
         let derEncodedPublicKey: Buffer;
         if (algorithm === "ECDSA_SECP256K1") {
-            // Specify the curve OID for secp256r1
-            //const secp256r1Oid = [1, 2, 840, 10045, 3, 1, 7]; // OID for secp256r1
-
-            const secp256k1Oid = [1, 3, 132, 0, 10]; // OID for secp256k1
-
-            derEncodedPublicKey = ECPublicKeyASN.encode({
-                algorithm: {
-                    id: [1, 2, 840, 10045, 2, 1],
-                    curve: secp256k1Oid
-                },
-                pubKey: {
-                    data: publicPoint,
-                    unused: 0
-                }
-            }, 'der');
+            derEncodedPublicKey = this.derEncodeEcdsaPublicKey(publicPoint);
         } else if (algorithm === "EDDSA_ED25519") {
-            const ed25519Oid = [1, 3, 101, 112];
-            derEncodedPublicKey = EdDSAPublicKeyASN.encode({
-                algorithm: {
-                    id: ed25519Oid
-                },
-                pubKey: {
-                    data: publicPoint,
-                    unused: 0
-                }
-            }, 'der');
+            derEncodedPublicKey = this.derEncodeEddsaPublicKey(publicPoint);
         } else {
             throw new Error(`Unsupported algorithm ${algorithm}`);
         }
@@ -233,14 +225,14 @@ class HSM implements HSMFacade {
             ]
         );
 
-        logger.debug('pub  CKA_ID: ' + JSON.stringify(
+        logger.debug('pub CKA_ID: ' + JSON.stringify(
             (this.pkcs11.C_GetAttributeValue(
                 this.session,
                 keys.publicKey,
                 [{ type: pkcs11js.CKA_ID }]))[0].value)
         );
 
-        logger.debug('pub  CKA_LABEL: ' + JSON.stringify(
+        logger.debug('pub CKA_LABEL: ' + JSON.stringify(
             (this.pkcs11.C_GetAttributeValue(
                 this.session,
                 keys.publicKey,
