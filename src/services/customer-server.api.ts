@@ -4,7 +4,7 @@ import { components, paths } from '../../api/customer-server';
 import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants';
 import logger from './logger';
 const customerServerApi = {
-  messagesToSign: async (messages: MessageEnvlope[]): Promise<MessageStatus[]> => {
+  messagesToSign: async (messages: MessageEnvelope[]): Promise<MessageStatus[]> => {
     fs.writeFileSync(`messages_to_sign.json`, JSON.stringify(messages)); //TODO: delete
     try {
       const res = await axios.post(
@@ -21,9 +21,9 @@ const customerServerApi = {
     }
   },
 
-  messagesStatus: async (pendingMessasges: MessagesStatusRequest): Promise<MessagesStatusResponse> => {
+  messagesStatus: async (pendingMessages: MessagesStatusRequest): Promise<MessagesStatusResponse> => {
     try {
-      const res = await axios.post(`${CUSTOMER_SERVER_URL}/messagesStatus`, pendingMessasges, {
+      const res = await axios.post(`${CUSTOMER_SERVER_URL}/messagesStatus`, pendingMessages, {
         headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
       });
       return res.data;
@@ -41,6 +41,6 @@ export type MessagesStatusRequest = paths['/messagesStatus']['post']['requestBod
 export type MessagesStatusResponse = paths['/messagesStatus']['post']['responses'][200]['content']['application/json'];
 
 export type MessageStatus = components['schemas']['MessageStatus'];
-type MessageEnvlope = components['schemas']['MessageEnvelope'];
+type MessageEnvelope = components['schemas']['MessageEnvelope'];
 
 export default customerServerApi;
