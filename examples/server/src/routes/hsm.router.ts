@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import hsm, { SUPPORTED_ALGORITHMS } from '../services/hsm-facade';
+import { SUPPORTED_ALGORITHMS } from '../services/algorithm-info';
+import hsm from '../services/hsm-facade';
 import logger from '../services/logger';
 const hsmRouter = Router();
 

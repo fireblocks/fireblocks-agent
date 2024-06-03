@@ -1,6 +1,7 @@
 import * as messagesDao from '../dao/messages.dao';
 import { getMessages } from '../dao/messages.dao';
-import hsmFacade, { SUPPORTED_ALGORITHMS } from './hsm-facade';
+import { SUPPORTED_ALGORITHMS } from './algorithm-info';
+import hsmFacade from './hsm-facade';
 import logger from './logger';
 
 export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {

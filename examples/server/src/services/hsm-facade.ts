@@ -2,45 +2,8 @@ import * as asn1 from 'asn1.js';
 import { createHash } from 'crypto';
 import * as pkcs11js from "pkcs11js";
 import { Algorithm } from '../types';
+import { ALGORITHMS_INFO, PKCSAlgorithmInfo, SUPPORTED_ALGORITHMS } from './algorithm-info';
 import logger from './logger';
-
-// current pkcs11js  aligned with pkcs11 spec 2.40 which does not include EDDSA.
-// It is included in 3.0 which can be found https://docs.oasis-open.org/pkcs11/pkcs11-curr/v3.0/csprd01/pkcs11-curr-v3.0-csprd01.html#_Toc10560880
-// Assuming that the shared object and the hardware supports EDDSA
-const CKK_EC_EDWARDS = 0x00000040;
-const CKM_EDDSA = 0x00001057;
-const CKM_EC_EDWARDS_KEY_PAIR_GEN = 0x00001055
-
-interface PKCSAlgorithmInfo {
-    oid: Buffer;
-    type: number;
-    generateKeyMechanism: number;
-    signMechanism: number;
-    verifyMechanism: number;
-}
-
-const EcdsaSecp256k1Info: PKCSAlgorithmInfo = {
-    oid: Buffer.from("06052b8104000A", "hex"),
-    type: pkcs11js.CKK_EC,
-    generateKeyMechanism: pkcs11js.CKM_EC_KEY_PAIR_GEN,
-    signMechanism: pkcs11js.CKM_ECDSA,
-    verifyMechanism: pkcs11js.CKM_ECDSA,
-};
-
-const EddsaInfo: PKCSAlgorithmInfo = {
-    oid: Buffer.from("06032b6570", "hex"),
-    type: CKK_EC_EDWARDS,
-    generateKeyMechanism: CKM_EC_EDWARDS_KEY_PAIR_GEN,
-    signMechanism: CKM_EDDSA,
-    verifyMechanism: CKM_EDDSA,
-};
-
-const ALGORITHM_TO_INFO = new Map<string, PKCSAlgorithmInfo>([
-    ['ECDSA_SECP256K1', EcdsaSecp256k1Info],
-    ['EDDSA_ED25519', EddsaInfo],
-]);
-
-export const SUPPORTED_ALGORITHMS = Array.from(ALGORITHM_TO_INFO.keys());
 
 function hashSha256(inBuffer: Buffer): string {
     // Create a SHA-256 hash of the input string
@@ -201,7 +164,7 @@ class HSM implements HSMFacade {
     async generateKeyPair(algorithm: string): Promise<{ keyId: string; pem: string }> {
         logger.info(`Request to generate ${algorithm} key pair`);
 
-        const algoInfo: PKCSAlgorithmInfo = ALGORITHM_TO_INFO.get(algorithm);
+        const algoInfo: PKCSAlgorithmInfo = ALGORITHMS_INFO.get(algorithm);
         if (!SUPPORTED_ALGORITHMS.includes(algorithm) || algoInfo === undefined) {
             throw new Error(`Unsupported algorithm ${algorithm}`);
         }
@@ -319,7 +282,7 @@ class HSM implements HSMFacade {
     async sign(keyId: string, payload: string, algorithm: string): Promise<string> {
         logger.info(`Request to sign with key ${keyId} payload: ${payload} algo: ${algorithm}`);
 
-        const algoInfo: PKCSAlgorithmInfo = ALGORITHM_TO_INFO.get(algorithm);
+        const algoInfo: PKCSAlgorithmInfo = ALGORITHMS_INFO.get(algorithm);
         if (!SUPPORTED_ALGORITHMS.includes(algorithm) || algoInfo === undefined) {
             throw new Error(`Unsupported algorithm ${algorithm}`);
         }
@@ -344,7 +307,7 @@ class HSM implements HSMFacade {
     async verify(keyId: string, signature: string, payload: string, algorithm: string): Promise<boolean> {
         logger.info(`Request to verify with key ${keyId} payload: ${payload} signature: ${signature} algo: ${algorithm}`);
 
-        const algoInfo: PKCSAlgorithmInfo = ALGORITHM_TO_INFO.get(algorithm);
+        const algoInfo: PKCSAlgorithmInfo = ALGORITHMS_INFO.get(algorithm);
         if (!SUPPORTED_ALGORITHMS.includes(algorithm) || algoInfo === undefined) {
             throw new Error(`Unsupported algorithm ${algorithm}`);
         }
