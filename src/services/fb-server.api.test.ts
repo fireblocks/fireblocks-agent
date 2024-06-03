@@ -11,11 +11,11 @@ import {
   FBMessage,
   FBMessageEnvelope,
   FBMessagePayload,
-  Message,
   MessageEnvelop,
+  MessagePayload,
   MessageStatus,
   PairDeviceRequest,
-  TxType,
+  RequestType
 } from '../types';
 import deviceService from './device.service';
 import { deviceDriver } from './device.service.test';
@@ -52,7 +52,7 @@ describe('Server API', () => {
     const accessToken = fbServerApiDriver.given.accessToken();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
-    const someMessages = [messageBuilder.fbMsgEnvelope()];
+    const someMessages = [messageBuilder.fbProofOfOwnershipMsgEnvelope()];
     fbServerApiDriver.mock.accessToken(deviceData, accessToken);
     fbServerApiDriver.mock.messages(accessToken, someMessages);
 
@@ -65,7 +65,7 @@ describe('Server API', () => {
     const accessToken = fbServerApiDriver.given.accessToken();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
-    const someMessage = messageBuilder.fbMsgEnvelope();
+    const someMessage = messageBuilder.fbProofOfOwnershipMsgEnvelope();
     fbServerApiDriver.mock.accessToken(deviceData, accessToken);
     fbServerApiDriver.mock.messages(accessToken, someMessage);
 
@@ -109,7 +109,7 @@ describe('Server API', () => {
 
   it('should ack message', async () => {
     const accessToken = fbServerApiDriver.given.accessToken();
-    const aMessage = messageBuilder.fbMsgEnvelope({ msgId: c.natural() });
+    const aMessage = messageBuilder.fbProofOfOwnershipMsgEnvelope({ msgId: c.natural() });
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
     fbServerApiDriver.mock.accessToken(deviceData, accessToken);
@@ -129,12 +129,10 @@ describe('Server API', () => {
     fbServerApiDriver.mock.accessToken(deviceData, accessToken);
 
     const expectedRequestObject = {
-      type: `${signedMessageStatus.type.replace('_REQUEST', '_RESPONSE')}`,
+      type: signedMessageStatus.type,
       status: signedMessageStatus.status,
-      payload: {
-        payload: JSON.parse(signedMessageStatus.payload),
-        signedPayload: signedMessageStatus.signedPayload,
-      },
+      request: JSON.parse(signedMessageStatus.request.message.payload),
+      response: signedMessageStatus.response,
     };
 
     fbServerApiDriver.mock.broadcast_proof_of_ownership(accessToken, expectedRequestObject, 'ok');
@@ -152,12 +150,10 @@ describe('Server API', () => {
     fbServerApiDriver.mock.accessToken(deviceData, accessToken);
 
     const expectedRequestObject = {
-      type: `${signedMessageStatus.type.replace('_REQUEST', '_RESPONSE')}`,
+      type: signedMessageStatus.type,
       status: signedMessageStatus.status,
-      payload: {
-        payload: JSON.parse(signedMessageStatus.payload),
-        errorMessage: signedMessageStatus.errorMessage,
-      },
+      request: JSON.parse(signedMessageStatus.request.message.payload),
+      response: signedMessageStatus.response,
     };
 
     fbServerApiDriver.mock.broadcast_proof_of_ownership(accessToken, expectedRequestObject, 'ok');
@@ -173,34 +169,71 @@ describe('Server API', () => {
 });
 
 export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
+  const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
+  const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
   return {
-    msgId: c.natural(),
-    requestId: c.guid(),
+    type: responseType,
     status: 'SIGNED',
-    payload: JSON.stringify(messageBuilder.aMessage()),
-    signedPayload: 'signed payload',
-    type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST',
+    request: {
+      message: messageBuilder.fbMessage(messageBuilder.aMessagePayload(requestType)).payload,
+      transportMetadata: {
+        msgId: c.natural(),
+        deviceId: c.guid(),
+        internalMessageId: c.guid(),
+        type: requestType,
+      },
+    },
+    response: {
+      signedMessages: [{
+        message: c.string(),
+        signature: 'signed payload',
+        index: 0,
+      }],
+    }
   };
 }
 export function aProofOfOwnershipFailedMessageStatus(): MessageStatus {
+  const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
+  const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
   return {
-    msgId: c.natural(),
-    requestId: c.guid(),
+    type: responseType,
     status: 'FAILED',
-    payload: JSON.stringify(messageBuilder.aMessage()),
-    errorMessage: 'tx not authorized',
-    type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST',
+    request: {
+      message: messageBuilder.fbMessage(messageBuilder.aMessagePayload(requestType)).payload,
+      transportMetadata: {
+        msgId: c.natural(),
+        deviceId: c.guid(),
+        internalMessageId: c.guid(),
+        type: requestType,
+      },
+    },
+    response: {
+      errorMessage: 'tx not authorized',
+    },
   };
 }
 export const messageBuilder = {
   fbMsgEnvelope: (
+    type: RequestType,
     fbMsgEnvelope?: Partial<FBMessageEnvelope>,
     fbMsg?: FBMessage,
     shouldEncode: boolean = true,
   ): FBMessageEnvelope => {
+    switch (type) {
+      case 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST':
+        return messageBuilder.fbProofOfOwnershipMsgEnvelope(fbMsgEnvelope, fbMsg, shouldEncode);
+    }
+    throw new Error(`Unknown message type: ${type}`);
+  },
+  fbProofOfOwnershipMsgEnvelope: (
+    fbMsgEnvelope?: Partial<FBMessageEnvelope>,
+    fbMsg?: FBMessage,
+    shouldEncode: boolean = true,
+  ): FBMessageEnvelope => {
+    const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
     const msg = shouldEncode
       ? jwt.sign(JSON.stringify(fbMsg || c.string()), 'MessageData')
-      : fbMsg || messageBuilder.fbMessage('EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', messageBuilder.aMessage());
+      : fbMsg || messageBuilder.fbMessage(messageBuilder.aMessagePayload(type));
     return {
       msg,
       msgId: c.natural(),
@@ -209,37 +242,41 @@ export const messageBuilder = {
       ...fbMsgEnvelope,
     };
   },
-  fbMessage: (type: TxType, msg: Message): FBMessage => {
+  anMessageEnvelope: (msgId: number, type: RequestType, message: FBMessagePayload): MessageEnvelop => {
+    return {
+      message,
+      transportMetadata: {
+        msgId,
+        deviceId: c.guid(),
+        internalMessageId: c.guid(),
+        type
+      }
+    };
+  },
+  fbMessage: (msgPayload: MessagePayload): FBMessage => {
     const fbMessagePayload: FBMessagePayload = {
-      payload: JSON.stringify(msg),
-      signatureData: {
+      payloadSignatureData: {
         service: 'some-service',
         signature: 'signature of the payload',
       },
+      payload: JSON.stringify(msgPayload),
     };
     return {
-      type,
+      type: msgPayload.type,
       payload: fbMessagePayload,
     };
   },
-  anMessageEnvelope: (msgId: number, type: TxType, message: Message): MessageEnvelop => {
-    return {
-      msgId,
-      payload: JSON.stringify(message),
-      type,
-      message,
-    };
-  },
-  aMessage: (message?: Partial<Message>): Message => {
+  aMessagePayload: (type: RequestType, message?: Partial<MessagePayload>): MessagePayload => {
     return {
       tenantId: c.guid(),
-      timestamp: c.timestamp(),
-      version: 1,
-      fbKeyId: c.guid(),
-      requestId: c.guid(),
-      signingDeviceKeyId: c.guid(),
+      type,
       algorithm: 'ECDSA_SECP256K1',
-      data: c.string(),
+      signingDeviceKeyId: c.guid(),
+      keyId: c.guid(),
+      messagesToSign: [{
+        message: c.string(),
+        index: 0,
+      }],
       ...message,
     };
   },

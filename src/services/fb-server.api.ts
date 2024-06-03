@@ -5,7 +5,6 @@ import {
   AccessTokenRequest,
   CertificatesMap,
   FBMessageEnvelope,
-  Message,
   MessageStatus,
   PairDeviceRequest,
   PairDeviceResponse,
@@ -15,7 +14,7 @@ import deviceService from './device.service';
 import logger from './logger';
 
 const TYPE_TO_ENDPOINT = {
-  EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE: 'keylink_proof_of_ownership_response',
+  KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE: 'keylink_proof_of_ownership_response',
 };
 
 let i = 21; //TODO: remove
@@ -42,23 +41,21 @@ const fbServerApi = {
       throw e;
     }
   },
+
   broadcastResponse: async (msgStatus: MessageStatus): Promise<void> => {
     try {
       logger.info(`entering broadcastResponse`);
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
-      const { status, type, signedPayload, errorMessage, payload } = msgStatus;
-      const message = JSON.parse(payload) as Message;
-      const responseType = type.replace('_REQUEST', '_RESPONSE');
+      const { type, request } = msgStatus;
+      const { payload } = request.message;
+      const parsedPayload = JSON.parse(payload);
       const requestObject = {
-        type: responseType,
-        status,
-        payload: {
-          payload: message,
-          ...(signedPayload && { signedPayload }),
-          ...(errorMessage && { errorMessage }),
-        },
+        type,
+        status: msgStatus.status,
+        request: parsedPayload,
+        response: msgStatus.response,
       };
-      const url = `${MOBILE_GATEWAY_URL}/${TYPE_TO_ENDPOINT[responseType]}`;
+      const url = `${MOBILE_GATEWAY_URL}/${TYPE_TO_ENDPOINT[type]}`;
       logger.info(`broadcasting to ${url} response ${JSON.stringify(requestObject)}`);
       const res = await axios.post(
         url,
@@ -89,6 +86,7 @@ const fbServerApi = {
       throw e;
     }
   },
+
   getCertificates: async (): Promise<CertificatesMap> => {
     try {
       if (certificatesMapCache) {
