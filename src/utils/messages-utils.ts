@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { CertificatesMap, FBMessage, FBMessageEnvelope, JWT, Message, MessageEnvelop } from '../types';
+import { CertificatesMap, FBMessage, FBMessageEnvelope, JWT, MessageEnvelop, MessagePayload } from '../types';
+
+const PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS = ['2'];
 
 let certMap;
 export const decodeAndVerifyMessage = (
@@ -14,33 +16,26 @@ export const decodeAndVerifyMessage = (
       const zsCertificate = certMap['zs'];
       fbMessage = jwt.verify(fbMsgEnvelope.msg as JWT, zsCertificate) as FBMessage;
     }
-    verifyFbMessage(fbMessage);
-    return toMessage(fbMsgEnvelope.msgId, fbMessage);
+
+    const parsedMessage = JSON.parse(fbMessage.payload) as MessagePayload;
+    verifyFbMessage(fbMessage, parsedMessage);
+
+    return {
+      transportMetadata: {
+        msgId: fbMsgEnvelope.msgId,
+        deviceId: fbMsgEnvelope.deviceId,
+        internalMessageId: fbMsgEnvelope.internalMessageId,
+        type: parsedMessage.type,
+      },
+      message: fbMessage,
+    };
   } catch (e) {
     throw new Error('Message signature is invalid');
   }
 };
 
-const toMessage = (msgId: number, fbMessage: FBMessage): MessageEnvelop => {
-  const shared = {
-    msgId,
-    type: fbMessage.type,
-  };
-  switch (fbMessage.type) {
-    case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
-      const fbMsgPayload = fbMessage.payload;
-      const parsedMessage = JSON.parse(fbMsgPayload.payload) as Message;
-      return {
-        ...shared,
-        message: parsedMessage,
-        payload: fbMsgPayload.payload,
-      };
-    }
-  }
-};
-
-const verifyFbMessage = (message: FBMessage): boolean => {
-  const toVerify = getDataToVerify(message);
+const verifyFbMessage = (message: FBMessage, parsedMessage: MessagePayload): boolean => {
+  const toVerify = getDataToVerify(message, parsedMessage);
   for (const verifying of toVerify) {
     const isSignatureValid = verifyRSASignatureFromCertificate(
       verifying.payload,
@@ -66,19 +61,28 @@ function verifyRSASignatureFromCertificate(
   return verifier.verify(certificatePEM, signature, signatureFormat);
 }
 
-const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
+const getDataToVerify = (fbMessage: FBMessage, parsedMessage: MessagePayload): VerifyDetails[] => {
   const res: VerifyDetails[] = [];
 
-  switch (fbMessage.type) {
+  const fbMsgPayload: string = fbMessage.payload;
+  switch (parsedMessage.type) {
     case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
-      const fbMsgPayload = fbMessage.payload;
-      const messageVerifier = KEY_TO_VERIFIER_MAP[fbMsgPayload.signatureData.service.toLowerCase()];
+      // Deprecated message no need to verify it
+      break;
+    }
+    case 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST': {
+      const msgVersion = parsedMessage.version;
+      if (msgVersion === undefined || !PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS.includes(msgVersion.split('.')[0])) {
+        throw new Error('Unsupported message version');
+      }
+
+      const messageVerifier = KEY_TO_VERIFIER_MAP[fbMessage.payloadSignatureData.service.toLowerCase()];
       const certificate = certMap[messageVerifier];
       res.push({
-        payload: fbMsgPayload.payload,
+        payload: fbMsgPayload,
         certificate,
         signatureInfo: {
-          signature: fbMsgPayload.signatureData.signature,
+          signature: fbMessage.payloadSignatureData.signature,
           format: 'hex',
         },
       });
