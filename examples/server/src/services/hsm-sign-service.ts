@@ -1,3 +1,4 @@
+import { SignedMessage } from 'types';
 import * as messagesDao from '../dao/messages.dao';
 import { getMessages } from '../dao/messages.dao';
 import { SUPPORTED_ALGORITHMS } from './algorithm-info';
@@ -11,23 +12,27 @@ export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
     const algorithm = msg.message.algorithm;
     if (typeof algorithm !== 'string' || !SUPPORTED_ALGORITHMS.includes(algorithm)) {
       console.log(`Unsupported algorithm: ${algorithm}`);
-      msg.errorMessage = `Unsupported algorithm: ${algorithm}`;
+      msg.response.errorMessage = `Unsupported algorithm: ${algorithm}`;
       return;
     }
 
     setTimeout(async () => {
       const previousStatus = msg.status;
+      const { msgId } = msg.request.transportMetadata;
       msg.status = Math.round(Math.random()) ? 'FAILED' : 'SIGNED';
       if (msg.status === 'FAILED') {
-        msg.errorMessage = `Simulate error while signing this message ${msg.msgId}`;
+        msg.response.errorMessage = `Simulate error while signing this message ${msgId}`;
+      }
+      else {
+        const { signingDeviceKeyId, messagesToSign } = msg.message;
+        for (const { message, index } of messagesToSign) {
+          const signature = await hsmFacade.sign(signingDeviceKeyId, message, algorithm);
+          msg.response.signedMessages.push({ index, signature, message });
+        }
       }
 
-      const { signingDeviceKeyId, data } = msg.message;
-      if (msg.status === 'SIGNED') {
-        msg.signedPayload = await hsmFacade.sign(signingDeviceKeyId, data, algorithm);
-      }
       await messagesDao.updateMessageStatus(msg);
-      console.log(`Set ${msg.msgId} from status ${previousStatus} to ${msg.status}`);
+      console.log(`Set ${msg.request.transportMetadata.msgId} from status ${previousStatus} to ${msg.status}`);
     }, oneToFiveSeconds);
   });
 }
@@ -40,22 +45,33 @@ export async function signMessages(msgIds: number[]) {
     if (typeof algorithm !== 'string' || !SUPPORTED_ALGORITHMS.includes(algorithm)) {
       console.log(`Unsupported algorithm: ${algorithm}`);
       msg.status = 'FAILED';
-      msg.errorMessage = `Unsupported algorithm: ${algorithm}`;
+      msg.response.errorMessage = `Unsupported algorithm: ${algorithm}`;
       return;
     }
 
+    const { msgId } = msg.request.transportMetadata;
+    const { signingDeviceKeyId, messagesToSign } = msg.message;
+
     try {
-      const { signingDeviceKeyId, data } = msg.message;
-      msg.signedPayload = await hsmFacade.sign(signingDeviceKeyId, data, algorithm);
+      const signedMessages = await Promise.all(messagesToSign.map(async (msg): Promise<SignedMessage> => {
+        const signature = await hsmFacade.sign(signingDeviceKeyId, msg.message, algorithm);
+        return {
+          index: msg.index,
+          signature,
+          message: msg.message
+        };
+      }));
+
+      msg.response = { signedMessages };
       msg.status = 'SIGNED';
-      logger.info(`signed message ${msg.msgId}. signature: ${msg.signedPayload}`);
+      logger.info(`signed ${messagesToSign.length} payloads in message ${msgId}`);
     } catch (e) {
       logger.error(e);
       msg.status = 'FAILED';
-      msg.errorMessage = e.toString();
+      msg.response = { errorMessage: e?.toString() || 'Unknown error' };
     }
 
     await messagesDao.updateMessageStatus(msg);
-    logger.error(`Set ${msg.msgId} to ${msg.status}`);
+    logger.info(`Set ${msgId} to ${msg.status}`);
   }
 }
