@@ -13,7 +13,7 @@ RUN apk add --no-cache \
   && tar -xf SoftHSMv2.tar.gz \
   && cd SoftHSMv2-${SOFTHSMV2_VERSION} \
   && ./autogen.sh \
-  && ./configure --disable-gost\
+  && ./configure --disable-gost --enable-eddsa \
   && make \
   && make install
 
