@@ -9,45 +9,49 @@ export const decodeAndVerifyMessage = (
   fbMsgEnvelope: FBMessageEnvelope,
   certificates: CertificatesMap,
 ): MessageEnvelop => {
-  try {
-    certMap = certificates;
-    let fbMessage = fbMsgEnvelope.msg;
-    if (typeof fbMessage === 'string') {
+  certMap = certificates;
+  let fbMessage = fbMsgEnvelope.msg;
+  if (typeof fbMessage === 'string') {
+    try {
       const zsCertificate = certMap['zs'];
       fbMessage = jwt.verify(fbMsgEnvelope.msg as JWT, zsCertificate) as FBMessage;
+    } catch (e) {
+      throw new Error('JWT Message signature is invalid');
     }
-
-    const parsedMessage = JSON.parse(fbMessage.payload) as MessagePayload;
-    verifyFbMessage(fbMessage, parsedMessage);
-
-    return {
-      transportMetadata: {
-        msgId: fbMsgEnvelope.msgId,
-        deviceId: fbMsgEnvelope.deviceId,
-        internalMessageId: fbMsgEnvelope.internalMessageId,
-        type: parsedMessage.type,
-      },
-      message: fbMessage,
-    };
-  } catch (e) {
-    throw new Error('Message signature is invalid');
   }
+
+  const parsedMessage = JSON.parse(fbMessage.payload) as MessagePayload;
+  verifyFbMessage(fbMessage, parsedMessage);
+
+  return {
+    transportMetadata: {
+      msgId: fbMsgEnvelope.msgId,
+      deviceId: fbMsgEnvelope.deviceId,
+      internalMessageId: fbMsgEnvelope.internalMessageId,
+      type: parsedMessage.type,
+    },
+    message: fbMessage,
+  };
 };
 
 const verifyFbMessage = (message: FBMessage, parsedMessage: MessagePayload): boolean => {
   const toVerify = getDataToVerify(message, parsedMessage);
-  for (const verifying of toVerify) {
-    const isSignatureValid = verifyRSASignatureFromCertificate(
-      verifying.payload,
-      verifying.signatureInfo.signature,
-      verifying.certificate,
-      verifying.signatureInfo.format,
-    );
-    if (!isSignatureValid) {
-      throw 'invalid signature';
+  try {
+    for (const verifying of toVerify) {
+      if (!verifyRSASignatureFromCertificate(
+        verifying.payload,
+        verifying.signatureInfo.signature,
+        verifying.certificate,
+        verifying.signatureInfo.format,
+      )) {
+        throw 'invalid signature';
+      }
     }
-    return isSignatureValid;
+  } catch (e) {
+    throw new Error('Message signature is invalid');
   }
+
+  return true;
 };
 
 function verifyRSASignatureFromCertificate(
