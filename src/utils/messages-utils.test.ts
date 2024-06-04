@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { messageBuilder } from '../services/fb-server.api.test';
-import { FBMessage, FBMessageEnvelope, Message, MessageEnvelop, MessagePayload, RequestType } from '../types';
+import { FBMessage, FBMessageEnvelope, FBMessagePayload, MessageEnvelop, MessagePayload, RequestType } from '../types';
 import * as utils from './messages-utils';
 
 describe('Messages utils', () => {
@@ -11,18 +11,17 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       cm: publicKey,
     };
-    const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
-    const fbMessage = aFbMessagePayload(privateKey, type, { version: "2.0.0" });
+    const fbMessage = aFbProofOfOwnershipMessage(privateKey);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
     const expectedMessage: MessageEnvelop = {
-      message: fbMessage,
+      message: fbMessage.payload,
       transportMetadata: {
         deviceId: fbMessageEnvelope.deviceId,
         internalMessageId: fbMessageEnvelope.internalMessageId,
         msgId: fbMessageEnvelope.msgId,
-        type: type,
+        type: fbMessage.type,
       },
     };
     expect(messageEnvelope).toEqual(expectedMessage);
@@ -34,8 +33,7 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       vs: publicKey,
     };
-    const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
-    const fbMessage = aFbMessagePayload(privateKey, type, { version: "2.0.0" });
+    const fbMessage = aFbProofOfOwnershipMessage(privateKey);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, 'false-certificate');
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
@@ -50,8 +48,7 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       vs: pair1.publicKey,
     };
-    const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
-    const fbMessage = aFbMessagePayload(pair2.privateKey, type, { version: "2.0.0" });
+    const fbMessage = aFbProofOfOwnershipMessage(pair2.privateKey);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
@@ -65,8 +62,7 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       vs: publicKey,
     };
-    const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
-    const fbMessage = aFbMessagePayload(privateKey, type);
+    const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
@@ -80,8 +76,7 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       vs: publicKey,
     };
-    const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
-    const fbMessage = aFbMessagePayload(privateKey, type, { version: "0.0.0" });
+    const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey, { version: "0.0.0" });
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
@@ -104,7 +99,20 @@ function aKeyPair(): KeyPair {
   return { privateKey, publicKey };
 }
 
-function aFbMessagePayload(privateKey: string, type: RequestType, payloadFields?: Partial<MessagePayload>): Message {
+function aCustomFbProofOfOwnershipMessage(privateKey: string, payloadFields?: Partial<MessagePayload>): FBMessage {
+  const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
+  const fbMsgPayload = aFbMessagePayload(privateKey, type, payloadFields);
+  return {
+    type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
+    payload: fbMsgPayload,
+  };
+}
+
+function aFbProofOfOwnershipMessage(privateKey: string): FBMessage {
+  return aCustomFbProofOfOwnershipMessage(privateKey, { version: "2.0.0" });
+}
+
+function aFbMessagePayload(privateKey: string, type: RequestType, payloadFields?: Partial<MessagePayload>): FBMessagePayload {
   const payload = messageBuilder.aMessagePayload(type, payloadFields);
   const payloadStr = JSON.stringify(payload);
 

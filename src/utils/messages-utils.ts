@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { CertificatesMap, FBMessage, FBMessageEnvelope, JWT, MessageEnvelop, MessagePayload } from '../types';
+import { CertificatesMap, FBMessage, FBMessageEnvelope, JWT, MessageEnvelop } from '../types';
 
 const PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS = ['2'];
 
@@ -20,22 +20,21 @@ export const decodeAndVerifyMessage = (
     }
   }
 
-  const parsedMessage = JSON.parse(fbMessage.payload) as MessagePayload;
-  verifyFbMessage(fbMessage, parsedMessage);
+  verifyFbMessage(fbMessage);
 
   return {
     transportMetadata: {
       msgId: fbMsgEnvelope.msgId,
       deviceId: fbMsgEnvelope.deviceId,
       internalMessageId: fbMsgEnvelope.internalMessageId,
-      type: parsedMessage.type,
+      type: fbMessage.type,
     },
-    message: fbMessage,
+    message: fbMessage.payload,
   };
 };
 
-const verifyFbMessage = (message: FBMessage, parsedMessage: MessagePayload): boolean => {
-  const toVerify = getDataToVerify(message, parsedMessage);
+const verifyFbMessage = (message: FBMessage): boolean => {
+  const toVerify = getDataToVerify(message);
   try {
     for (const verifying of toVerify) {
       if (!verifyRSASignatureFromCertificate(
@@ -65,28 +64,29 @@ function verifyRSASignatureFromCertificate(
   return verifier.verify(certificatePEM, signature, signatureFormat);
 }
 
-const getDataToVerify = (fbMessage: FBMessage, parsedMessage: MessagePayload): VerifyDetails[] => {
+const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   const res: VerifyDetails[] = [];
 
-  const fbMsgPayload: string = fbMessage.payload;
-  switch (parsedMessage.type) {
+  switch (fbMessage.type) {
     case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
       // Deprecated message no need to verify it
       break;
     }
     case 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST': {
+      const fbMsgPayload = fbMessage.payload;
+      let parsedMessage = JSON.parse(fbMsgPayload.payload);
       const msgVersion = parsedMessage.version;
       if (msgVersion === undefined || !PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS.includes(msgVersion.split('.')[0])) {
         throw new Error('Unsupported message version');
       }
 
-      const messageVerifier = KEY_TO_VERIFIER_MAP[fbMessage.payloadSignatureData.service.toLowerCase()];
+      const messageVerifier = KEY_TO_VERIFIER_MAP[fbMsgPayload.payloadSignatureData.service.toLowerCase()];
       const certificate = certMap[messageVerifier];
       res.push({
-        payload: fbMsgPayload,
+        payload: fbMsgPayload.payload,
         certificate,
         signatureInfo: {
-          signature: fbMessage.payloadSignatureData.signature,
+          signature: fbMsgPayload.payloadSignatureData.signature,
           format: 'hex',
         },
       });
