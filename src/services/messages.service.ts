@@ -12,11 +12,12 @@ interface IMessageService {
 
 class MessageService implements IMessageService {
   private msgCache: { [msgId: string]: MessageStatus } = {};
-  private knownMessageTypes: RequestType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'];
+  private knownMessageTypes: RequestType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_TX_SIGN_REQUEST'];
   private deprecatedMessageTypes: RequestType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST'];
   private requestTypeToResponseType = new Map<RequestType, ResponseType>([
     ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE'],
     ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE'],
+    ['KEY_LINK_TX_SIGN_REQUEST', 'KEY_LINK_TX_SIGN_RESPONSE'],
   ]);
 
   getPendingMessages(): string[] {

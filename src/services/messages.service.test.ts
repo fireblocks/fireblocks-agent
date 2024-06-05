@@ -18,7 +18,7 @@ describe('messages service', () => {
     jest.clearAllMocks();
   });
 
-  const types: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'];
+  const types: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_TX_SIGN_REQUEST'];
   it.each(types)('should send the customer server the messages to sign', async (type: RequestType) => {
     const internalMessageId = c.guid();
     const aTxToSignMessage = messageBuilder.aMessagePayload(type);
