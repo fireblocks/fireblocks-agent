@@ -205,13 +205,13 @@ function aFbMessagePayload(privateKey: string, type: RequestType, service: strin
 }
 
 function aTxMetadata(privateKey: string): TxMetadata {
-  const txMetadata = '{ "example": "metadata" }';
+  const txMetaData = '{ "example": "metadata" }';
   const signer = crypto.createSign('sha256');
-  signer.update(txMetadata);
+  signer.update(txMetaData);
   const signature = signer.sign(privateKey, 'hex');
 
   return {
-    txMetadata,
+    txMetaData,
     txMetaDataSignatures: [
       {
         id: 'policy_service',

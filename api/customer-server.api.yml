@@ -178,10 +178,10 @@ components:
           type: object
     TxMetadata:
       required:
-        - txMetadata
-        - txMetadataSignatures
+        - txMetaData
+        - txMetaDataSignatures
       properties:
-        txMetadata:
+        txMetaData:
           type: string
         txMetaDataSignatures:
           type: array
