@@ -113,7 +113,7 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
       }
 
       res.push({
-        payload: txMetadata.txMetadata,
+        payload: txMetadata.txMetaData,
         certificate: txMetadataCertificate,
         service: policyServiceName,
         signatureInfo: {
