@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { CertificatesMap, FBMessage, FBMessageEnvelope, JWT, MessageEnvelop } from '../types';
+import { CertificatesMap, FBMessage, FBMessageEnvelope, JWT, MessageEnvelop, TxMetadata, TxMetadataSignature } from '../types';
 
 const PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS = ['2'];
 
@@ -60,8 +60,30 @@ function verifyRSASignatureFromCertificate(
   return verifier.verify(certificatePEM, signature, signatureFormat);
 }
 
+const getPolicySignature = (txMetaDataSignatures: Array<TxMetadataSignature>): TxMetadataSignature => {
+  return txMetaDataSignatures.find((_) => _.id === 'policy_service');
+}
+
 const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   const res: VerifyDetails[] = [];
+
+  const fbMsgPayload = fbMessage.payload;
+  const payloadSigner = fbMsgPayload.payloadSignatureData.service.toLowerCase();
+  const messageVerifier = KEY_TO_VERIFIER_MAP[payloadSigner];
+  const certificate = certMap[messageVerifier];
+  if (certificate === undefined) {
+    throw new Error(`Certificate for ${payloadSigner} is missing`);
+  }
+
+  res.push({
+    payload: fbMsgPayload.payload,
+    certificate,
+    service: payloadSigner,
+    signatureInfo: {
+      signature: fbMsgPayload.payloadSignatureData.signature,
+      format: 'hex',
+    },
+  });
 
   switch (fbMessage.type) {
     case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
@@ -69,7 +91,6 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
       break;
     }
     case 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST': {
-      const fbMsgPayload = fbMessage.payload;
       let parsedMessage = JSON.parse(fbMsgPayload.payload);
       const msgVersion = parsedMessage.version;
       if (msgVersion === undefined) {
@@ -77,26 +98,33 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
       } else if (!PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS.includes(msgVersion.split('.')[0])) {
         throw new Error(`Unsupported message version: ${msgVersion}`);
       }
-
-      const service_name = fbMsgPayload.payloadSignatureData.service.toLowerCase();
-      const messageVerifier = KEY_TO_VERIFIER_MAP[service_name];
-      const certificate = certMap[messageVerifier];
-      if (certificate === undefined) {
-        throw new Error(`Certificate for ${service_name} is missing`);
+      break;
+    }
+    case 'KEY_LINK_TX_SIGN_REQUEST': {
+      // Add verification for txMetaDataSignatures
+      let parsedPayload = JSON.parse(fbMsgPayload.payload);
+      const txMetadata: TxMetadata = parsedPayload.metadata;
+      const policySignature = getPolicySignature(txMetadata.txMetaDataSignatures);
+      const policyServiceName = policySignature.id.toLowerCase();
+      const txMetadataVerifier = KEY_TO_VERIFIER_MAP[policyServiceName];
+      const txMetadataCertificate = certMap[txMetadataVerifier];
+      if (txMetadataCertificate === undefined) {
+        throw new Error(`Certificate for ${policyServiceName} is missing`);
       }
 
       res.push({
-        payload: fbMsgPayload.payload,
-        certificate,
-        service: service_name,
+        payload: txMetadata.txMetadata,
+        certificate: txMetadataCertificate,
+        service: policyServiceName,
         signatureInfo: {
-          signature: fbMsgPayload.payloadSignatureData.signature,
+          signature: policySignature.signature,
           format: 'hex',
         },
       });
       break;
     }
   }
+
   return res;
 };
 
@@ -113,7 +141,7 @@ interface VerifyDetails {
 export type SignatureFormat = 'base64' | 'hex';
 
 const KEY_TO_VERIFIER_MAP: Record<string, string> = {
-  MPC_START_SIGNING: 'vs',
+  signing_service: 'vs',
   policy_service: 'ps',
   configuration_manager: 'cm',
 };
