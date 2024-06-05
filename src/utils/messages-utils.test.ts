@@ -31,7 +31,7 @@ describe('Messages utils', () => {
     const { privateKey, publicKey } = aKeyPair();
     const certificates = {
       zs: 'my-zs-secret',
-      vs: publicKey,
+      cm: publicKey,
     };
     const fbMessage = aFbProofOfOwnershipMessage(privateKey);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, 'false-certificate');
@@ -60,7 +60,7 @@ describe('Messages utils', () => {
     const { privateKey, publicKey } = aKeyPair();
     const certificates = {
       zs: 'my-zs-secret',
-      vs: publicKey,
+      cm: publicKey,
     };
     const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
@@ -74,7 +74,7 @@ describe('Messages utils', () => {
     const { privateKey, publicKey } = aKeyPair();
     const certificates = {
       zs: 'my-zs-secret',
-      vs: publicKey,
+      cm: publicKey,
     };
     const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey, { version: "0.0.0" });
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
@@ -103,7 +103,7 @@ function aCustomFbProofOfOwnershipMessage(privateKey: string, payloadFields?: Pa
   const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
   const fbMsgPayload = aFbMessagePayload(privateKey, type, payloadFields);
   return {
-    type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
+    type,
     payload: fbMsgPayload,
   };
 }
