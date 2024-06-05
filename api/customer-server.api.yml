@@ -176,6 +176,32 @@ components:
         metadata:
           description: The metadata provides comprehensive information about the transaction, policy outcomes, and other pertinent details.
           type: object
+    TxMetadata:
+      required:
+        - txMetadata
+        - txMetadataSignatures
+      properties:
+        txMetadata:
+          type: string
+        txMetaDataSignatures:
+          type: array
+          items:
+            $ref: "#/components/schemas/TxMetadataSignature"
+    TxMetadataSignature:
+      required:
+        - id
+        - type
+        - signature
+      properties:
+        id:
+          type: string
+          example: policy_service
+        type:
+          type: string
+          example: SERVICE
+        signature:
+          type: string
+          example: 3de97a18822d06fd19bea82522917c634c134a13ace2b887cf12e37dfd343d30
     MessageToSign:
       description: A message that needs to be signed by the customer's key.
       type: object
@@ -238,6 +264,7 @@ components:
         [
           EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST,
           KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST,
+          KEY_LINK_TX_SIGN_REQUEST,
         ]
       example: KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST
     ResponseType:
@@ -247,6 +274,7 @@ components:
         [
           EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE,
           KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE,
+          KEY_LINK_TX_SIGN_RESPONSE,
         ]
       example: KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE
     Algorithm:

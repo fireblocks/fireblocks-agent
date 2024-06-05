@@ -44,3 +44,5 @@ export type MessageStatus = components['schemas']['MessageStatus'];
 export type MessageEnvelop = components['schemas']['MessageEnvelope'];
 export type MessagePayload = components['schemas']['MessagePayload'];
 export type TransportMetadata = components['schemas']['TransportMetadata'];
+export type TxMetadata = components['schemas']['TxMetadata'];
+export type TxMetadataSignature = components['schemas']['TxMetadataSignature'];
