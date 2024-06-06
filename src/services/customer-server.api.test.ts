@@ -44,11 +44,6 @@ export const customerServerApiDriver = {
         }
       }];
     },
-    aTxStatusRequest: (msgIds: number[] = []): MessagesStatusRequest => {
-      return {
-        msgIds,
-      };
-    },
   },
   mock: {
     messagesToSign: (messages: MessageEnvelop[], result?: MessagesResponse) => {

@@ -242,13 +242,13 @@ export const messageBuilder = {
       ...fbMsgEnvelope,
     };
   },
-  anMessageEnvelope: (msgId: number, type: RequestType, message: FBMessagePayload): MessageEnvelop => {
+  anMessageEnvelope: (internalMessageId: string, type: RequestType, message: FBMessagePayload): MessageEnvelop => {
     return {
       message,
       transportMetadata: {
-        msgId,
+        msgId: c.natural(),
         deviceId: c.guid(),
-        internalMessageId: c.guid(),
+        internalMessageId,
         type
       }
     };

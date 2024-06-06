@@ -5,7 +5,7 @@ import { SUPPORTED_ALGORITHMS } from './algorithm-info';
 import hsmFacade from './hsm-facade';
 import logger from './logger';
 
-export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
+export async function randomlySignOrFailMessagesAsync(msgIds: string[]) {
   const messages = await getMessages(msgIds);
   messages.forEach((msg) => {
     const oneToFiveSeconds = Math.ceil(Math.random() * 5) * 1000;
@@ -37,7 +37,7 @@ export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
   });
 }
 
-export async function signMessages(msgIds: number[]) {
+export async function signMessages(msgIds: string[]) {
   logger.info(`enter signing messages ${msgIds}`);
   const messages = await getMessages(msgIds);
   for (const msg of messages) {

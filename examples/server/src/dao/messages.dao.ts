@@ -23,7 +23,7 @@ const getMessagesCollection = async () => {
 export const updateMessageStatus = async (msg: MessageStatus) => {
   const msgRef = await getMessagesCollection();
   const dbMsg = {
-    _id: msg.request.transportMetadata.msgId,
+    _id: msg.request.transportMetadata.internalMessageId,
     ...msg,
   };
   return msgRef.updateOne({ _id: dbMsg._id }, { $set: dbMsg }, { upsert: true });
@@ -40,7 +40,7 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
     }
 
     return {
-      _id: transportMetadata.msgId,
+      _id: transportMetadata.internalMessageId,
       type: newType,
       status: 'PENDING_SIGN',
       message: parsedPayload,
@@ -52,7 +52,7 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
   return messagesRes;
 };
 
-export const getMessagesStatus = async (msgIds: number[]): Promise<MessageStatus[]> => {
+export const getMessagesStatus = async (msgIds: string[]): Promise<MessageStatus[]> => {
   logger.info(`entering getMessagesStatus ${JSON.stringify(msgIds)}`);
   const txRef = await getMessagesCollection();
   const cursor = await txRef.find({ _id: { $in: msgIds } });
@@ -60,7 +60,7 @@ export const getMessagesStatus = async (msgIds: number[]): Promise<MessageStatus
   return toMsgStatus(res);
 };
 
-export const getMessages = async (msgIds: number[]): Promise<DbMsg[]> => {
+export const getMessages = async (msgIds: string[]): Promise<DbMsg[]> => {
   const txRef = await getMessagesCollection();
   const cursor = await txRef.find({ _id: { $in: msgIds } });
   const res = await cursor.toArray();
@@ -76,6 +76,6 @@ function toMsgStatus(dbMsgs: Partial<DbMsg>[]): MessageStatus[] {
 }
 
 interface DbMsg extends MessageStatus {
-  _id: number;
+  _id: string;
   message: MessagePayload;
 }

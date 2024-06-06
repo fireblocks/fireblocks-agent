@@ -54,8 +54,8 @@ components:
         msgIds:
           type: array
           items:
-            type: number
-            example: 425878000014
+            type: string
+            example: e7568058-c090-4042-8a6a-957f2292b72c
     MessagesStatusResponse:
       type: object
       required:
