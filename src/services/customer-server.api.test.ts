@@ -9,7 +9,7 @@ import { messageBuilder } from './fb-server.api.test';
 const c = new Chance();
 
 describe('Customer Server API', () => {
-  it('should send tx to sign', async () => {
+  it('should send message to sign', async () => {
     const msgId = c.natural();
     const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
     const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';

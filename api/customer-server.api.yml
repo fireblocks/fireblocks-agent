@@ -113,6 +113,7 @@ components:
           type: string
           example: '{ "type": "KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST", "tenantId": "ea7d0d9a-6a10-4288-9b91-da8fb0b149f2" }'
     PayloadSignatureData:
+      description: The signature data of the payload and the service that signed it.
       type: object
       required:
         - signature
@@ -120,7 +121,7 @@ components:
       properties:
         signature:
           type: string
-          example: 0x
+          example: 3de97a18822d06fd19bea82522917c634c134a13ace2b887cf12e37dfd343d30
         service:
           type: string
           example: signing_service

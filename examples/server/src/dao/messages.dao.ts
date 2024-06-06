@@ -35,6 +35,10 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
     const { payload } = message;
     const parsedPayload = JSON.parse(payload) as MessagePayload;
     const newType = REQUEST_TYPE_TO_RESPONSE_TYPE.get(parsedPayload.type);
+    if (!newType) {
+      throw new Error(`Unknown request type ${parsedPayload.type}`);
+    }
+
     return {
       _id: transportMetadata.msgId,
       type: newType,
