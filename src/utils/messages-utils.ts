@@ -35,19 +35,15 @@ export const decodeAndVerifyMessage = (
 
 const verifyFbMessage = (message: FBMessage): boolean => {
   const toVerify = getDataToVerify(message);
-  try {
-    for (const verifying of toVerify) {
-      if (!verifyRSASignatureFromCertificate(
-        verifying.payload,
-        verifying.signatureInfo.signature,
-        verifying.certificate,
-        verifying.signatureInfo.format,
-      )) {
-        throw 'invalid signature';
-      }
+  for (const verifying of toVerify) {
+    if (!verifyRSASignatureFromCertificate(
+      verifying.payload,
+      verifying.signatureInfo.signature,
+      verifying.certificate,
+      verifying.signatureInfo.format,
+    )) {
+      throw new Error(`Invalid signature from ${verifying.service}`);
     }
-  } catch (e) {
-    throw new Error('Message signature is invalid');
   }
 
   return true;
@@ -76,15 +72,23 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
       const fbMsgPayload = fbMessage.payload;
       let parsedMessage = JSON.parse(fbMsgPayload.payload);
       const msgVersion = parsedMessage.version;
-      if (msgVersion === undefined || !PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS.includes(msgVersion.split('.')[0])) {
-        throw new Error('Unsupported message version');
+      if (msgVersion === undefined) {
+        throw new Error('Message version is missing');
+      } else if (!PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS.includes(msgVersion.split('.')[0])) {
+        throw new Error(`Unsupported message version: ${msgVersion}`);
       }
 
-      const messageVerifier = KEY_TO_VERIFIER_MAP[fbMsgPayload.payloadSignatureData.service.toLowerCase()];
+      const service_name = fbMsgPayload.payloadSignatureData.service.toLowerCase();
+      const messageVerifier = KEY_TO_VERIFIER_MAP[service_name];
       const certificate = certMap[messageVerifier];
+      if (certificate === undefined) {
+        throw new Error(`Certificate for ${service_name} is missing`);
+      }
+
       res.push({
         payload: fbMsgPayload.payload,
         certificate,
+        service: service_name,
         signatureInfo: {
           signature: fbMsgPayload.payloadSignatureData.signature,
           format: 'hex',
@@ -99,6 +103,7 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
 interface VerifyDetails {
   payload: string;
   certificate: string;
+  service: string;
   signatureInfo: {
     signature: string;
     format: SignatureFormat;

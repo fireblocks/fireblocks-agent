@@ -46,20 +46,20 @@ const fbServerApi = {
     try {
       logger.info(`entering broadcastResponse`);
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
-      const { type, request } = msgStatus;
-      const { payload } = request.message;
+      const { type } = msgStatus;
+      const { payload } = msgStatus.request.message;
       const parsedPayload = JSON.parse(payload);
-      const requestObject = {
+      const responseObject = {
         type,
         status: msgStatus.status,
         request: parsedPayload,
         response: msgStatus.response,
       };
       const url = `${MOBILE_GATEWAY_URL}/${TYPE_TO_ENDPOINT[type]}`;
-      logger.info(`broadcasting to ${url} response ${JSON.stringify(requestObject)}`);
+      logger.info(`broadcasting to ${url} response ${JSON.stringify(responseObject)}`);
       const res = await axios.post(
         url,
-        requestObject,
+        responseObject,
         buildHeaders(accessToken),
       );
       logger.info(`Exiting broadcastResponse`);

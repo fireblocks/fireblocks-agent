@@ -53,7 +53,22 @@ describe('Messages utils', () => {
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
-    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Message signature is invalid"');
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Certificate for configuration_manager is missing"');
+  });
+
+  it('should not verify a message with false cmCertificate', () => {
+    const pair1 = aKeyPair();
+    const pair2 = aKeyPair();
+    const certificates = {
+      zs: 'my-zs-secret',
+      cm: pair1.publicKey,
+    };
+    const fbMessage = aFbProofOfOwnershipMessage(pair2.privateKey);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+
+    const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Invalid signature from configuration_manager"');
   });
 
   it('should not verify a proof of ownership message without version', () => {
@@ -67,7 +82,7 @@ describe('Messages utils', () => {
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
-    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Unsupported message version"');
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Message version is missing"');
   });
 
   it('should not verify a proof of ownership message with unsupported version', () => {
@@ -76,12 +91,13 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       cm: publicKey,
     };
-    const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey, { version: "0.0.0" });
+    const invalid_version = "0.0.0";
+    const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey, { version: invalid_version });
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
-    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Unsupported message version"');
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot(`"Unsupported message version: ${invalid_version}"`);
   });
 });
 

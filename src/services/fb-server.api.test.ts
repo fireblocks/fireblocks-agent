@@ -242,7 +242,7 @@ export const messageBuilder = {
       ...fbMsgEnvelope,
     };
   },
-  anMessageEnvelope: (internalMessageId: string, type: RequestType, message: FBMessagePayload): MessageEnvelop => {
+  aMessageEnvelope: (internalMessageId: string, type: RequestType, message: FBMessagePayload): MessageEnvelop => {
     return {
       message,
       transportMetadata: {

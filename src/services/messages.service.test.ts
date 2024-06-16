@@ -24,7 +24,7 @@ describe('messages service', () => {
     const aTxToSignMessage = messageBuilder.aMessagePayload(type);
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
     const fbMessageEnvelope = messageBuilder.fbMsgEnvelope(type, { internalMessageId }, fbMessage);
-    const msgEnvelop = messageBuilder.anMessageEnvelope(internalMessageId, type, fbMessage.payload);
+    const msgEnvelop = messageBuilder.aMessageEnvelope(internalMessageId, type, fbMessage.payload);
     jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([]);
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
 
@@ -42,7 +42,7 @@ describe('messages service', () => {
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
     const fbMsgEnvelop = messageBuilder.fbProofOfOwnershipMsgEnvelope({ internalMessageId }, fbMessage);
     //@ts-ignore
-    const msgEnvelop = messageBuilder.anMessageEnvelope(internalMessageId, type, aTxToSignMessage);
+    const msgEnvelop = messageBuilder.aMessageEnvelope(internalMessageId, type, aTxToSignMessage);
     jest.spyOn(customerServerApi, 'messagesToSign');
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
     await service.handleMessages([fbMsgEnvelop]);
@@ -66,7 +66,7 @@ describe('messages service', () => {
     const aTxToSignMessage = messageBuilder.aMessagePayload(requestType);
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
     const fbMessageEnvelope = messageBuilder.fbProofOfOwnershipMsgEnvelope({ internalMessageId }, fbMessage);
-    const msgEnvelop = messageBuilder.anMessageEnvelope(internalMessageId, requestType, fbMessage.payload);
+    const msgEnvelop = messageBuilder.aMessageEnvelope(internalMessageId, requestType, fbMessage.payload);
 
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
     jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([
@@ -131,7 +131,7 @@ describe('messages service', () => {
     const aTxToSignMessage = messageBuilder.aMessagePayload(requestType);
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
     const fbMessageEnvelope = messageBuilder.fbProofOfOwnershipMsgEnvelope({ internalMessageId }, fbMessage);
-    const msgEnvelop = messageBuilder.anMessageEnvelope(internalMessageId, requestType, fbMessage.payload);
+    const msgEnvelop = messageBuilder.aMessageEnvelope(internalMessageId, requestType, fbMessage.payload);
 
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
 
