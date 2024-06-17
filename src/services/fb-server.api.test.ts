@@ -207,6 +207,20 @@ describe('Server API', () => {
 
     expect(res).toEqual('ok');
   });
+
+  it('should not broadcast on unknown type', async () => {
+    const accessToken = fbServerApiDriver.given.accessToken();
+    const signedMessageStatus = aTxSignFailedMessageStatus();
+    const deviceData = deviceDriver.given.deviceData();
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
+    fbServerApiDriver.mock.accessToken(deviceData, accessToken);
+
+    const invalidType = 'UNKNOWN_TYPE';
+    // @ts-ignore
+    signedMessageStatus.type = invalidType;
+
+    await expect(fbServerApi.broadcastResponse(signedMessageStatus)).rejects.toThrowErrorMatchingInlineSnapshot(`"Unknown type ${invalidType}"`);
+  });
 });
 
 export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
