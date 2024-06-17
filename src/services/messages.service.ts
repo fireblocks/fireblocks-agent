@@ -12,8 +12,9 @@ interface IMessageService {
 
 class MessageService implements IMessageService {
   private msgCache: { [msgId: string]: MessageStatus } = {};
-  private knownMessageTypes: RequestType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_TX_SIGN_REQUEST'];
+  private supportedMessageTypes: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_TX_SIGN_REQUEST'];
   private deprecatedMessageTypes: RequestType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST'];
+  private knownMessageTypes: RequestType[] = [].concat(this.supportedMessageTypes, this.deprecatedMessageTypes);
   private requestTypeToResponseType = new Map<RequestType, ResponseType>([
     ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE'],
     ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE'],
@@ -50,6 +51,10 @@ class MessageService implements IMessageService {
     }
 
     if (!!deprecatedMessages.length) {
+      deprecatedMessages.forEach((msg) => {
+        logger.warn(`Got deprecated message id ${msg.transportMetadata.msgId} and type ${msg.transportMetadata.type}`);
+      });
+
       const errorStatuses = deprecatedMessages.map((msg): MessageStatus => ({
         type: this.requestTypeToResponseType.get(msg.transportMetadata.type),
         status: 'FAILED',
