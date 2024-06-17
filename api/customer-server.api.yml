@@ -177,6 +177,7 @@ components:
           description: The metadata provides comprehensive information about the transaction, policy outcomes, and other pertinent details.
           type: object
     TxMetadata:
+      description: The metadata provides comprehensive information about the transaction, policy outcomes, and other pertinent details.
       required:
         - txMetaData
         - txMetaDataSignatures
@@ -188,6 +189,7 @@ components:
           items:
             $ref: "#/components/schemas/TxMetadataSignature"
     TxMetadataSignature:
+      description: The signature of the transaction metadata.
       required:
         - id
         - type
