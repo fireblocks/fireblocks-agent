@@ -56,7 +56,12 @@ const fbServerApi = {
         request: parsedPayload,
         response: msgStatus.response,
       };
-      const url = `${MOBILE_GATEWAY_URL}/${TYPE_TO_ENDPOINT[type]}`;
+      const endpoint = TYPE_TO_ENDPOINT[type];
+      if (endpoint === undefined) {
+        throw new Error(`Unknown type ${type}`);
+      }
+
+      const url = `${MOBILE_GATEWAY_URL}/${endpoint}`;
       logger.info(`broadcasting to ${url} response ${JSON.stringify(responseObject)}`);
       const res = await axios.post(
         url,
