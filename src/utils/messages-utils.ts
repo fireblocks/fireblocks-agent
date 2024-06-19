@@ -70,10 +70,10 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   const fbMsgPayload = fbMessage.payload;
   const payloadSigner = fbMsgPayload.payloadSignatureData.service.toLowerCase();
   const messageVerifier = KEY_TO_VERIFIER_MAP[payloadSigner];
-  const certificate = certMap[messageVerifier];
-  if (certificate === undefined) {
+  if (!certMap.hasOwnProperty(messageVerifier)) {
     throw new Error(`Certificate for ${payloadSigner} is missing`);
   }
+  const certificate = certMap[messageVerifier];
 
   res.push({
     payload: fbMsgPayload.payload,
@@ -93,7 +93,7 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
     case 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST': {
       let parsedMessage = JSON.parse(fbMsgPayload.payload);
       const msgVersion = parsedMessage.version;
-      if (msgVersion === undefined) {
+      if (msgVersion === undefined || msgVersion == null) {
         throw new Error('Message version is missing');
       } else if (!PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS.includes(msgVersion.split('.')[0])) {
         throw new Error(`Unsupported message version: ${msgVersion}`);
@@ -107,10 +107,10 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
       const policySignature = getPolicySignature(txMetadata.txMetaDataSignatures);
       const policyServiceName = policySignature.id.toLowerCase();
       const txMetadataVerifier = KEY_TO_VERIFIER_MAP[policyServiceName];
-      const txMetadataCertificate = certMap[txMetadataVerifier];
-      if (txMetadataCertificate === undefined) {
+      if (!certMap.hasOwnProperty(txMetadataVerifier)) {
         throw new Error(`Certificate for ${policyServiceName} is missing`);
       }
+      const txMetadataCertificate = certMap[txMetadataVerifier];
 
       res.push({
         payload: txMetadata.txMetaData,
