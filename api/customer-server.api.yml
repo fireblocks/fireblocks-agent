@@ -230,7 +230,7 @@ components:
           type: number
         signature:
           type: string
-          example: 0x
+          example: 3de97a18822d06fd19bea82522917c634c134a13ace2b887cf12e37dfd343d30
     RequestType:
       description: The type of the message.
       type: string
