@@ -64,26 +64,34 @@ const getPolicySignature = (txMetaDataSignatures: Array<TxMetadataSignature>): T
   return txMetaDataSignatures.find((_) => _.id === 'policy_service');
 }
 
+const getVerifyDetailsFromPayloadSignature = (payloadSignature: { service: string, signature: string }, payload: string): VerifyDetails => {
+  const serviceSigner = payloadSignature.service.toLowerCase();
+  const messageVerifier = KEY_TO_VERIFIER_MAP[serviceSigner];
+  if (!certMap.hasOwnProperty(messageVerifier)) {
+    throw new Error(`Certificate for ${serviceSigner} is missing`);
+  }
+
+  return {
+    payload: payload,
+    certificate: certMap[messageVerifier],
+    service: serviceSigner,
+    signatureInfo: {
+      signature: payloadSignature.signature,
+      format: 'hex',
+    },
+  };
+}
+
 const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   const res: VerifyDetails[] = [];
 
   const fbMsgPayload = fbMessage.payload;
-  const payloadSigner = fbMsgPayload.payloadSignatureData.service.toLowerCase();
-  const messageVerifier = KEY_TO_VERIFIER_MAP[payloadSigner];
-  if (!certMap.hasOwnProperty(messageVerifier)) {
-    throw new Error(`Certificate for ${payloadSigner} is missing`);
+  const payloadSignatureData = fbMsgPayload.payloadSignatureData ?? fbMsgPayload.signatureData;
+  if (payloadSignatureData === undefined && payloadSignatureData === null) {
+    throw new Error('Payload signature data is missing');
   }
-  const certificate = certMap[messageVerifier];
 
-  res.push({
-    payload: fbMsgPayload.payload,
-    certificate,
-    service: payloadSigner,
-    signatureInfo: {
-      signature: fbMsgPayload.payloadSignatureData.signature,
-      format: 'hex',
-    },
-  });
+  res.push(getVerifyDetailsFromPayloadSignature(fbMsgPayload.payloadSignatureData, fbMsgPayload.payload));
 
   switch (fbMessage.type) {
     case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
@@ -106,21 +114,7 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
       const txMetadata: TxMetadata = parsedPayload.metadata;
       const policySignature = getPolicySignature(txMetadata.txMetaDataSignatures);
       const policyServiceName = policySignature.id.toLowerCase();
-      const txMetadataVerifier = KEY_TO_VERIFIER_MAP[policyServiceName];
-      if (!certMap.hasOwnProperty(txMetadataVerifier)) {
-        throw new Error(`Certificate for ${policyServiceName} is missing`);
-      }
-      const txMetadataCertificate = certMap[txMetadataVerifier];
-
-      res.push({
-        payload: txMetadata.txMetaData,
-        certificate: txMetadataCertificate,
-        service: policyServiceName,
-        signatureInfo: {
-          signature: policySignature.signature,
-          format: 'hex',
-        },
-      });
+      res.push(getVerifyDetailsFromPayloadSignature({ service: policyServiceName, signature: policySignature.signature }, txMetadata.txMetaData));
       break;
     }
   }
