@@ -3,6 +3,7 @@ import Chance from 'chance';
 import jwt from 'jsonwebtoken';
 import { GUID, JWT } from '../types';
 import deviceService from './device.service';
+import { setupTokenBeforeAndAfter } from './device.service.test';
 import fbServerApi from './fb-server.api';
 import { fbServerApiDriver, messageBuilder } from './fb-server.api.test';
 import agent from './fireblocks-agent';
@@ -10,6 +11,8 @@ import messagesService from './messages.service';
 const c = new Chance();
 
 describe('HSM Agent', () => {
+  setupTokenBeforeAndAfter();
+
   it('should pair device and save token', async () => {
     const userId = c.guid();
     const pairingToken = hsmAgentDriver.given.jwtToken({ userId });
