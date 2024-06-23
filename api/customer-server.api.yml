@@ -103,10 +103,11 @@ components:
           $ref: "#/components/schemas/RequestType"
     Message:
       required:
-        - payloadSignatureData
         - payload
       properties:
         payloadSignatureData:
+          $ref: "#/components/schemas/PayloadSignatureData"
+        signatureData:
           $ref: "#/components/schemas/PayloadSignatureData"
         payload:
           description: Stringified JSON that holds the message payload. Parsed object will be of type '#/components/schemas/MessagePayload'
