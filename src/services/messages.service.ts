@@ -29,11 +29,16 @@ class MessageService implements IMessageService {
     const certificates = await fbServerApi.getCertificates();
     const decodedMessages: MessageEnvelop[] = messages
       .map((messageEnvelope: FBMessageEnvelope) => {
-        const { message, transportMetadata } = decodeAndVerifyMessage(messageEnvelope, certificates);
-        logger.info(`Got message id ${transportMetadata.msgId} with type ${transportMetadata.type}`);
-        return { message, transportMetadata };
+        try {
+          const { message, transportMetadata } = decodeAndVerifyMessage(messageEnvelope, certificates);
+          logger.info(`Got message id ${transportMetadata.msgId} with type ${transportMetadata.type}`);
+          return { message, transportMetadata };
+        } catch (e) {
+          logger.error(`Error decoding message ${e.message}`);
+          return null;
+        }
       })
-      .filter((_) => this.knownMessageTypes.includes(_.transportMetadata.type));
+      .filter((_) => _ !== null && this.knownMessageTypes.includes(_.transportMetadata.type));
 
     const deprecatedMessages: MessageEnvelop[] = [];
     const messagesToHandle: MessageEnvelop[] = [];
@@ -68,8 +73,8 @@ class MessageService implements IMessageService {
   }
 
   async updateStatus(messagesStatus: MessageStatus[]) {
-    try {
-      for (const msgStatus of messagesStatus) {
+    for (const msgStatus of messagesStatus) {
+      try {
         const { msgId, requestId } = msgStatus.request.transportMetadata;
         const isInCache = this.msgCache[requestId];
         if (!isInCache) {
@@ -77,13 +82,17 @@ class MessageService implements IMessageService {
         }
         if (msgStatus.status === 'SIGNED' || msgStatus.status === 'FAILED') {
           logger.info(`Got signed message id ${msgId}, cacheId: ${requestId}`);
-          await fbServerApi.broadcastResponse(msgStatus);
+          const messageType = msgStatus.request.transportMetadata.type;
+          if (this.supportedMessageTypes.includes(messageType)) {
+            // Broadcast only for supported messages
+            await fbServerApi.broadcastResponse(msgStatus);
+          }
           await fbServerApi.ackMessage(msgId);
           delete this.msgCache[requestId];
         }
+      } catch (e) {
+        throw new Error(`Error updating status to fireblocks ${e.message}`);
       }
-    } catch (e) {
-      throw new Error(`Error updating status to fireblocks ${e.message}`);
     }
   }
 

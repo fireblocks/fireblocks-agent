@@ -90,7 +90,7 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
     throw new Error('Payload signature data is missing');
   }
 
-  res.push(getVerifyDetailsFromPayloadSignature(fbMsgPayload.payloadSignatureData, fbMsgPayload.payload));
+  res.push(getVerifyDetailsFromPayloadSignature(payloadSignatureData, fbMsgPayload.payload));
 
   switch (fbMessage.type) {
     case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
