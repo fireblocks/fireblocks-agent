@@ -89,16 +89,16 @@ components:
       description: Metadata necessary for internal Fireblocks operations.
       required:
         - msgId
-        - deviceId
-        - internalMessageId
+        - requestId
         - type
       properties:
         msgId:
+          description: The unique message ID used for tracking the message. The ID is changed every time the message is received.
           type: number
-        deviceId:
+        requestId:
+          description: The unique request ID used for tracking the request.
           type: string
-        internalMessageId:
-          type: string
+          format: uuid
         type:
           $ref: "#/components/schemas/RequestType"
     Message:

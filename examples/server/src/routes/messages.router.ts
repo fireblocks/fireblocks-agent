@@ -10,7 +10,7 @@ msgRouter.post('/messagesToSign', async (req: Request<{}, {}, MessagesRequest>, 
   const messagesStatus: MessageStatus[] = await messagesDao.insertMessages(messages);
 
   //the next line we simulate the hsm work and sign the messages.
-  const msgIds = messagesStatus.map((_) => _.request.transportMetadata.internalMessageId);
+  const msgIds = messagesStatus.map((_) => _.request.transportMetadata.requestId);
   await hsmSignService.signMessages(msgIds);
   const messagesStatusAfterSign = await messagesDao.getMessagesStatus(msgIds);
 

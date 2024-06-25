@@ -25,8 +25,7 @@ export const decodeAndVerifyMessage = (
   return {
     transportMetadata: {
       msgId: fbMsgEnvelope.msgId,
-      deviceId: fbMsgEnvelope.deviceId,
-      internalMessageId: fbMsgEnvelope.internalMessageId,
+      requestId: extractMessageUniqueId(fbMessage),
       type: fbMessage.type,
     },
     message: fbMessage.payload,
@@ -100,6 +99,18 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   }
   return res;
 };
+
+const extractMessageUniqueId = (fbMessage: FBMessage): string => {
+  const fbMsgPayload = fbMessage.payload;
+  const parsedMessage = JSON.parse(fbMsgPayload.payload);
+
+  const uniqueId = parsedMessage.requestId ?? parsedMessage.txId;
+  if (uniqueId === undefined) {
+    throw new Error('Message unique identifier is missing');
+  }
+
+  return uniqueId;
+}
 
 interface VerifyDetails {
   payload: string;

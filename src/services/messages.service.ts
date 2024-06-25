@@ -64,16 +64,16 @@ class MessageService implements IMessageService {
   async updateStatus(messagesStatus: MessageStatus[]) {
     try {
       for (const msgStatus of messagesStatus) {
-        const { msgId, internalMessageId } = msgStatus.request.transportMetadata;
-        const isInCache = this.msgCache[internalMessageId];
+        const { msgId, requestId } = msgStatus.request.transportMetadata;
+        const isInCache = this.msgCache[requestId];
         if (!isInCache) {
-          this.msgCache[internalMessageId] = msgStatus;
+          this.msgCache[requestId] = msgStatus;
         }
         if (msgStatus.status === 'SIGNED' || msgStatus.status === 'FAILED') {
-          logger.info(`Got signed message id ${msgId}, cacheId: ${internalMessageId}`);
+          logger.info(`Got signed message id ${msgId}, cacheId: ${requestId}`);
           await fbServerApi.broadcastResponse(msgStatus);
           await fbServerApi.ackMessage(msgId);
-          delete this.msgCache[internalMessageId];
+          delete this.msgCache[requestId];
         }
       }
     } catch (e) {

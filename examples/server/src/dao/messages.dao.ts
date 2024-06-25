@@ -23,7 +23,7 @@ const getMessagesCollection = async () => {
 export const updateMessageStatus = async (msg: MessageStatus) => {
   const msgRef = await getMessagesCollection();
   const dbMsg = {
-    _id: msg.request.transportMetadata.internalMessageId,
+    _id: msg.request.transportMetadata.requestId,
     ...msg,
   };
   return msgRef.updateOne({ _id: dbMsg._id }, { $set: dbMsg }, { upsert: true });
@@ -40,7 +40,7 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
     }
 
     return {
-      _id: transportMetadata.internalMessageId,
+      _id: transportMetadata.requestId,
       type: newType,
       status: 'PENDING_SIGN',
       message: parsedPayload,
