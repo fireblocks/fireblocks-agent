@@ -70,7 +70,8 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
     }
     case 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST': {
       const fbMsgPayload = fbMessage.payload;
-      let parsedMessage = JSON.parse(fbMsgPayload.payload);
+      const parsedMessage = JSON.parse(fbMsgPayload.payload);
+
       const msgVersion = parsedMessage.version;
       if (msgVersion === undefined) {
         throw new Error('Message version is missing');
