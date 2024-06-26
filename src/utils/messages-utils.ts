@@ -59,44 +59,54 @@ function verifyRSASignatureFromCertificate(
   return verifier.verify(certificatePEM, signature, signatureFormat);
 }
 
+const getVerifyDetailsFromPayloadSignature = (payloadSignature: { service: string, signature: string }, payload: string): VerifyDetails => {
+  const serviceSigner = payloadSignature.service.toLowerCase();
+  const messageVerifier = KEY_TO_VERIFIER_MAP[serviceSigner];
+  if (!certMap.hasOwnProperty(messageVerifier)) {
+    throw new Error(`Certificate for ${serviceSigner} is missing`);
+  }
+
+  return {
+    payload: payload,
+    certificate: certMap[messageVerifier],
+    service: serviceSigner,
+    signatureInfo: {
+      signature: payloadSignature.signature,
+      format: 'hex',
+    },
+  };
+}
+
+const getPayloadVerifyDetails = (fbMessage: FBMessage): VerifyDetails => {
+  const fbMsgPayload = fbMessage.payload;
+  const payloadSignatureData = fbMsgPayload.payloadSignatureData;
+  if (payloadSignatureData === undefined && payloadSignatureData === null) {
+    throw new Error('Payload signature data is missing');
+  }
+
+  return getVerifyDetailsFromPayloadSignature(payloadSignatureData, fbMsgPayload.payload);
+}
+
 const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   const res: VerifyDetails[] = [];
 
   switch (fbMessage.type) {
-    case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
-      // Deprecated message no need to verify it
-      break;
-    }
     case 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST': {
+      res.push(getPayloadVerifyDetails(fbMessage));
+
       const fbMsgPayload = fbMessage.payload;
       const parsedMessage = JSON.parse(fbMsgPayload.payload);
 
       const msgVersion = parsedMessage.version;
-      if (msgVersion === undefined) {
+      if (msgVersion === undefined || msgVersion == null) {
         throw new Error('Message version is missing');
       } else if (!PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS.includes(msgVersion.split('.')[0])) {
         throw new Error(`Unsupported message version: ${msgVersion}`);
       }
-
-      const service_name = fbMsgPayload.payloadSignatureData.service.toLowerCase();
-      const messageVerifier = KEY_TO_VERIFIER_MAP[service_name];
-      const certificate = certMap[messageVerifier];
-      if (certificate === undefined) {
-        throw new Error(`Certificate for ${service_name} is missing`);
-      }
-
-      res.push({
-        payload: fbMsgPayload.payload,
-        certificate,
-        service: service_name,
-        signatureInfo: {
-          signature: fbMsgPayload.payloadSignatureData.signature,
-          format: 'hex',
-        },
-      });
       break;
     }
   }
+
   return res;
 };
 
