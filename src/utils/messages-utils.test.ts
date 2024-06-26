@@ -1,8 +1,10 @@
+import Chance from 'chance';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { messageBuilder } from '../services/fb-server.api.test';
 import { FBMessage, FBMessageEnvelope, FBMessagePayload, Message, MessageEnvelop } from '../types';
 import * as utils from './messages-utils';
+const c = Chance();
 
 describe('Messages utils', () => {
   it('should verify proof of ownership message', () => {
@@ -11,13 +13,15 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       cm: publicKey,
     };
-    const fbMessage = aFbProofOfOwnershipMessage(privateKey);
+    const requestId = c.guid();
+    const fbMessage = aFbProofOfOwnershipMessage(privateKey, requestId);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
     const internalMessage = JSON.parse(fbMessage.payload.payload) as Message;
 
     const expectedMessage: MessageEnvelop = {
       msgId: fbMessageEnvelope.msgId,
+      requestId,
       type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST',
       message: internalMessage,
       payload: fbMessage.payload.payload,
@@ -62,7 +66,7 @@ describe('Messages utils', () => {
     };
     // @ts-ignore
     const type = 'PROOF_OF_OWNERSHIP_REQUEST' as TxType;
-    const fbMsgPayload = aFbMessagePayload(privateKey);
+    const fbMsgPayload = aInvalidMessagePayload(privateKey);
     const fbMessage = { type: type, payload: fbMsgPayload };
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
@@ -70,6 +74,7 @@ describe('Messages utils', () => {
 
     const expectedMessage: MessageEnvelop = {
       msgId: fbMessageEnvelope.msgId,
+      requestId: "",
       type,
       message: internalMessage,
       payload: fbMessage.payload.payload,
@@ -92,16 +97,40 @@ function aKeyPair(): KeyPair {
   return { privateKey, publicKey };
 }
 
-function aFbProofOfOwnershipMessage(privateKey: string): FBMessage {
-  const fbMsgPayload = aFbMessagePayload(privateKey);
+function aFbProofOfOwnershipMessage(privateKey: string, requestId?: string): FBMessage {
+  if (!requestId) {
+    requestId = c.guid();
+  }
+
+  const fbMsgPayload = aFbMessagePayload(privateKey, { requestId });
   return {
     type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST',
     payload: fbMsgPayload,
   };
 }
 
-function aFbMessagePayload(privateKey: string): FBMessagePayload {
-  const payload: Message = messageBuilder.aMessage();
+function aFbMessagePayload(privateKey: string, message?: Partial<Message>): FBMessagePayload {
+  const payload: Message = messageBuilder.aMessage(message);
+  const payloadStr = JSON.stringify(payload);
+
+  const signer = crypto.createSign('sha256');
+  signer.update(payloadStr);
+  const signature = signer.sign(privateKey, 'hex');
+
+  const innerMessage: FBMessagePayload = {
+    payload: payloadStr,
+    signatureData: {
+      service: 'CONFIGURATION_MANAGER',
+      signature,
+    },
+  };
+  return innerMessage;
+}
+
+function aInvalidMessagePayload(privateKey: string, message?: Partial<Message>): FBMessagePayload {
+  const payload: Message = messageBuilder.aMessage(message);
+  // @ts-ignore
+  delete payload.requestId;
   const payloadStr = JSON.stringify(payload);
 
   const signer = crypto.createSign('sha256');

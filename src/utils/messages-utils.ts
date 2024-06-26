@@ -28,6 +28,7 @@ const toMessage = (msgId: number, fbMessage: FBMessage): MessageEnvelop => {
   return {
     msgId,
     type: fbMessage.type,
+    requestId: extractMessageUniqueId(fbMessage),
     message: parsedMessage,
     payload: fbMsgPayload.payload,
   };
@@ -98,6 +99,13 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   }
   return res;
 };
+
+const extractMessageUniqueId = (fbMessage: FBMessage): string => {
+  const fbMsgPayload = fbMessage.payload;
+  const parsedMessage = JSON.parse(fbMsgPayload.payload);
+
+  return parsedMessage.requestId ?? parsedMessage.txId ?? "";
+}
 
 interface VerifyDetails {
   payload: string;

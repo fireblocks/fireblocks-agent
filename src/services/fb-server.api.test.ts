@@ -222,9 +222,10 @@ export const messageBuilder = {
       payload: fbMessagePayload,
     };
   },
-  anMessageEnvelope: (msgId: number, type: TxType, message: Message): MessageEnvelop => {
+  anMessageEnvelope: (msgId: number, requestId: string, type: TxType, message: Message): MessageEnvelop => {
     return {
       msgId,
+      requestId,
       payload: JSON.stringify(message),
       type,
       message,

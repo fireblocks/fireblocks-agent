@@ -78,6 +78,7 @@ components:
       type: object
       required:
         - msgId
+        - requestId
         - type
         - message
         - payload
@@ -85,6 +86,10 @@ components:
         msgId:
           type: number
           example: 425878000014
+        requestId:
+          description: Unique request id, used to track the request
+          type: string
+          format: uuid
         type:
           $ref: "#/components/schemas/TxType"
         message:
