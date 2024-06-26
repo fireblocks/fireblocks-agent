@@ -66,22 +66,39 @@ function verifyRSASignatureFromCertificate(
   return verifier.verify(certificatePEM, signature, signatureFormat);
 }
 
+const getVerifyDetailsFromPayloadSignature = (payloadSignature: { service: string, signature: string }, payload: string): VerifyDetails => {
+  const serviceSigner = payloadSignature.service.toLowerCase();
+  const messageVerifier = KEY_TO_VERIFIER_MAP[serviceSigner];
+  if (!certMap.hasOwnProperty(messageVerifier)) {
+    throw new Error(`Certificate for ${serviceSigner} is missing`);
+  }
+
+  return {
+    payload: payload,
+    certificate: certMap[messageVerifier],
+    signatureInfo: {
+      signature: payloadSignature.signature,
+      format: 'hex',
+    },
+  };
+}
+
+const getPayloadVerifyDetails = (fbMessage: FBMessage): VerifyDetails => {
+  const fbMsgPayload = fbMessage.payload;
+  const payloadSignatureData = fbMsgPayload.signatureData;
+  if (payloadSignatureData === undefined && payloadSignatureData === null) {
+    throw new Error('Payload signature data is missing');
+  }
+
+  return getVerifyDetailsFromPayloadSignature(payloadSignatureData, fbMsgPayload.payload);
+}
+
 const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   const res: VerifyDetails[] = [];
 
   switch (fbMessage.type) {
     case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
-      const fbMsgPayload = fbMessage.payload;
-      const messageVerifier = KEY_TO_VERIFIER_MAP[fbMsgPayload.signatureData.service.toLowerCase()];
-      const certificate = certMap[messageVerifier];
-      res.push({
-        payload: fbMsgPayload.payload,
-        certificate,
-        signatureInfo: {
-          signature: fbMsgPayload.signatureData.signature,
-          format: 'hex',
-        },
-      });
+      res.push(getPayloadVerifyDetails(fbMessage));
       break;
     }
   }
