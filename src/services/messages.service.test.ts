@@ -33,7 +33,7 @@ describe('messages service', () => {
     ]);
   });
 
-  it('should ignore non whitelist messages', async () => {
+  it('should ack non whitelist messages', async () => {
     const msgId = c.natural();
     const aTxToSignMessage = messageBuilder.aMessage();
     //@ts-ignore
@@ -43,15 +43,20 @@ describe('messages service', () => {
     const msgEnvelop = messageBuilder.anMessageEnvelope(msgId, 'UNKNOWN_TYPE', aTxToSignMessage);
     jest.spyOn(customerServerApi, 'messagesToSign');
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+
     await service.handleMessages([fbMsgEnvelop]);
 
     expect(customerServerApi.messagesToSign).not.toBeCalled();
+    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId);
   });
 
   it('should ignore non encoded messages', async () => {
+    const msgId = c.natural();
     const aNonEncodedMessage = messageBuilder.fbMessage('EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', messageBuilder.aMessage());
-    const messageEnvelope = messageBuilder.fbMsgEnvelope({}, aNonEncodedMessage, false);
+    const messageEnvelope = messageBuilder.fbMsgEnvelope({ msgId }, aNonEncodedMessage, false);
     jest.spyOn(customerServerApi, 'messagesToSign');
+
     await service.handleMessages([messageEnvelope]);
 
     expect(customerServerApi.messagesToSign).not.toBeCalled();

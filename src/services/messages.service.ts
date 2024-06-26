@@ -22,15 +22,36 @@ class MessageService implements IMessageService {
     const certificates = await fbServerApi.getCertificates();
     const decodedMessages: MessageEnvelop[] = messages
       .map((messageEnvelope: FBMessageEnvelope) => {
-        const { message, msgId, type, payload } = decodeAndVerifyMessage(messageEnvelope, certificates);
-        logger.info(`Got message id ${msgId} with type ${type}`);
-        return { message, msgId, type, payload };
+        try {
+          const { message, msgId, type, payload } = decodeAndVerifyMessage(messageEnvelope, certificates);
+          logger.info(`Got message id ${msgId} with type ${type}`);
+          return { message, msgId, type, payload };
+        }
+        catch (e) {
+          logger.error(`Error decoding message ${e.message}`);
+          return null;
+        }
       })
-      .filter((_) => this.knownMessageTypes.includes(_.type));
+      .filter((_) => _ !== null);
 
-    if (!!decodedMessages.length) {
-      const msgStatuses = await customerServerApi.messagesToSign(decodedMessages);
+    const unknownMessages: MessageEnvelop[] = [];
+    const messagesToHandle: MessageEnvelop[] = [];
+    decodedMessages.forEach((decodedMessage) => {
+      if (this.knownMessageTypes.includes(decodedMessage.type)) {
+        messagesToHandle.push(decodedMessage);
+      } else {
+        unknownMessages.push(decodedMessage);
+      }
+    });
+
+    if (!!messagesToHandle.length) {
+      const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle);
       await this.updateStatus(msgStatuses);
+    }
+
+    if (!!unknownMessages.length) {
+      unknownMessages.forEach((msg) => logger.error(`Got unknown message type ${msg.type} and id ${msg.msgId}`));
+      await this.ackMessages(unknownMessages.map((msg) => msg.msgId));
     }
   }
 
@@ -50,6 +71,15 @@ class MessageService implements IMessageService {
       }
     } catch (e) {
       throw new Error(`Error updating status to fireblocks ${e.message}`);
+    }
+  }
+
+  async ackMessages(messagesIds: number[]) {
+    try {
+      const promises = messagesIds.map(msgId => fbServerApi.ackMessage(msgId));
+      await Promise.all(promises);
+    } catch (e) {
+      throw new Error(`Error acknowledging messages ${e.message}`);
     }
   }
 
