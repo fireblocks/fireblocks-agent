@@ -10,7 +10,7 @@ export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
     const oneToFiveSeconds = Math.ceil(Math.random() * 5) * 1000;
     const algorithm = msg.message.algorithm;
     if (typeof algorithm !== 'string' || !SUPPORTED_ALGORITHMS.includes(algorithm)) {
-      console.log(`Unsupported algorithm: ${algorithm}`);
+      logger.info(`Unsupported algorithm: ${algorithm}`);
       msg.errorMessage = `Unsupported algorithm: ${algorithm}`;
       return;
     }
@@ -27,7 +27,7 @@ export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
         msg.signedPayload = await hsmFacade.sign(signingDeviceKeyId, data, algorithm);
       }
       await messagesDao.updateMessageStatus(msg);
-      console.log(`Set ${msg.msgId} from status ${previousStatus} to ${msg.status}`);
+      logger.info(`Set ${msg.msgId} from status ${previousStatus} to ${msg.status}`);
     }, oneToFiveSeconds);
   });
 }
@@ -38,7 +38,7 @@ export async function signMessages(msgIds: number[]) {
   for (const msg of messages) {
     const algorithm = msg.message.algorithm;
     if (typeof algorithm !== 'string' || !SUPPORTED_ALGORITHMS.includes(algorithm)) {
-      console.log(`Unsupported algorithm: ${algorithm}`);
+      logger.error(`Unsupported algorithm: ${algorithm}`);
       msg.status = 'FAILED';
       msg.errorMessage = `Unsupported algorithm: ${algorithm}`;
       return;
@@ -56,6 +56,6 @@ export async function signMessages(msgIds: number[]) {
     }
 
     await messagesDao.updateMessageStatus(msg);
-    logger.error(`Set ${msg.msgId} to ${msg.status}`);
+    logger.info(`Set ${msg.msgId} to ${msg.status}`);
   }
 }

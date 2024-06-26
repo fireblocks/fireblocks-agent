@@ -166,7 +166,7 @@ describe('Server API', () => {
       const res = await fbServerApi.broadcastResponse(signedMessageStatus);
       expect(res).toEqual('ok');
     } catch (e) {
-      console.log('aaa');
+      console.log(`Error: ${e}`);
     }
 
   });
