@@ -47,8 +47,21 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
       request: { message, transportMetadata },
     } as DbMsg;
   });
-  const insertRes = await msgRef.insertMany(dbMsgs);
-  const messagesRes = await getMessagesStatus(Object.values(insertRes.insertedIds));
+
+  const bulkOperations = dbMsgs.map((dbMsg) => ({
+    updateOne: {
+      filter: { _id: dbMsg._id },
+      update: {
+        $setOnInsert: dbMsg,
+        $set: { dbMsg },
+      },
+      upsert: true,
+    },
+  }));
+
+  const bulkRes = await msgRef.bulkWrite(bulkOperations);
+  const { insertedIds } = bulkRes;
+  const messagesRes = await getMessagesStatus(Object.values(insertedIds));
   return messagesRes;
 };
 
