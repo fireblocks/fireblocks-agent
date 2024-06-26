@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import Chance from 'chance';
 import fs from 'fs';
 import { TOKEN_PATH } from '../constants';
 import service, { DeviceData } from './device.service';
 const c = new Chance();
-describe('device service', () => {
+
+export function setupTokenBeforeAndAfter() {
   beforeEach(() => {
     if (fs.existsSync(TOKEN_PATH)) {
       fs.copyFileSync(TOKEN_PATH, `${TOKEN_PATH}.bak`);
@@ -18,6 +19,10 @@ describe('device service', () => {
       fs.unlinkSync(`${TOKEN_PATH}.bak`);
     }
   });
+}
+
+describe('device service', () => {
+  setupTokenBeforeAndAfter();
 
   it('should return false in case refresh token is missing', () => {
     const res = service.isPaired();
