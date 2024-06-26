@@ -102,6 +102,31 @@ describe('Messages utils', () => {
 
     expect(expectToThrow).toThrowErrorMatchingInlineSnapshot(`"Unsupported message version: ${invalid_version}"`);
   });
+
+  it('should verify unknown message', () => {
+    const { privateKey, publicKey } = aKeyPair();
+    const certificates = {
+      zs: 'my-zs-secret',
+      cm: publicKey,
+    };
+
+    // @ts-ignore
+    const type = 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST' as RequestType;
+    const fbMsgPayload = aFbMessagePayload(privateKey, type);
+    const fbMessage: FBMessage = { type, payload: fbMsgPayload };
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+
+    const expectedMessage: MessageEnvelop = {
+      message: fbMessage.payload,
+      transportMetadata: {
+        msgId: fbMessageEnvelope.msgId,
+        requestId: "",
+        type: fbMessage.type,
+      },
+    };
+    expect(messageEnvelope).toEqual(expectedMessage);
+  });
 });
 
 interface KeyPair {

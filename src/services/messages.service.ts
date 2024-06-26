@@ -34,10 +34,15 @@ class MessageService implements IMessageService {
       .filter((_) => _ !== null);
 
     const unknownMessages: MessageEnvelop[] = [];
+    const invalidMessages: MessageEnvelop[] = [];
     const messagesToHandle: MessageEnvelop[] = [];
     decodedMessages.forEach((decodedMessage) => {
       if (this.supportedMessageTypes.includes(decodedMessage.transportMetadata.type)) {
-        messagesToHandle.push(decodedMessage);
+        if (decodedMessage.transportMetadata.requestId === "") {
+          invalidMessages.push(decodedMessage);
+        } else {
+          messagesToHandle.push(decodedMessage);
+        }
       } else {
         unknownMessages.push(decodedMessage);
       }
@@ -55,6 +60,13 @@ class MessageService implements IMessageService {
 
       await this.ackMessages(unknownMessages.map((msg) => msg.transportMetadata.msgId));
     }
+
+    if (!!invalidMessages.length) {
+      unknownMessages.forEach((msg) => {
+        logger.warn(`Got invalid message id ${msg.transportMetadata.msgId} and type ${msg.transportMetadata.type}`);
+      });
+
+      await this.ackMessages(invalidMessages.map((msg) => msg.transportMetadata.msgId));
     }
   }
 

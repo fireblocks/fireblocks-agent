@@ -114,12 +114,7 @@ const extractMessageUniqueId = (fbMessage: FBMessage): string => {
   const fbMsgPayload = fbMessage.payload;
   const parsedMessage = JSON.parse(fbMsgPayload.payload);
 
-  const uniqueId = parsedMessage.requestId ?? parsedMessage.txId;
-  if (uniqueId === undefined) {
-    throw new Error('Message unique identifier is missing');
-  }
-
-  return uniqueId;
+  return parsedMessage.requestId ?? parsedMessage.txId ?? "";
 }
 
 interface VerifyDetails {
