@@ -234,20 +234,12 @@ components:
     RequestType:
       description: The type of the message.
       type: string
-      enum:
-        [
-          EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST,
-          KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST,
-        ]
+      enum: [KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST]
       example: KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST
     ResponseType:
       description: Indicates the type of message for which the status is provided.
       type: string
-      enum:
-        [
-          EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE,
-          KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE,
-        ]
+      enum: [KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE]
       example: KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE
     Algorithm:
       description: The cryptographic algorithm used for signing.
