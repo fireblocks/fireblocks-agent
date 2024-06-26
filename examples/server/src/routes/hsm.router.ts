@@ -13,7 +13,7 @@ hsmRouter.get('/generateKeyPair', async (req, res) => {
     }
 
     const { keyId, pem } = await hsm.generateKeyPair(algorithm);
-    console.log(`keyId`, keyId);
+    logger.info(`Generate key with ID: ${keyId}`);
     res.status(200).json({ keyId, pem });
   } catch (e) {
     logger.error(e);
@@ -29,7 +29,7 @@ hsmRouter.post('/sign', async (req, res) => {
       return;
     }
 
-    console.log(`got keyid: ${keyId}, payload ${payload}`);
+    logger.info(`got key: ${keyId}, payload ${payload}`);
     const signature = await hsm.sign(keyId, payload, algorithm);
     res.status(200).json({ signature });
   } catch (e) {
@@ -46,7 +46,7 @@ hsmRouter.post('/verify', async (req, res) => {
       return;
     }
 
-    console.log(`got keyid: ${keyId}, payload ${payload}, signature: ${signature}, algorithm: ${algorithm}`);
+    logger.info(`got key: ${keyId}, payload ${payload}, signature: ${signature}, algorithm: ${algorithm}`);
     const isVerified = await hsm.verify(keyId, signature, payload, algorithm);
     res.status(200).json({ isVerified });
   } catch (e) {

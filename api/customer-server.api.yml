@@ -7,7 +7,6 @@ info:
 servers:
   - url: https://localhost:5000/v1
 
-
 paths:
   /messagesStatus:
     post:
@@ -17,14 +16,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MessagesStatusRequest'
+              $ref: "#/components/schemas/MessagesStatusRequest"
       responses:
         200:
           description: Messages Status
           content:
-            application/json: 
+            application/json:
               schema:
-                $ref: '#/components/schemas/MessagesStatusResponse'
+                $ref: "#/components/schemas/MessagesStatusResponse"
   /messagesToSign:
     post:
       summary: Sign Messages
@@ -33,7 +32,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MessagesRequest'
+              $ref: "#/components/schemas/MessagesRequest"
         description: Messages to sign
       responses:
         200:
@@ -41,12 +40,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessagesStatusResponse'
+                $ref: "#/components/schemas/MessagesStatusResponse"
         default:
           $ref: "#/components/schemas/Error"
 
 components:
-  schemas: 
+  schemas:
     MessagesStatusRequest:
       type: object
       required:
@@ -65,7 +64,7 @@ components:
         statuses:
           type: array
           items:
-            $ref: '#/components/schemas/MessageStatus'
+            $ref: "#/components/schemas/MessageStatus"
     MessagesRequest:
       type: object
       required:
@@ -74,22 +73,22 @@ components:
         messages:
           type: array
           items:
-            $ref: '#/components/schemas/MessageEnvelope'
+            $ref: "#/components/schemas/MessageEnvelope"
     MessageEnvelope:
       type: object
       required:
         - msgId
         - type
         - message
-        - payload 
+        - payload
       properties:
         msgId:
           type: number
           example: 425878000014
         type:
-          $ref: '#/components/schemas/TxType'
+          $ref: "#/components/schemas/TxType"
         message:
-          $ref: '#/components/schemas/Message'
+          $ref: "#/components/schemas/Message"
         payload:
           type: string
           format: string
@@ -104,7 +103,7 @@ components:
         - payload
       properties:
         type:
-          $ref: '#/components/schemas/TxType'
+          $ref: "#/components/schemas/TxType"
         msgId:
           type: number
           example: 425878000014
@@ -125,7 +124,8 @@ components:
           description: Original message payload
     TxType:
       type: string
-      enum: [EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST, EXTERNAL_KEY_SIGNING_REQUEST]
+      enum:
+        [EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST, EXTERNAL_KEY_SIGNING_REQUEST]
       example: EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST
     Algorithm:
       description: algorithm to sign with
@@ -165,7 +165,7 @@ components:
           type: string
           example: 70721651-a7f3-42f6-a984-6e058269495f
         algorithm:
-          $ref: '#/components/schemas/Algorithm'
+          $ref: "#/components/schemas/Algorithm"
         data:
           description: The string to sign
           type: string
@@ -173,9 +173,8 @@ components:
     Error:
       type: object
       required:
-          - code
-          - message
+        - code
+        - message
       properties:
         message:
           type: string
-

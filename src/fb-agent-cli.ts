@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import ora from 'ora';
 import { v4 as uuid } from 'uuid';
+import { CUSTOMER_SERVER_URL, MOBILE_GATEWAY_URL } from './constants';
 import deviceService from './services/device.service';
 import fbAgent from './services/fireblocks-agent';
 import logger from './services/logger';
@@ -15,6 +16,9 @@ async function main() {
   while (!deviceService.isPaired()) {
     await pairDevice();
   }
+
+  const { userId, deviceId } = deviceService.getDeviceData();
+  console.log(`Fireblocks Agent info:\n\tuserId: ${userId}\n\tdeviceId: ${deviceId}\n\tFireblocks URL: ${MOBILE_GATEWAY_URL}\n\tCustomer server URL: ${CUSTOMER_SERVER_URL}`);
   fbAgent.runAgentMainLoop();
 }
 
