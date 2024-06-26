@@ -35,11 +35,6 @@ export const customerServerApiDriver = {
     aMessageRequest: (msgId: number, message: Message): MessageEnvelop[] => {
       return [{ msgId, requestId: message.requestId, message, type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', payload: JSON.stringify(message) }];
     },
-    aTxStatusRequest: (msgIds: number[] = []): MessagesStatusRequest => {
-      return {
-        msgIds,
-      };
-    },
   },
   mock: {
     messagesToSign: (messages: MessageEnvelop[], result?: MessagesResponse) => {

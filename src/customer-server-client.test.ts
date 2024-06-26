@@ -22,7 +22,7 @@ describe('Customer server client', () => {
   });
 
   it('should fetch tx status every 30 sec', async () => {
-    jest.spyOn(messagesService, 'getPendingMessages').mockReturnValue([1]);
+    jest.spyOn(messagesService, 'getPendingMessages').mockReturnValue(["222933eb-8914-4770-a5dc-d3e198dcce57"]);
     //@ts-ignore
     jest.spyOn(customerServerApi, 'messagesStatus').mockImplementation(() => {
       return {

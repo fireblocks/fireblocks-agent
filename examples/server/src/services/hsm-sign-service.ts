@@ -4,8 +4,8 @@ import { SUPPORTED_ALGORITHMS } from './algorithm-info';
 import hsmFacade from './hsm-facade';
 import logger from './logger';
 
-export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
-  const messages = await getMessages(msgIds);
+export async function randomlySignOrFailMessagesAsync(requestsIds: string[]) {
+  const messages = await getMessages(requestsIds);
   messages.forEach((msg) => {
     const oneToFiveSeconds = Math.ceil(Math.random() * 5) * 1000;
     const algorithm = msg.message.algorithm;
@@ -32,9 +32,9 @@ export async function randomlySignOrFailMessagesAsync(msgIds: number[]) {
   });
 }
 
-export async function signMessages(msgIds: number[]) {
-  logger.info(`enter signing messages ${msgIds}`);
-  const messages = await getMessages(msgIds);
+export async function signMessages(requestIds: string[]) {
+  logger.info(`enter signing messages ${requestIds}`);
+  const messages = await getMessages(requestIds);
   for (const msg of messages) {
     const algorithm = msg.message.algorithm;
     if (typeof algorithm !== 'string' || !SUPPORTED_ALGORITHMS.includes(algorithm)) {

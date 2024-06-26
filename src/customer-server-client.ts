@@ -5,9 +5,9 @@ import messagesService from './services/messages.service';
 class CustomerClient {
   pullMessagesStatus = async () => {
     try {
-      const msgIds = messagesService.getPendingMessages();
-      if (!!msgIds.length) {
-        const status = await customerServerApi.messagesStatus({ msgIds });
+      const requestsIds = messagesService.getPendingMessages();
+      if (!!requestsIds.length) {
+        const status = await customerServerApi.messagesStatus({ requestsIds });
         await messagesService.updateStatus(status.statuses);
       }
     } catch (e) {

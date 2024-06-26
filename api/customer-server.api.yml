@@ -49,13 +49,14 @@ components:
     MessagesStatusRequest:
       type: object
       required:
-        - msgIds
+        - requestsIds
       properties:
-        msgIds:
+        requestsIds:
           type: array
           items:
-            type: number
-            example: 425878000014
+            type: string
+            format: uuid
+            example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
     MessagesStatusResponse:
       type: object
       required:
