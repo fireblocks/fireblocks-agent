@@ -22,21 +22,15 @@ export const decodeAndVerifyMessage = (
 };
 
 const toMessage = (msgId: number, fbMessage: FBMessage): MessageEnvelop => {
-  const shared = {
+  const fbMsgPayload = fbMessage.payload;
+  const parsedMessage = JSON.parse(fbMsgPayload.payload) as Message;
+
+  return {
     msgId,
     type: fbMessage.type,
+    message: parsedMessage,
+    payload: fbMsgPayload.payload,
   };
-  switch (fbMessage.type) {
-    case 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST': {
-      const fbMsgPayload = fbMessage.payload;
-      const parsedMessage = JSON.parse(fbMsgPayload.payload) as Message;
-      return {
-        ...shared,
-        message: parsedMessage,
-        payload: fbMsgPayload.payload,
-      };
-    }
-  }
 };
 
 const verifyFbMessage = (message: FBMessage): boolean => {

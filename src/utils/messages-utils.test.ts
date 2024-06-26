@@ -53,6 +53,29 @@ describe('Messages utils', () => {
 
     expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Message signature is invalid"');
   });
+
+  it('should verify unknown message', () => {
+    const { privateKey, publicKey } = aKeyPair();
+    const certificates = {
+      zs: 'my-zs-secret',
+      cm: publicKey,
+    };
+    // @ts-ignore
+    const type = 'PROOF_OF_OWNERSHIP_REQUEST' as TxType;
+    const fbMsgPayload = aFbMessagePayload(privateKey);
+    const fbMessage = { type: type, payload: fbMsgPayload };
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+    const internalMessage = JSON.parse(fbMessage.payload.payload) as Message;
+
+    const expectedMessage: MessageEnvelop = {
+      msgId: fbMessageEnvelope.msgId,
+      type,
+      message: internalMessage,
+      payload: fbMessage.payload.payload,
+    };
+    expect(messageEnvelope).toEqual(expectedMessage);
+  });
 });
 
 interface KeyPair {
