@@ -6,3 +6,5 @@ coverage
 messages*.json
 *.log
 .DS_Store
+.vscode
+customer-server.d.ts
