@@ -304,7 +304,7 @@ export const fbServerApiDriver = {
       fbServerApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
     },
     broadcast_proof_of_ownership: (accessToken: AccessToken, status: any, response: string) => {
-      fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/external_keys_proof_of_ownership_response`, status).reply(200, response);
+      fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/external_key_proof_of_ownership_response`, status).reply(200, response);
     },
     accessToken: (accessTokenReq?: Partial<AccessTokenRequest>, resultAccessToken: string = c.string()) => {
       const generatedReq = fbServerApiDriver.given.accessTokenRequest();
