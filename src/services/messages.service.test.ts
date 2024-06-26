@@ -20,11 +20,11 @@ describe('messages service', () => {
 
   const types: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'];
   it.each(types)('should send the customer server the messages to sign', async (type: RequestType) => {
-    const internalMessageId = c.guid();
+    const requestId = c.guid();
     const aTxToSignMessage = messageBuilder.aMessagePayload(type);
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
-    const fbMessageEnvelope = messageBuilder.fbMsgEnvelope(type, { internalMessageId }, fbMessage);
-    const msgEnvelop = messageBuilder.aMessageEnvelope(internalMessageId, type, fbMessage.payload);
+    const fbMessageEnvelope = messageBuilder.fbMsgEnvelope(type, {}, fbMessage);
+    const msgEnvelop = messageBuilder.aMessageEnvelope(requestId, type, fbMessage.payload);
     jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([]);
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
 
@@ -34,15 +34,15 @@ describe('messages service', () => {
   });
 
   it('should ignore non whitelist messages', async () => {
-    const internalMessageId = c.guid();
+    const requestId = c.guid();
     const type = 'UNKNOWN_TYPE';
     //@ts-ignore
     const aTxToSignMessage = messageBuilder.aMessagePayload(type);
     //@ts-ignore
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
-    const fbMsgEnvelop = messageBuilder.fbProofOfOwnershipMsgEnvelope({ internalMessageId }, fbMessage);
+    const fbMsgEnvelop = messageBuilder.fbProofOfOwnershipMsgEnvelope({}, fbMessage);
     //@ts-ignore
-    const msgEnvelop = messageBuilder.aMessageEnvelope(internalMessageId, type, aTxToSignMessage);
+    const msgEnvelop = messageBuilder.aMessageEnvelope(requestId, type, aTxToSignMessage);
     jest.spyOn(customerServerApi, 'messagesToSign');
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
     await service.handleMessages([fbMsgEnvelop]);
@@ -60,13 +60,13 @@ describe('messages service', () => {
   });
 
   it('should get pending messages from cache', async () => {
-    const internalMessageId = c.guid();
+    const requestId = c.guid();
     const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
     const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE'
-    const aTxToSignMessage = messageBuilder.aMessagePayload(requestType);
+    const aTxToSignMessage = messageBuilder.aMessagePayload(requestType, { requestId });
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
-    const fbMessageEnvelope = messageBuilder.fbProofOfOwnershipMsgEnvelope({ internalMessageId }, fbMessage);
-    const msgEnvelop = messageBuilder.aMessageEnvelope(internalMessageId, requestType, fbMessage.payload);
+    const fbMessageEnvelope = messageBuilder.fbProofOfOwnershipMsgEnvelope({}, fbMessage);
+    const msgEnvelop = messageBuilder.aMessageEnvelope(requestId, requestType, fbMessage.payload);
 
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
     jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([
@@ -78,8 +78,7 @@ describe('messages service', () => {
           transportMetadata: {
             type: requestType,
             msgId: fbMessageEnvelope.msgId,
-            deviceId: fbMessageEnvelope.deviceId,
-            internalMessageId: fbMessageEnvelope.internalMessageId,
+            requestId: aTxToSignMessage.requestId ?? "",
           },
         },
         response: {},
@@ -89,7 +88,7 @@ describe('messages service', () => {
     await service.handleMessages([fbMessageEnvelope]);
 
     const pendingMessages = service.getPendingMessages();
-    expect(pendingMessages).toEqual([fbMessageEnvelope.internalMessageId]);
+    expect(pendingMessages).toEqual([requestId]);
   });
 
   it('should report ack on signed tx status update', async () => {
@@ -125,13 +124,13 @@ describe('messages service', () => {
   });
 
   it('should remove acked messages from the cache', async () => {
-    const internalMessageId = c.guid();
+    const requestId = c.guid();
     const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
     const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
-    const aTxToSignMessage = messageBuilder.aMessagePayload(requestType);
+    const aTxToSignMessage = messageBuilder.aMessagePayload(requestType, { requestId });
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
-    const fbMessageEnvelope = messageBuilder.fbProofOfOwnershipMsgEnvelope({ internalMessageId }, fbMessage);
-    const msgEnvelop = messageBuilder.aMessageEnvelope(internalMessageId, requestType, fbMessage.payload);
+    const fbMessageEnvelope = messageBuilder.fbProofOfOwnershipMsgEnvelope({}, fbMessage);
+    const msgEnvelop = messageBuilder.aMessageEnvelope(requestId, requestType, fbMessage.payload);
 
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
 
@@ -143,8 +142,7 @@ describe('messages service', () => {
         transportMetadata: {
           type: requestType,
           msgId: fbMessageEnvelope.msgId,
-          deviceId: fbMessageEnvelope.deviceId,
-          internalMessageId,
+          requestId: aTxToSignMessage.requestId ?? "",
         },
       },
       response: {},
@@ -154,7 +152,7 @@ describe('messages service', () => {
 
     await service.handleMessages([fbMessageEnvelope]);
     let pendingMessages = service.getPendingMessages();
-    expect(pendingMessages).toEqual([internalMessageId]);
+    expect(pendingMessages).toEqual([requestId]);
 
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));

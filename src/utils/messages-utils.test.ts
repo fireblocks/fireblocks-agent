@@ -1,8 +1,11 @@
+import Chance from 'chance';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { messageBuilder } from '../services/fb-server.api.test';
 import { FBMessage, FBMessageEnvelope, FBMessagePayload, MessageEnvelop, MessagePayload, RequestType } from '../types';
 import * as utils from './messages-utils';
+
+const c = new Chance();
 
 describe('Messages utils', () => {
   it('should verify proof of ownership message', () => {
@@ -11,16 +14,16 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       cm: publicKey,
     };
-    const fbMessage = aFbProofOfOwnershipMessage(privateKey);
+    const requestId = c.guid();
+    const fbMessage = aFbProofOfOwnershipMessage(privateKey, { requestId });
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
     const expectedMessage: MessageEnvelop = {
       message: fbMessage.payload,
       transportMetadata: {
-        deviceId: fbMessageEnvelope.deviceId,
-        internalMessageId: fbMessageEnvelope.internalMessageId,
         msgId: fbMessageEnvelope.msgId,
+        requestId,
         type: fbMessage.type,
       },
     };
@@ -124,8 +127,8 @@ function aCustomFbProofOfOwnershipMessage(privateKey: string, payloadFields?: Pa
   };
 }
 
-function aFbProofOfOwnershipMessage(privateKey: string): FBMessage {
-  return aCustomFbProofOfOwnershipMessage(privateKey, { version: "2.0.0" });
+function aFbProofOfOwnershipMessage(privateKey: string, payloadFields?: Partial<MessagePayload>): FBMessage {
+  return aCustomFbProofOfOwnershipMessage(privateKey, { ...payloadFields, version: "2.0.0" });
 }
 
 function aFbMessagePayload(privateKey: string, type: RequestType, payloadFields?: Partial<MessagePayload>): FBMessagePayload {

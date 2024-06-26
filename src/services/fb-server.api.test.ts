@@ -178,8 +178,7 @@ export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
       message: messageBuilder.fbMessage(messageBuilder.aMessagePayload(requestType)).payload,
       transportMetadata: {
         msgId: c.natural(),
-        deviceId: c.guid(),
-        internalMessageId: c.guid(),
+        requestId: c.guid(),
         type: requestType,
       },
     },
@@ -202,8 +201,7 @@ export function aProofOfOwnershipFailedMessageStatus(): MessageStatus {
       message: messageBuilder.fbMessage(messageBuilder.aMessagePayload(requestType)).payload,
       transportMetadata: {
         msgId: c.natural(),
-        deviceId: c.guid(),
-        internalMessageId: c.guid(),
+        requestId: c.guid(),
         type: requestType,
       },
     },
@@ -242,13 +240,12 @@ export const messageBuilder = {
       ...fbMsgEnvelope,
     };
   },
-  aMessageEnvelope: (internalMessageId: string, type: RequestType, message: FBMessagePayload): MessageEnvelop => {
+  aMessageEnvelope: (requestId: string, type: RequestType, message: FBMessagePayload): MessageEnvelop => {
     return {
       message,
       transportMetadata: {
         msgId: c.natural(),
-        deviceId: c.guid(),
-        internalMessageId,
+        requestId,
         type
       }
     };

@@ -39,8 +39,7 @@ export const customerServerApiDriver = {
         transportMetadata: {
           type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
           msgId,
-          deviceId: c.guid(),
-          internalMessageId: c.guid(),
+          requestId: c.guid(),
         }
       }];
     },
