@@ -18,7 +18,6 @@ const TYPE_TO_ENDPOINT = {
   EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE: 'external_key_proof_of_ownership_response',
 };
 
-let i = 21; //TODO: remove
 let certificatesMapCache;
 const fbServerApi = {
   pairDevice: async (pairDevice: PairDeviceRequest): Promise<PairDeviceResponse> => {
@@ -79,8 +78,6 @@ const fbServerApi = {
       const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, buildHeaders(accessToken));
       const messages = res.data;
       if (messages) {
-        fs.writeFileSync(`messages${i}.json`, JSON.stringify(messages));
-        i++;
         return Array.isArray(messages) ? messages : [messages];
       }
       return [];
