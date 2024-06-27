@@ -77,3 +77,8 @@ export type CertificatesMap = { [service: string]: string };
 
 export type MessageStatus = components['schemas']['MessageStatus'];
 export type MessageEnvelop = components['schemas']['MessageEnvelope'];
+
+export interface ExtendedMessageStatus {
+  msgId: number;
+  messageStatus: MessageStatus;
+}

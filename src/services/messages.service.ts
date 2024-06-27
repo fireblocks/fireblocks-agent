@@ -1,4 +1,4 @@
-import { FBMessageEnvelope, MessageEnvelop, MessageStatus, TxType } from '../types';
+import { ExtendedMessageStatus, FBMessageEnvelope, MessageEnvelop, TxType } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
@@ -11,7 +11,7 @@ interface IMessageService {
 }
 
 class MessageService implements IMessageService {
-  private msgCache: { [requestId: string]: MessageStatus } = {};
+  private msgCache: { [requestId: string]: ExtendedMessageStatus } = {};
   private knownMessageTypes: TxType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_SIGNING_REQUEST'];
 
   getPendingMessages(): string[] {
@@ -46,7 +46,10 @@ class MessageService implements IMessageService {
 
     if (!!messagesToHandle.length) {
       const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle);
-      await this.updateStatus(msgStatuses);
+      await this.updateStatus(msgStatuses.map((messageStatus): ExtendedMessageStatus => ({
+        msgId: messagesToHandle.find((msg) => msg.requestId === messageStatus.requestId).msgId,
+        messageStatus,
+      })));
     }
 
     if (!!unknownMessages.length) {
@@ -55,18 +58,26 @@ class MessageService implements IMessageService {
     }
   }
 
-  async updateStatus(messagesStatus: MessageStatus[]) {
+  async addMessageToCache(messageStatus: ExtendedMessageStatus) {
+    this.msgCache[messageStatus.messageStatus.requestId] = messageStatus;
+  }
+
+  async updateStatus(messagesStatus: ExtendedMessageStatus[]) {
     try {
-      for (const msgStatus of messagesStatus) {
-        const isInCache = this.msgCache[msgStatus.requestId];
+      for (const { msgId, messageStatus } of messagesStatus) {
+        const isInCache = this.msgCache[messageStatus.requestId];
         if (!isInCache) {
-          this.msgCache[msgStatus.requestId] = msgStatus;
+          await this.addMessageToCache({ msgId, messageStatus });
+        } else {
+          this.msgCache[messageStatus.requestId].msgId = msgId;
         }
-        if (msgStatus.status === 'SIGNED' || msgStatus.status === 'FAILED') {
-          logger.info(`Got signed message id ${msgStatus.requestId}`);
-          await fbServerApi.broadcastResponse(msgStatus);
-          await fbServerApi.ackMessage(msgStatus.msgId);
-          delete this.msgCache[msgStatus.requestId];
+
+        if (messageStatus.status === 'SIGNED' || messageStatus.status === 'FAILED') {
+          logger.info(`Got signed message id ${messageStatus.requestId}`);
+          this.msgCache[messageStatus.requestId].messageStatus = messageStatus;
+
+          await fbServerApi.broadcastResponse(messageStatus);
+          await fbServerApi.ackMessage(msgId);
         }
       }
     } catch (e) {

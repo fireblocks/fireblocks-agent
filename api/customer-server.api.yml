@@ -102,7 +102,6 @@ components:
     MessageStatus:
       type: object
       required:
-        - msgId
         - requestId
         - status
         - type
@@ -110,9 +109,6 @@ components:
       properties:
         type:
           $ref: "#/components/schemas/TxType"
-        msgId:
-          type: number
-          example: 425878000014
         requestId:
           type: string
         status:
