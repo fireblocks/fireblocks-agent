@@ -8,3 +8,4 @@ messages*.json
 .DS_Store
 .vscode
 customer-server.d.ts
+.*-audit.json

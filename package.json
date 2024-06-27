@@ -61,7 +61,8 @@
     "ora": "^5.0.0",
     "pm2": "^5.3.0",
     "uuid": "^9.0.1",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "husky": {
     "hooks": {
