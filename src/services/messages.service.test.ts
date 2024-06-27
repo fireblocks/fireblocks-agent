@@ -151,4 +151,64 @@ describe('messages service', () => {
     pendingMessages = service.getPendingMessages();
     expect(pendingMessages).toEqual([]);
   });
+
+  it('handling msgId changes', async () => {
+    const aTxToSignMessage = messageBuilder.aMessage();
+    const fbMessage = messageBuilder.fbMessage('EXTERNAL_KEY_SIGNING_REQUEST', aTxToSignMessage);
+
+    const msgId = c.natural();
+    const fbMessageEnvelope = messageBuilder.fbMsgEnvelope({ msgId }, fbMessage);
+    const msgEnvelop = messageBuilder.anMessageEnvelope(msgId, aTxToSignMessage.requestId, 'EXTERNAL_KEY_SIGNING_REQUEST', aTxToSignMessage);
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
+
+    const msgStatus: MessageStatus = {
+      requestId: aTxToSignMessage.requestId,
+      status: 'PENDING_SIGN',
+      payload: fbMessage.payload.payload,
+      type: fbMessage.type,
+    };
+
+    // Message for the first time
+    jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([msgStatus]);
+    await service.handleMessages([fbMessageEnvelope]);
+    expect(customerServerApi.messagesToSign).toHaveBeenCalledTimes(1);
+    let pendingMessages = service.getPendingMessages();
+    const extendedMessagesStatus = { msgId, messageStatus: msgStatus };
+    expect(pendingMessages).toEqual([extendedMessagesStatus]);
+
+    // Same requestId but different msgId
+    const msgId2 = c.natural();
+    const fbMessageEnvelope2 = messageBuilder.fbMsgEnvelope({ msgId: msgId2 }, fbMessage);
+    const msgEnvelop2 = messageBuilder.anMessageEnvelope(msgId2, aTxToSignMessage.requestId, 'EXTERNAL_KEY_SIGNING_REQUEST', aTxToSignMessage);
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop2);
+
+    await service.handleMessages([fbMessageEnvelope2]);
+    expect(customerServerApi.messagesToSign).toHaveBeenCalledTimes(1);
+    pendingMessages = service.getPendingMessages();
+    const extendedMessagesStatus2 = { msgId: msgId2, messageStatus: msgStatus };
+    expect(pendingMessages).toEqual([extendedMessagesStatus2]);
+
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+
+    // Update status to signed message
+    extendedMessagesStatus2.messageStatus.status = 'SIGNED';
+    await service.updateStatus([extendedMessagesStatus2]);
+    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId2);
+
+    pendingMessages = service.getPendingMessages();
+    expect(pendingMessages).toEqual([]);
+
+    // Same requestId but different msgId after signed
+    const msgId3 = c.natural();
+    const fbMessageEnvelope3 = messageBuilder.fbMsgEnvelope({ msgId: msgId3 }, fbMessage);
+    const msgEnvelop3 = messageBuilder.anMessageEnvelope(msgId3, aTxToSignMessage.requestId, 'EXTERNAL_KEY_SIGNING_REQUEST', aTxToSignMessage);
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop3);
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+
+    await service.handleMessages([fbMessageEnvelope3]);
+    expect(customerServerApi.messagesToSign).toHaveBeenCalledTimes(1);
+    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId3);
+  });
 });
