@@ -69,54 +69,56 @@ describe('messages service', () => {
     const fbMessageEnvelope = messageBuilder.fbMsgEnvelope({ msgId }, fbMessage);
     const msgEnvelop = messageBuilder.anMessageEnvelope(msgId, aTxToSignMessage.requestId, 'EXTERNAL_KEY_SIGNING_REQUEST', aTxToSignMessage);
 
+    const msgStatus: MessageStatus = {
+      requestId: aTxToSignMessage.requestId,
+      status: 'PENDING_SIGN',
+      payload: fbMessage.payload.payload,
+      type: fbMessage.type,
+    };
+
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
-    jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([
-      {
-        msgId,
-        requestId: aTxToSignMessage.requestId,
-        status: 'PENDING_SIGN',
-        payload: fbMessage.payload.payload,
-        type: fbMessage.type,
-      },
-    ]);
+    jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([msgStatus]);
 
     await service.handleMessages([fbMessageEnvelope]);
 
     const pendingMessages = service.getPendingMessages();
-    expect(pendingMessages).toEqual([aTxToSignMessage.requestId]);
+    expect(pendingMessages).toEqual([{ msgId, messageStatus: msgStatus }]);
   });
 
   it('should report ack on signed tx status update', async () => {
     const signedMessageStatus = aProofOfOwnershipSignedMessageStatus();
+    const extendedMessagesStatus = { msgId: c.natural(), messageStatus: signedMessageStatus };
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
 
-    await service.updateStatus([signedMessageStatus]);
+    await service.updateStatus([extendedMessagesStatus]);
 
-    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(signedMessageStatus.msgId);
+    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(extendedMessagesStatus.msgId);
   });
 
   it('should report ack on failed tx status update', async () => {
     const failedMessageStatus = aProofOfOwnershipFailedMessageStatus();
+    const extendedMessagesStatus = { msgId: c.natural(), messageStatus: failedMessageStatus };
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
 
-    await service.updateStatus([failedMessageStatus]);
+    await service.updateStatus([extendedMessagesStatus]);
 
-    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(failedMessageStatus.msgId);
+    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(extendedMessagesStatus.msgId);
     expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(failedMessageStatus);
   });
 
   it('should broadcast result to mobile api gw', async () => {
     const signedMessageStatus = aProofOfOwnershipSignedMessageStatus();
+    const extendedMessagesStatus = { msgId: c.natural(), messageStatus: signedMessageStatus };
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
-    await service.updateStatus([signedMessageStatus]);
+    await service.updateStatus([extendedMessagesStatus]);
 
     expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(signedMessageStatus);
   });
 
-  it('should remove acked messages from the cache', async () => {
+  it('should not return acked messages', async () => {
     const msgId = c.natural();
     const aTxToSignMessage = messageBuilder.aMessage();
     const fbMessage = messageBuilder.fbMessage('EXTERNAL_KEY_SIGNING_REQUEST', aTxToSignMessage);
@@ -126,24 +128,25 @@ describe('messages service', () => {
     jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue(msgEnvelop);
 
     const msgStatus: MessageStatus = {
-      msgId,
       requestId: aTxToSignMessage.requestId,
       status: 'PENDING_SIGN',
       payload: fbMessage.payload.payload,
       type: fbMessage.type,
     };
 
+    const extendedMessagesStatus = { msgId, messageStatus: msgStatus };
+
     jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([msgStatus]);
 
     await service.handleMessages([fbMessageEnvelope]);
     let pendingMessages = service.getPendingMessages();
-    expect(pendingMessages).toEqual([aTxToSignMessage.requestId]);
+    expect(pendingMessages).toEqual([extendedMessagesStatus]);
 
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
 
-    msgStatus.status = 'SIGNED';
-    await service.updateStatus([msgStatus]);
+    extendedMessagesStatus.messageStatus.status = 'SIGNED';
+    await service.updateStatus([extendedMessagesStatus]);
 
     pendingMessages = service.getPendingMessages();
     expect(pendingMessages).toEqual([]);

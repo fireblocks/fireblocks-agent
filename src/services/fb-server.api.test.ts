@@ -174,7 +174,6 @@ describe('Server API', () => {
 
 export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
   return {
-    msgId: c.natural(),
     requestId: c.guid(),
     status: 'SIGNED',
     payload: JSON.stringify(messageBuilder.aMessage()),
@@ -184,7 +183,6 @@ export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
 }
 export function aProofOfOwnershipFailedMessageStatus(): MessageStatus {
   return {
-    msgId: c.natural(),
     requestId: c.guid(),
     status: 'FAILED',
     payload: JSON.stringify(messageBuilder.aMessage()),

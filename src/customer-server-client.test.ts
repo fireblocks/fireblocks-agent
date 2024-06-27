@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import Chance from 'chance';
 import service from './customer-server-client';
 import customerServerApi from './services/customer-server.api';
+import { aProofOfOwnershipSignedMessageStatus } from './services/fb-server.api.test';
 import messagesService from './services/messages.service';
+const c = new Chance();
 
 describe('Customer server client', () => {
   beforeEach(() => {
@@ -22,7 +25,7 @@ describe('Customer server client', () => {
   });
 
   it('should fetch tx status every 30 sec', async () => {
-    jest.spyOn(messagesService, 'getPendingMessages').mockReturnValue(["222933eb-8914-4770-a5dc-d3e198dcce57"]);
+    jest.spyOn(messagesService, 'getPendingMessages').mockReturnValue([{ msgId: c.natural(), messageStatus: aProofOfOwnershipSignedMessageStatus() }]);
     //@ts-ignore
     jest.spyOn(customerServerApi, 'messagesStatus').mockImplementation(() => {
       return {

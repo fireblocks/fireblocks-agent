@@ -15,7 +15,6 @@ describe('Customer Server API', () => {
     const messagesToSign = customerServerApiDriver.given.aMessageRequest(msgId, aMessage);
     const expectedRes: MessageStatus[] = [
       {
-        msgId,
         requestId: aMessage.requestId,
         status: 'PENDING_SIGN',
         payload: messagesToSign[0].payload,
