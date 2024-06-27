@@ -5,17 +5,19 @@ import fbServerApi from './fb-server.api';
 import logger from './logger';
 
 interface IMessageService {
-  getPendingMessages(): string[];
+  getPendingMessages(): ExtendedMessageStatus[];
   handleMessages(messages: FBMessageEnvelope[]): Promise<void>;
-  updateStatus(messagesStatus: MessageStatus[]): Promise<void>;
+  updateStatus(messagesStatus: ExtendedMessageStatus[]): Promise<void>;
 }
 
 class MessageService implements IMessageService {
+  private MAX_CACHE_SIZE = 1024;
   private msgCache: { [requestId: string]: ExtendedMessageStatus } = {};
+  private msgCacheOrder: string[] = [];
   private knownMessageTypes: TxType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_SIGNING_REQUEST'];
 
-  getPendingMessages(): string[] {
-    return Object.keys(this.msgCache);
+  getPendingMessages(): ExtendedMessageStatus[] {
+    return Object.values(this.msgCache).filter((msg) => msg.messageStatus.status === 'PENDING_SIGN');
   }
 
   async handleMessages(messages: FBMessageEnvelope[]) {
@@ -44,6 +46,12 @@ class MessageService implements IMessageService {
       }
     });
 
+    if (!!cachedMessages.length) {
+      cachedMessages.forEach((msg) => logger.info(`Got cached message id ${msg.msgId} request id ${msg.requestId}`));
+      const cachedMsgsStatus = cachedMessages.map((msg) => this.msgCache[msg.requestId]);
+      await this.updateStatus(cachedMsgsStatus);
+    }
+
     if (!!messagesToHandle.length) {
       const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle);
       await this.updateStatus(msgStatuses.map((messageStatus): ExtendedMessageStatus => ({
@@ -59,7 +67,12 @@ class MessageService implements IMessageService {
   }
 
   async addMessageToCache(messageStatus: ExtendedMessageStatus) {
+    if (Object.keys(this.msgCache).length >= this.MAX_CACHE_SIZE) {
+      delete this.msgCache[this.msgCacheOrder.shift()];
+    }
+
     this.msgCache[messageStatus.messageStatus.requestId] = messageStatus;
+    this.msgCacheOrder.push(messageStatus.messageStatus.requestId);
   }
 
   async updateStatus(messagesStatus: ExtendedMessageStatus[]) {

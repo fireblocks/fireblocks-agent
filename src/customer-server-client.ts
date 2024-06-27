@@ -5,10 +5,14 @@ import messagesService from './services/messages.service';
 class CustomerClient {
   pullMessagesStatus = async () => {
     try {
-      const requestsIds = messagesService.getPendingMessages();
+      const statuses = messagesService.getPendingMessages();
+      const requestsIds = statuses.map((status) => status.messageStatus.requestId);
       if (!!requestsIds.length) {
-        const status = await customerServerApi.messagesStatus({ requestsIds });
-        await messagesService.updateStatus(status.statuses);
+        const { statuses: serverStatuses } = await customerServerApi.messagesStatus({ requestsIds });
+        await messagesService.updateStatus(serverStatuses.map((messageStatus) => ({
+          msgId: statuses.find((status) => status.messageStatus.requestId === messageStatus.requestId).msgId,
+          messageStatus,
+        })));
       }
     } catch (e) {
       logger.error(`Got error from customer server ${e.message}`);
