@@ -104,6 +104,7 @@ const fbServerApi = {
   ackMessage: async (msgId: number) => {
     try {
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
+      logger.info(`Acking message ${msgId}`);
       const res = await axios.put(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }, buildHeaders(accessToken));
       return res.data;
     } catch (e) {
