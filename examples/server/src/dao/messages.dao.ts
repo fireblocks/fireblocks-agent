@@ -48,9 +48,8 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
     },
   }));
 
-  const bulkRes = await msgRef.bulkWrite(bulkOperations);
-  const { insertedIds, upsertedIds } = bulkRes;
-  const messagesRes = await getMessagesStatus([...Object.values(insertedIds), ...Object.values(upsertedIds)]);
+  await msgRef.bulkWrite(bulkOperations);
+  const messagesRes = await getMessagesStatus(dbMsgs.map((dbMsg) => dbMsg._id));
   return messagesRes;
 };
 
