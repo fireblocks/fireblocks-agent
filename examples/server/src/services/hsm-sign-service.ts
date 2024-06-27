@@ -19,7 +19,7 @@ export async function randomlySignOrFailMessagesAsync(requestsIds: string[]) {
       const previousStatus = msg.status;
       msg.status = Math.round(Math.random()) ? 'FAILED' : 'SIGNED';
       if (msg.status === 'FAILED') {
-        msg.errorMessage = `Simulate error while signing this message ${msg.msgId}`;
+        msg.errorMessage = `Simulate error while signing this message ${msg.requestId}`;
       }
 
       const { signingDeviceKeyId, data } = msg.message;
@@ -27,7 +27,7 @@ export async function randomlySignOrFailMessagesAsync(requestsIds: string[]) {
         msg.signedPayload = await hsmFacade.sign(signingDeviceKeyId, data, algorithm);
       }
       await messagesDao.updateMessageStatus(msg);
-      logger.info(`Set ${msg.msgId} from status ${previousStatus} to ${msg.status}`);
+      logger.info(`Set ${msg.requestId} from status ${previousStatus} to ${msg.status}`);
     }, oneToFiveSeconds);
   });
 }
@@ -48,7 +48,7 @@ export async function signMessages(requestIds: string[]) {
       const { signingDeviceKeyId, data } = msg.message;
       msg.signedPayload = await hsmFacade.sign(signingDeviceKeyId, data, algorithm);
       msg.status = 'SIGNED';
-      logger.info(`signed message ${msg.msgId}. signature: ${msg.signedPayload}`);
+      logger.info(`signed message ${msg.requestId}. signature: ${msg.signedPayload}`);
     } catch (e) {
       logger.error(e);
       msg.status = 'FAILED';
@@ -56,6 +56,6 @@ export async function signMessages(requestIds: string[]) {
     }
 
     await messagesDao.updateMessageStatus(msg);
-    logger.info(`Set ${msg.msgId} to ${msg.status}`);
+    logger.info(`Set ${msg.requestId} to ${msg.status}`);
   }
 }

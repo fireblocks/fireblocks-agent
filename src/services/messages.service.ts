@@ -38,8 +38,11 @@ class MessageService implements IMessageService {
 
     const unknownMessages: MessageEnvelop[] = [];
     const messagesToHandle: MessageEnvelop[] = [];
+    const cachedMessages: MessageEnvelop[] = [];
     decodedMessages.forEach((decodedMessage) => {
-      if (this.knownMessageTypes.includes(decodedMessage.type)) {
+      if (this.msgCache[decodedMessage.requestId]) {
+        cachedMessages.push(decodedMessage);
+      } else if (this.knownMessageTypes.includes(decodedMessage.type)) {
         messagesToHandle.push(decodedMessage);
       } else {
         unknownMessages.push(decodedMessage);

@@ -25,12 +25,12 @@ export const updateMessageStatus = async (msg: MessageStatus) => {
 };
 
 export const insertMessages = async (messages: MessageEnvelope[]): Promise<MessageStatus[]> => {
+  logger.info(`entering insertMessages ${JSON.stringify(messages.map((_) => _.requestId))}`);
   const msgRef = await getMessagesCollection();
-  const dbMsgs = messages.map(({ msgId, requestId, type, message, payload }: MessageEnvelope) => {
+  const dbMsgs = messages.map(({ requestId, type, message, payload }: MessageEnvelope) => {
     return {
       _id: requestId,
-      msgId,
-      requestId: message.requestId,
+      requestId,
       type,
       message,
       payload,
