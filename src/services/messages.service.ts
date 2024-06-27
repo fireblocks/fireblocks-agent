@@ -51,7 +51,7 @@ class MessageService implements IMessageService {
 
     if (!!cachedMessages.length) {
       cachedMessages.forEach((msg) => logger.info(`Got cached message id ${msg.msgId} request id ${msg.requestId}`));
-      const cachedMsgsStatus = cachedMessages.map((msg) => this.msgCache[msg.requestId]);
+      const cachedMsgsStatus = cachedMessages.map((msg): ExtendedMessageStatus => { return { msgId: msg.msgId, messageStatus: this.msgCache[msg.requestId].messageStatus } });
       await this.updateStatus(cachedMsgsStatus);
     }
 
