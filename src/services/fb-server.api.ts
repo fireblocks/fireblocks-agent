@@ -79,8 +79,6 @@ const fbServerApi = {
       const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, buildHeaders(accessToken));
       const messages = res.data;
       if (messages) {
-        fs.writeFileSync(`messages${i}.json`, JSON.stringify(messages));
-        i++;
         return Array.isArray(messages) ? messages : [messages];
       }
       return [];
