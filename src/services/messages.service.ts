@@ -27,7 +27,7 @@ class MessageService implements IMessageService {
         try {
           const { msgId, request } = decodeAndVerifyMessage(messageEnvelope, certificates);
           const { transportMetadata } = request;
-          logger.info(`Got request id ${msgId} with type ${transportMetadata.type}`);
+          logger.info(`Got message id ${msgId} with type ${transportMetadata.type} and request id ${transportMetadata.requestId}`);
           return { msgId, request };
         } catch (e) {
           logger.error(`Error decoding message ${e.message}`);
