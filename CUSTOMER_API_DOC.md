@@ -142,7 +142,7 @@ This document provides a detailed overview of the Custom Server API, which facil
 |-----------------|--------|----------|----------------------------------------------|
 | type            | string | Yes      | Type of the message status referencing type [`ResponseType`](#responsetype) |
 | status          | string | Yes      | Status of the message with either of the enum values: PENDING_SIGN, SIGNED, FAILED |
-| request         | object | Yes      | Original message request of type [`MessageEnvelope`](#messageenvelope) |
+| requestId         | string | Yes      | Original message request Id |
 | response        | object | Yes      | Response for the message of type [`MessageResponse`](#messageresponse) |
 
 ### MessageResponse
@@ -250,7 +250,7 @@ This document provides a detailed overview of the Custom Server API, which facil
 
 ```json
 {
-  "requestIds": ["e7568058-c090-4042-8a6a-957f2292b72c"]
+  "requestIds": ["c9355902-28e6-4af3-b0a3-a67eace05cea", "fdfd1256-a2b7-4d39-bdee-677fe9ca4516"]
 }
 ```
 
@@ -262,23 +262,7 @@ This document provides a detailed overview of the Custom Server API, which facil
 {
   "statuses": [
     {
-      "request": {
-        "message": {
-          "payload": "{\"tenantId\":\"cc809d21-d88c-5763-845d-36219936ddf0\",\"requestId\":\"20d3644d-d443-4205-9317-6d30459553da\",\"version\":\"2.0.0\",\"timestamp\":1719490863,\"type\":\"KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST\",\"algorithm\":\"EDDSA_ED25519\",\"keyId\":\"f8dbfaaa-d16d-455e-a790-2d8337b097ca\",\"signingDeviceKeyId\":\"15e28a092defd7c1c948175dedd80bcf6e6699f211d4ee9fb5428e4f4f92f3d2\",\"messagesToSign\":[{\"message\":\"0b3d17a5567433d0b7726572d53abe8ded14b361b6a27ab3188f20c2bbdee838\",\"index\":0}]}",
-          "payloadSignatureData": {
-            "service": "CONFIGURATION_MANAGER",
-            "signature": "6698ce979d86d82187743840416e7ae122457854cae1fd1e57117091a6c817c6e8dbd795cb81e2857ec1f12007bddc52f54f29eec1ca222909af72529cbbdbfce8e6973e2f8f50643f3aa2121974947d865f106176afff8d54e07c9008537b612d29aa7599f735e06208d1f1963c252cbea045a160f321c85885340967840c16a9eaa45a32a4d9a137a306959fb91d1d8bfd93b03f3e6c36ed0163b5ec06740398a533e2f69b702eeea64a80268d3181d2141417c8d80f0d16696b8220b6926ac359a87818736fdae21190ae94b2be481a89b3eaccf80b66ddf78593ec1414cb1111ad5692fc472fbf329dca93480d1064d8dac13bc3f604ecff093532133da1"
-          },
-          "recipients": [
-            "f2300a10-676a-4de6-9d35-5abdce936383"
-          ]
-        },
-        "transportMetadata": {
-          "msgId": 478021000690,
-          "requestId": "20d3644d-d443-4205-9317-6d30459553da",
-          "type": "KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST"
-        }
-      },
+      "requestId": "fdfd1256-a2b7-4d39-bdee-677fe9ca4516",
       "status": "SIGNED",
       "type": "KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE",
       "response": {
@@ -301,27 +285,7 @@ This document provides a detailed overview of the Custom Server API, which facil
 {
   "type": "KEY_LINK_TX_SIGN_RESPONSE",
   "status": "SIGNED",
-  "request": {
-    "message": {
-      "payload": "{\"tenantId\":\"cc809d21-d88c-5763-845d-36219936ddf0\",\"txId\":\"c9355902-28e6-4af3-b0a3-a67eace05cea\",\"keyId\":\"e4ba200b-dbd4-4d3e-b8ed-3828f2ba4981\",\"userAccessToken\":\"\",\"metadata\":{\"asset\":\"BTC_TEST\",\"amountStr\":\"0.00006202\",\"amount\":0.00006202,\"fee\":15990,\"coinbaseFee\":\"0.00015990\",\"destId\":\"1\",\"srcId\":3,\"srcType\":\"VAULT\",\"destType\":\"VAULT\",\"transactionType\":\"TRANSFER\",\"dstAddress\":\"tb1q42lz78hhrtehumacs963t7kftnlmygr6vsxzhd\",\"chaincode\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"txMetaData\":\"{\\\"asset\\\":\\\"BTC_TEST\\\",\\\"amountUsdRate\\\":\\\"61656.80383584493\\\",\\\"amountNative\\\":0.00022192,\\\"srcType\\\":\\\"VAULT\\\",\\\"srcId\\\":\\\"3\\\",\\\"dstId\\\":\\\"1\\\",\\\"dstType\\\":\\\"VAULT\\\",\\\"transactionType\\\":\\\"TRANSFER\\\",\\\"feeLevel\\\":\\\"MEDIUM\\\",\\\"feeAsset\\\":\\\"BTC_TEST\\\",\\\"feeUsdRate\\\":\\\"61656.80383584493\\\",\\\"txAdditionalDetails\\\":{\\\"availableBalance\\\":\\\"0.00022192\\\",\\\"isAutoCalculatedGasLimit\\\":false},\\\"isGrossAmount\\\":true,\\\"enableCashOut\\\":false,\\\"txId\\\":\\\"c9355902-28e6-4af3-b0a3-a67eace05cea\\\",\\\"multiDestFormat\\\":false,\\\"srcSubType\\\":\\\"\\\",\\\"srcWalletId\\\":\\\"\\\",\\\"srcName\\\":\\\"Test 3\\\",\\\"amountNativeStr\\\":\\\"0.00022192\\\",\\\"amountUSD\\\":13.68287791,\\\"dstSubType\\\":\\\"\\\",\\\"dstWalletId\\\":\\\"\\\",\\\"dstName\\\":\\\"Test 1\\\",\\\"displayDstAddress\\\":\\\"tb1q42lz78hhrtehumacs963t7kftnlmygr6vsxzhd\\\",\\\"dstAddressType\\\":\\\"WHITELISTED\\\",\\\"destinations\\\":[{\\\"amountNative\\\":0.00022192,\\\"amountNativeStr\\\":\\\"0.00022192\\\",\\\"amountUSD\\\":13.68287791,\\\"dstAddressType\\\":\\\"WHITELISTED\\\",\\\"dstId\\\":\\\"1\\\",\\\"dstWalletId\\\":\\\"\\\",\\\"dstName\\\":\\\"Test 1\\\",\\\"dstSubType\\\":\\\"\\\",\\\"dstType\\\":\\\"VAULT\\\",\\\"displayDstAddress\\\":\\\"tb1q42lz78hhrtehumacs963t7kftnlmygr6vsxzhd\\\",\\\"action\\\":\\\"ALLOW\\\",\\\"actionInfo\\\":{\\\"capturedRuleNum\\\":0,\\\"rulesSnapshotId\\\":712,\\\"byGlobalPolicy\\\":false,\\\"byRule\\\":true,\\\"ruleType\\\":\\\"TENANT\\\",\\\"capturedRule\\\":\\\"{\\\\\\\"dst\\\\\\\":{\\\\\\\"ids\\\\\\\":[[\\\\\\\"*\\\\\\\"]]},\\\\\\\"src\\\\\\\":{\\\\\\\"ids\\\\\\\":[[\\\\\\\"*\\\\\\\"]]},\\\\\\\"type\\\\\\\":\\\\\\\"TRANSFER\\\\\\\",\\\\\\\"asset\\\\\\\":\\\\\\\"*\\\\\\\",\\\\\\\"action\\\\\\\":\\\\\\\"ALLOW\\\\\\\",\\\\\\\"amount\\\\\\\":0,\\\\\\\"operators\\\\\\\":{\\\\\\\"wildcard\\\\\\\":\\\\\\\"*\\\\\\\"},\\\\\\\"periodSec\\\\\\\":0,\\\\\\\"amountScope\\\\\\\":\\\\\\\"SINGLE_TX\\\\\\\",\\\\\\\"amountCurrency\\\\\\\":\\\\\\\"USD\\\\\\\",\\\\\\\"dstAddressType\\\\\\\":\\\\\\\"*\\\\\\\",\\\\\\\"applyForApprove\\\\\\\":false,\\\\\\\"transactionType\\\\\\\":\\\\\\\"TRANSFER\\\\\\\",\\\\\\\"designatedSigner\\\\\\\":\\\\\\\"b01df07d-bfa4-44fd-9954-80950b6a1731\\\\\\\",\\\\\\\"allowedAssetTypes\\\\\\\":\\\\\\\"FUNGIBLE\\\\\\\",\\\\\\\"externalDescriptor\\\\\\\":\\\\\\\"{\\\\\\\\\\\\\\\"id\\\\\\\\\\\\\\\":\\\\\\\\\\\\\\\"2fdac221-e774-4494-9b2c-3e1d53bb7b93\\\\\\\\\\\\\\\"}\\\\\\\"}\\\"}}],\\\"tenantId\\\":\\\"cc809d21-d88c-5763-845d-36219936ddf0\\\",\\\"userName\\\":\\\"maor sta\\\",\\\"userId\\\":\\\"f293b466-0609-5d7c-927c-8e6d64068d7b\\\",\\\"signerId\\\":\\\"b01df07d-bfa4-44fd-9954-80950b6a1731\\\",\\\"signerIds\\\":[\\\"b01df07d-bfa4-44fd-9954-80950b6a1731\\\"],\\\"action\\\":\\\"ALLOW\\\",\\\"actionInfo\\\":{\\\"capturedRuleNum\\\":0,\\\"rulesSnapshotId\\\":712,\\\"byGlobalPolicy\\\":false,\\\"byRule\\\":true,\\\"ruleType\\\":\\\"TENANT\\\",\\\"capturedRule\\\":\\\"{\\\\\\\"dst\\\\\\\":{\\\\\\\"ids\\\\\\\":[[\\\\\\\"*\\\\\\\"]]},\\\\\\\"src\\\\\\\":{\\\\\\\"ids\\\\\\\":[[\\\\\\\"*\\\\\\\"]]},\\\\\\\"type\\\\\\\":\\\\\\\"TRANSFER\\\\\\\",\\\\\\\"asset\\\\\\\":\\\\\\\"*\\\\\\\",\\\\\\\"action\\\\\\\":\\\\\\\"ALLOW\\\\\\\",\\\\\\\"amount\\\\\\\":0,\\\\\\\"operators\\\\\\\":{\\\\\\\"wildcard\\\\\\\":\\\\\\\"*\\\\\\\"},\\\\\\\"periodSec\\\\\\\":0,\\\\\\\"amountScope\\\\\\\":\\\\\\\"SINGLE_TX\\\\\\\",\\\\\\\"amountCurrency\\\\\\\":\\\\\\\"USD\\\\\\\",\\\\\\\"dstAddressType\\\\\\\":\\\\\\\"*\\\\\\\",\\\\\\\"applyForApprove\\\\\\\":false,\\\\\\\"transactionType\\\\\\\":\\\\\\\"TRANSFER\\\\\\\",\\\\\\\"designatedSigner\\\\\\\":\\\\\\\"b01df07d-bfa4-44fd-9954-80950b6a1731\\\\\\\",\\\\\\\"allowedAssetTypes\\\\\\\":\\\\\\\"FUNGIBLE\\\\\\\",\\\\\\\"externalDescriptor\\\\\\\":\\\\\\\"{\\\\\\\\\\\\\\\"id\\\\\\\\\\\\\\\":\\\\\\\\\\\\\\\"2fdac221-e774-4494-9b2c-3e1d53bb7b93\\\\\\\\\\\\\\\"}\\\\\\\"}\\\"}}\",\"txMetaDataSignatures\":[{\"id\":\"policy_service\",\"type\":\"SERVICE\",\"signature\":\"7ac4d587d7105a036398e46310192ad60d108e61de4e92edec80a527dd3af5922db3e68251686d74c060784bb7cdf44b106823e14b7e8ebe41cb5ed01bc9928acbaf1dd142fed0acdd3cbac91c217895fa4aac80879104cc3b74810528b593b242d2a2ee3a71e4e245e3b15553259968393a11e1d02a2354862aa3993f43abc2858d74a2f5c400eab40dd179c32b4b1010e6167bc8802f6e8374c3e1b4f4c53e8e7a075258ecb02838925b5f66b0e28b5f2e2f6d2ebd658e0ec7219fc7eac071d13178fff29fe60c04c3d1214b0447e6b8346c82a35db469b18b11f69d64c58a6a1411283fdbbfc776cfbd9cd1eb89800de20e541d4186c5bf2a3e9be901e023\"}],\"signInfo\":[{\"payload\":\"e73b141a9dfbdb655ac2771d8943a449154dfc13c00389bfec0f8c152851d7f9\",\"path\":[]},{\"payload\":\"ca78566537c33d273fd0082ab2728bc58de58df1f5edef019c5a7f8560b2fb2e\",\"path\":[]},{\"payload\":\"89b249002fc7113cac8cbf53a251431b73d82984c2655e4ffe8dccfcce2dba65\",\"path\":[]}],\"amountUSD\":\"13.68287791\"},\"algorithm\":\"ECDSA_SECP256K1\",\"type\":\"KEY_LINK_TX_SIGN_REQUEST\",\"signingDeviceKeyId\":\"62f657b5c88e523d7755f4c112afb27f5fda8d3bf3db2120e9c1e7e4cb86debe\",\"messagesToSign\":[{\"message\":\"e73b141a9dfbdb655ac2771d8943a449154dfc13c00389bfec0f8c152851d7f9\",\"index\":0},{\"message\":\"ca78566537c33d273fd0082ab2728bc58de58df1f5edef019c5a7f8560b2fb2e\",\"index\":1},{\"message\":\"89b249002fc7113cac8cbf53a251431b73d82984c2655e4ffe8dccfcce2dba65\",\"index\":2}]}",
-      "payloadSignatureData": {
-        "service": "SIGNING_SERVICE",
-        "signature": "31aad030a3b7f174877ea9c3f6f5f0f03df486c149aa86b8e50402f47297897dda9a0faae933ef86f413635a154e0a068f06b63e85db8294a4185b56c26a82f120a3f479adf18e708f01e6222404faad074f1d578b75c6ac2ab46bcbe2832bccedb78ef9110cbef8350a8165423c9a2dde626d821887143b7f76d9ec886fa755a4728676cabc24aeb4275e258c739a616840649496925ff1f513e3c24b0f3c802d8d0a7bac29fc4de0bdbf30485890c7d7dc3cadbf71882f40341bac805321137030419aaebaaee765e40e51feb7a279ed053297421e34666048f0d2469a82b5f847d79628b3743d329429b9c158864f68c6f528d97691b8b6de23900403fadd"
-      },
-      "agents": [
-        {
-          "id": "f2300a10-676a-4de6-9d35-5abdce936383",
-          "type": "MOBILE"
-        }
-      ]
-    },
-    "transportMetadata": {
-      "msgId": 478021000782,
-      "deviceId": "f2300a10-676a-4de6-9d35-5abdce936383",
-      "requestId": "c9355902-28e6-4af3-b0a3-a67eace05cea",
-      "type": "KEY_LINK_TX_SIGN_REQUEST"
-    }
-  },
+  "request": "c9355902-28e6-4af3-b0a3-a67eace05cea",
   "response": {
     "signedMessages": [
       {
