@@ -1,8 +1,11 @@
+import Chance from 'chance';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { messageBuilder } from '../services/fb-server.api.test';
-import { FBMessage, FBMessageEnvelope, FBMessagePayload, Message, MessageEnvelop } from '../types';
+import { FBMessage, FBMessageEnvelope, FBMessagePayload, MessageEnvelop, MessagePayload, RequestType } from '../types';
 import * as utils from './messages-utils';
+
+const c = new Chance();
 
 describe('Messages utils', () => {
   it('should verify proof of ownership message', () => {
@@ -11,16 +14,18 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       cm: publicKey,
     };
-    const fbMessage = aFbProofOfOwnershipMessage(privateKey);
+    const requestId = c.guid();
+    const fbMessage = aFbProofOfOwnershipMessage(privateKey, { requestId });
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
-    const internalMessage = JSON.parse(fbMessage.payload.payload) as Message;
 
     const expectedMessage: MessageEnvelop = {
-      msgId: fbMessageEnvelope.msgId,
-      type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST',
-      message: internalMessage,
-      payload: fbMessage.payload.payload,
+      message: fbMessage.payload,
+      transportMetadata: {
+        msgId: fbMessageEnvelope.msgId,
+        requestId,
+        type: fbMessage.type,
+      },
     };
     expect(messageEnvelope).toEqual(expectedMessage);
   });
@@ -29,14 +34,14 @@ describe('Messages utils', () => {
     const { privateKey, publicKey } = aKeyPair();
     const certificates = {
       zs: 'my-zs-secret',
-      vs: publicKey,
+      cm: publicKey,
     };
     const fbMessage = aFbProofOfOwnershipMessage(privateKey);
     const fbMessageEnvelope = buildASignedMessage(fbMessage, 'false-certificate');
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
-    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Message signature is invalid"');
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"JWT Message signature is invalid"');
   });
 
   it('should not verify a message with false vsCertificate', () => {
@@ -51,7 +56,76 @@ describe('Messages utils', () => {
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
-    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Message signature is invalid"');
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Certificate for configuration_manager is missing"');
+  });
+
+  it('should not verify a message with false cmCertificate', () => {
+    const pair1 = aKeyPair();
+    const pair2 = aKeyPair();
+    const certificates = {
+      zs: 'my-zs-secret',
+      cm: pair1.publicKey,
+    };
+    const fbMessage = aFbProofOfOwnershipMessage(pair2.privateKey);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+
+    const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Invalid signature from configuration_manager"');
+  });
+
+  it('should not verify a proof of ownership message without version', () => {
+    const { privateKey, publicKey } = aKeyPair();
+    const certificates = {
+      zs: 'my-zs-secret',
+      cm: publicKey,
+    };
+    const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+
+    const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Message version is missing"');
+  });
+
+  it('should not verify a proof of ownership message with unsupported version', () => {
+    const { privateKey, publicKey } = aKeyPair();
+    const certificates = {
+      zs: 'my-zs-secret',
+      cm: publicKey,
+    };
+    const invalid_version = "0.0.0";
+    const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey, { version: invalid_version });
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+
+    const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot(`"Unsupported message version: ${invalid_version}"`);
+  });
+
+  it('should verify unknown message', () => {
+    const { privateKey, publicKey } = aKeyPair();
+    const certificates = {
+      zs: 'my-zs-secret',
+      cm: publicKey,
+    };
+
+    // @ts-ignore
+    const type = 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST' as RequestType;
+    const fbMsgPayload = aFbMessagePayload(privateKey, type);
+    const fbMessage: FBMessage = { type, payload: fbMsgPayload };
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+
+    const expectedMessage: MessageEnvelop = {
+      message: fbMessage.payload,
+      transportMetadata: {
+        msgId: fbMessageEnvelope.msgId,
+        requestId: "",
+        type: fbMessage.type,
+      },
+    };
+    expect(messageEnvelope).toEqual(expectedMessage);
   });
 });
 
@@ -69,30 +143,34 @@ function aKeyPair(): KeyPair {
   return { privateKey, publicKey };
 }
 
-function aFbProofOfOwnershipMessage(privateKey: string): FBMessage {
-  const fbMsgPayload = aFbMessagePayload(privateKey);
+function aCustomFbProofOfOwnershipMessage(privateKey: string, payloadFields?: Partial<MessagePayload>): FBMessage {
+  const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
+  const fbMsgPayload = aFbMessagePayload(privateKey, type, payloadFields);
   return {
-    type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST',
+    type,
     payload: fbMsgPayload,
   };
 }
 
-function aFbMessagePayload(privateKey: string): FBMessagePayload {
-  const payload: Message = messageBuilder.aMessage();
+function aFbProofOfOwnershipMessage(privateKey: string, payloadFields?: Partial<MessagePayload>): FBMessage {
+  return aCustomFbProofOfOwnershipMessage(privateKey, { ...payloadFields, version: "2.0.0" });
+}
+
+function aFbMessagePayload(privateKey: string, type: RequestType, payloadFields?: Partial<MessagePayload>): FBMessagePayload {
+  const payload = messageBuilder.aMessagePayload(type, payloadFields);
   const payloadStr = JSON.stringify(payload);
 
   const signer = crypto.createSign('sha256');
   signer.update(payloadStr);
   const signature = signer.sign(privateKey, 'hex');
 
-  const innerMessage: FBMessagePayload = {
+  return {
     payload: payloadStr,
-    signatureData: {
+    payloadSignatureData: {
       service: 'CONFIGURATION_MANAGER',
       signature,
     },
   };
-  return innerMessage;
 }
 
 function buildASignedMessage(innerMessage: FBMessage, zsCertificate): FBMessageEnvelope {
