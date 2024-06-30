@@ -12,7 +12,14 @@ interface IMessageService {
 
 class MessageService implements IMessageService {
   private msgCache: { [msgId: string]: MessageStatus } = {};
-  private supportedMessageTypes: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'];
+  private supportedMessageTypes: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_TX_SIGN_REQUEST'];
+  private deprecatedMessageTypes: RequestType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST'];
+  private knownMessageTypes: RequestType[] = [].concat(this.supportedMessageTypes, this.deprecatedMessageTypes);
+  private requestTypeToResponseType = new Map<RequestType, ResponseType>([
+    ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE'],
+    ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE'],
+    ['KEY_LINK_TX_SIGN_REQUEST', 'KEY_LINK_TX_SIGN_RESPONSE'],
+  ]);
 
   getPendingMessages(): string[] {
     return Object.keys(this.msgCache);
@@ -31,7 +38,7 @@ class MessageService implements IMessageService {
           return null;
         }
       })
-      .filter((_) => _ !== null);
+      .filter((_) => _ !== null && this.knownMessageTypes.includes(_.transportMetadata.type));
 
     const unknownMessages: MessageEnvelop[] = [];
     const invalidMessages: MessageEnvelop[] = [];
@@ -53,26 +60,26 @@ class MessageService implements IMessageService {
       await this.updateStatus(msgStatuses);
     }
 
-    if (!!unknownMessages.length) {
-      unknownMessages.forEach((msg) => {
-        logger.warn(`Got unknown message id ${msg.transportMetadata.msgId} and type ${msg.transportMetadata.type}`);
+    if (!!deprecatedMessages.length) {
+      deprecatedMessages.forEach((msg) => {
+        logger.warn(`Got deprecated message id ${msg.transportMetadata.msgId} and type ${msg.transportMetadata.type}`);
       });
 
-      await this.ackMessages(unknownMessages.map((msg) => msg.transportMetadata.msgId));
-    }
-
-    if (!!invalidMessages.length) {
-      unknownMessages.forEach((msg) => {
-        logger.warn(`Got invalid message id ${msg.transportMetadata.msgId} and type ${msg.transportMetadata.type}`);
-      });
-
-      await this.ackMessages(invalidMessages.map((msg) => msg.transportMetadata.msgId));
+      const errorStatuses = deprecatedMessages.map((msg): MessageStatus => ({
+        type: this.requestTypeToResponseType.get(msg.transportMetadata.type),
+        status: 'FAILED',
+        request: msg,
+        response: {
+          errorMessage: 'Deprecated message type',
+        },
+      }));
+      await this.updateStatus(errorStatuses);
     }
   }
 
   async updateStatus(messagesStatus: MessageStatus[]) {
-    try {
-      for (const msgStatus of messagesStatus) {
+    for (const msgStatus of messagesStatus) {
+      try {
         const { msgId, requestId } = msgStatus.request.transportMetadata;
         const isInCache = this.msgCache[requestId];
         if (!isInCache) {
@@ -80,13 +87,17 @@ class MessageService implements IMessageService {
         }
         if (msgStatus.status === 'SIGNED' || msgStatus.status === 'FAILED') {
           logger.info(`Got signed message id ${msgId}, cacheId: ${requestId}`);
-          await fbServerApi.broadcastResponse(msgStatus);
+          const messageType = msgStatus.request.transportMetadata.type;
+          if (this.supportedMessageTypes.includes(messageType)) {
+            // Broadcast only for supported messages
+            await fbServerApi.broadcastResponse(msgStatus);
+          }
           await fbServerApi.ackMessage(msgId);
           delete this.msgCache[requestId];
         }
+      } catch (e) {
+        throw new Error(`Error updating status to fireblocks ${e.message}`);
       }
-    } catch (e) {
-      throw new Error(`Error updating status to fireblocks ${e.message}`);
     }
   }
 

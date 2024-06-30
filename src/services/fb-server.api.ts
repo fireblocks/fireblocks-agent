@@ -15,6 +15,7 @@ import logger from './logger';
 
 const TYPE_TO_ENDPOINT = {
   KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE: 'keylink_proof_of_ownership_response',
+  KEY_LINK_TX_SIGN_RESPONSE: 'keylink_tx_sign_response',
 };
 
 let certificatesMapCache;
@@ -54,7 +55,13 @@ const fbServerApi = {
         request: parsedPayload,
         response: msgStatus.response,
       };
-      const url = `${MOBILE_GATEWAY_URL}/${TYPE_TO_ENDPOINT[type]}`;
+
+      if (!TYPE_TO_ENDPOINT.hasOwnProperty(type)) {
+        throw new Error(`Unknown type ${type}`);
+      }
+
+      const endpoint = TYPE_TO_ENDPOINT[type];
+      const url = `${MOBILE_GATEWAY_URL}/${endpoint}`;
       logger.info(`broadcasting to ${url} response ${JSON.stringify(responseObject)}`);
       const res = await axios.post(
         url,

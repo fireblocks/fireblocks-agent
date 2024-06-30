@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { CertificatesMap, FBMessage, FBMessageEnvelope, JWT, MessageEnvelop } from '../types';
+import { CertificatesMap, FBMessage, FBMessageEnvelope, JWT, MessageEnvelop, TxMetadata, TxMetadataSignature } from '../types';
 
 const PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS = ['2'];
 
@@ -59,6 +59,10 @@ function verifyRSASignatureFromCertificate(
   return verifier.verify(certificatePEM, signature, signatureFormat);
 }
 
+const getPolicySignature = (txMetaDataSignatures: Array<TxMetadataSignature>): TxMetadataSignature => {
+  return txMetaDataSignatures.find((_) => _.id === 'policy_service');
+}
+
 const getVerifyDetailsFromPayloadSignature = (payloadSignature: { service: string, signature: string }, payload: string): VerifyDetails => {
   const serviceSigner = payloadSignature.service.toLowerCase();
   const messageVerifier = KEY_TO_VERIFIER_MAP[serviceSigner];
@@ -96,13 +100,24 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
 
       const fbMsgPayload = fbMessage.payload;
       const parsedMessage = JSON.parse(fbMsgPayload.payload);
-
       const msgVersion = parsedMessage.version;
       if (msgVersion === undefined || msgVersion == null) {
         throw new Error('Message version is missing');
       } else if (!PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS.includes(msgVersion.split('.')[0])) {
         throw new Error(`Unsupported message version: ${msgVersion}`);
       }
+      break;
+    }
+    case 'KEY_LINK_TX_SIGN_REQUEST': {
+      res.push(getPayloadVerifyDetails(fbMessage));
+
+      // Add verification for txMetaDataSignatures
+      const fbMsgPayload = fbMessage.payload;
+      const parsedPayload = JSON.parse(fbMsgPayload.payload);
+      const txMetadata: TxMetadata = parsedPayload.metadata;
+      const policySignature = getPolicySignature(txMetadata.txMetaDataSignatures);
+      const policyServiceName = policySignature.id.toLowerCase();
+      res.push(getVerifyDetailsFromPayloadSignature({ service: policyServiceName, signature: policySignature.signature }, txMetadata.txMetaData));
       break;
     }
   }
@@ -130,7 +145,7 @@ interface VerifyDetails {
 export type SignatureFormat = 'base64' | 'hex';
 
 const KEY_TO_VERIFIER_MAP: Record<string, string> = {
-  MPC_START_SIGNING: 'vs',
+  signing_service: 'vs',
   policy_service: 'ps',
   configuration_manager: 'cm',
 };

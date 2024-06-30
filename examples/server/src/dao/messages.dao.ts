@@ -4,8 +4,8 @@ import { MessageEnvelope, MessagePayload, MessageStatus, RequestType, ResponseTy
 import { getMongoUri } from './mongo.connect';
 
 const REQUEST_TYPE_TO_RESPONSE_TYPE = new Map<RequestType, ResponseType>([
-  ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE'],
   ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE'],
+  ['KEY_LINK_TX_SIGN_REQUEST', 'KEY_LINK_TX_SIGN_RESPONSE'],
 ]);
 
 let _msgRef: Collection<DbMsg>;
