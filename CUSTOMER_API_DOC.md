@@ -89,7 +89,7 @@ This document provides a detailed overview of the Customer Server API, which fac
 | Field                 | Type   | Required | Description                                  |
 |-----------------------|--------|----------|----------------------------------------------|
 | message              | object  | Yes      | Object of type [Message](#message)   |
-| transportMetadata              | object  |          | Object of type [TransportMetadata](#transportmetadata) |
+| transportMetadata              | object  |    Yes      | Object of type [TransportMetadata](#transportmetadata) |
 
 ### Message
 
