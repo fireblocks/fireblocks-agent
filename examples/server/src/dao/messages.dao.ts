@@ -23,13 +23,14 @@ const getMessagesCollection = async () => {
 export const updateMessageStatus = async (msg: MessageStatus) => {
   const msgRef = await getMessagesCollection();
   const dbMsg = {
-    _id: msg.request.transportMetadata.requestId,
+    _id: msg.requestId,
     ...msg,
   };
   return msgRef.updateOne({ _id: dbMsg._id }, { $set: dbMsg }, { upsert: true });
 };
 
 export const insertMessages = async (messages: MessageEnvelope[]): Promise<MessageStatus[]> => {
+  logger.info(`entering insertMessages ${JSON.stringify(messages.map((_) => _.transportMetadata.requestId))}`);
   const msgRef = await getMessagesCollection();
   const dbMsgs = messages.map(({ message, transportMetadata }: MessageEnvelope) => {
     const { payload } = message;
@@ -44,7 +45,6 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
       type: newType,
       status: 'PENDING_SIGN',
       message: parsedPayload,
-      request: { message, transportMetadata },
     } as DbMsg;
   });
 
@@ -52,30 +52,28 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
     updateOne: {
       filter: { _id: dbMsg._id },
       update: {
-        $setOnInsert: dbMsg,
-        $set: { dbMsg },
+        $set: dbMsg,
       },
       upsert: true,
     },
   }));
 
-  const bulkRes = await msgRef.bulkWrite(bulkOperations);
-  const { insertedIds } = bulkRes;
-  const messagesRes = await getMessagesStatus(Object.values(insertedIds));
+  await msgRef.bulkWrite(bulkOperations);
+  const messagesRes = await getMessagesStatus(dbMsgs.map((dbMsg) => dbMsg._id));
   return messagesRes;
 };
 
-export const getMessagesStatus = async (msgIds: string[]): Promise<MessageStatus[]> => {
-  logger.info(`entering getMessagesStatus ${JSON.stringify(msgIds)}`);
+export const getMessagesStatus = async (requestsIds: string[]): Promise<MessageStatus[]> => {
+  logger.info(`entering getMessagesStatus ${JSON.stringify(requestsIds)}`);
   const txRef = await getMessagesCollection();
-  const cursor = await txRef.find({ _id: { $in: msgIds } });
+  const cursor = await txRef.find({ _id: { $in: requestsIds } });
   const res = await cursor.toArray();
   return toMsgStatus(res);
 };
 
-export const getMessages = async (msgIds: string[]): Promise<DbMsg[]> => {
+export const getMessages = async (requestsIds: string[]): Promise<DbMsg[]> => {
   const txRef = await getMessagesCollection();
-  const cursor = await txRef.find({ _id: { $in: msgIds } });
+  const cursor = await txRef.find({ _id: { $in: requestsIds } });
   const res = await cursor.toArray();
   return res;
 };

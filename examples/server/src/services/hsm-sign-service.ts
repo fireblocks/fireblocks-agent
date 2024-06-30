@@ -5,8 +5,8 @@ import { SUPPORTED_ALGORITHMS } from './algorithm-info';
 import hsmFacade from './hsm-facade';
 import logger from './logger';
 
-export async function randomlySignOrFailMessagesAsync(msgIds: string[]) {
-  const messages = await getMessages(msgIds);
+export async function randomlySignOrFailMessagesAsync(requestsIds: string[]) {
+  const messages = await getMessages(requestsIds);
   messages.forEach((msg) => {
     const oneToFiveSeconds = Math.ceil(Math.random() * 5) * 1000;
     const algorithm = msg.message.algorithm;
@@ -18,10 +18,10 @@ export async function randomlySignOrFailMessagesAsync(msgIds: string[]) {
 
     setTimeout(async () => {
       const previousStatus = msg.status;
-      const { msgId } = msg.request.transportMetadata;
+      const { requestId } = msg;
       msg.status = Math.round(Math.random()) ? 'FAILED' : 'SIGNED';
       if (msg.status === 'FAILED') {
-        msg.response.errorMessage = `Simulate error while signing this message ${msgId}`;
+        msg.response.errorMessage = `Simulate error while signing this message ${requestId}`;
       }
       else {
         const { signingDeviceKeyId, messagesToSign } = msg.message;
@@ -32,14 +32,14 @@ export async function randomlySignOrFailMessagesAsync(msgIds: string[]) {
       }
 
       await messagesDao.updateMessageStatus(msg);
-      logger.info(`Set ${msg.request.transportMetadata.msgId} from status ${previousStatus} to ${msg.status}`);
+      logger.info(`Set ${requestId} from status ${previousStatus} to ${msg.status}`);
     }, oneToFiveSeconds);
   });
 }
 
-export async function signMessages(msgIds: string[]) {
-  logger.info(`enter signing messages ${msgIds}`);
-  const messages = await getMessages(msgIds);
+export async function signMessages(requestsIds: string[]) {
+  logger.info(`enter signing messages ${requestsIds}`);
+  const messages = await getMessages(requestsIds);
   for (const msg of messages) {
     const algorithm = msg.message.algorithm;
     if (typeof algorithm !== 'string' || !SUPPORTED_ALGORITHMS.includes(algorithm)) {
@@ -49,7 +49,7 @@ export async function signMessages(msgIds: string[]) {
       return;
     }
 
-    const { msgId } = msg.request.transportMetadata;
+    const { requestId } = msg;
     const { signingDeviceKeyId, messagesToSign } = msg.message;
 
     try {
@@ -64,7 +64,7 @@ export async function signMessages(msgIds: string[]) {
 
       msg.response = { signedMessages };
       msg.status = 'SIGNED';
-      logger.info(`signed ${messagesToSign.length} payloads in message ${msgId}`);
+      logger.info(`signed ${messagesToSign.length} payloads in message ${requestId}`);
     } catch (e) {
       logger.error(e);
       msg.status = 'FAILED';
@@ -72,6 +72,6 @@ export async function signMessages(msgIds: string[]) {
     }
 
     await messagesDao.updateMessageStatus(msg);
-    logger.info(`Set ${msgId} to ${msg.status}`);
+    logger.info(`Set ${requestId} to ${msg.status}`);
   }
 }

@@ -24,11 +24,6 @@ export function setupTokenBeforeAndAfter() {
 describe('device service', () => {
   setupTokenBeforeAndAfter();
 
-}
-
-describe('device service', () => {
-  setupTokenBeforeAndAfter();
-
   it('should return false in case refresh token is missing', () => {
     const res = service.isPaired();
     expect(res).toBe(false);

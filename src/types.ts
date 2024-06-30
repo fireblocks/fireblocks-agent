@@ -46,3 +46,14 @@ export type MessagePayload = components['schemas']['MessagePayload'];
 export type TransportMetadata = components['schemas']['TransportMetadata'];
 export type TxMetadata = components['schemas']['TxMetadata'];
 export type TxMetadataSignature = components['schemas']['TxMetadataSignature'];
+
+export interface DecodedMessage {
+  request: MessageEnvelop;
+  msgId: number;
+}
+
+export interface ExtendedMessageStatus {
+  messageStatus: MessageStatus;
+  msgId: number;
+  request: MessageEnvelop;
+}

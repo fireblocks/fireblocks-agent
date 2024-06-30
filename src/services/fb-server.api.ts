@@ -5,6 +5,7 @@ import {
   AccessTokenRequest,
   CertificatesMap,
   FBMessageEnvelope,
+  MessageEnvelop,
   MessageStatus,
   PairDeviceRequest,
   PairDeviceResponse,
@@ -42,13 +43,12 @@ const fbServerApi = {
     }
   },
 
-  broadcastResponse: async (msgStatus: MessageStatus): Promise<void> => {
+  broadcastResponse: async (msgStatus: MessageStatus, request: MessageEnvelop): Promise<void> => {
     try {
       logger.info(`entering broadcastResponse`);
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
       const { type } = msgStatus;
-      const { payload } = msgStatus.request.message;
-      const parsedPayload = JSON.parse(payload);
+      const parsedPayload = JSON.parse(request.message.payload);
       const responseObject = {
         type,
         status: msgStatus.status,
@@ -109,6 +109,7 @@ const fbServerApi = {
   ackMessage: async (msgId: number) => {
     try {
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
+      logger.info(`Acking message ${msgId}`);
       const res = await axios.put(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }, buildHeaders(accessToken));
       return res.data;
     } catch (e) {

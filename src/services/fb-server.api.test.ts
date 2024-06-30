@@ -15,7 +15,8 @@ import {
   MessagePayload,
   MessageStatus,
   PairDeviceRequest,
-  RequestType
+  RequestType,
+  ResponseType,
 } from '../types';
 import deviceService from './device.service';
 import { deviceDriver } from './device.service.test';
@@ -123,6 +124,8 @@ describe('Server API', () => {
 
   it('should broadcast proof of ownership message', async () => {
     const accessToken = fbServerApiDriver.given.accessToken();
+    const request = aProofOfOwnershipRequest();
+    const parsedRequest = JSON.parse(request.message.payload);
     const signedMessageStatus = aProofOfOwnershipSignedMessageStatus();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
@@ -131,19 +134,21 @@ describe('Server API', () => {
     const expectedRequestObject = {
       type: signedMessageStatus.type,
       status: signedMessageStatus.status,
-      request: JSON.parse(signedMessageStatus.request.message.payload),
+      request: parsedRequest,
       response: signedMessageStatus.response,
     };
 
     fbServerApiDriver.mock.broadcast_proof_of_ownership(accessToken, expectedRequestObject, 'ok');
 
-    const res = await fbServerApi.broadcastResponse(signedMessageStatus);
+    const res = await fbServerApi.broadcastResponse(signedMessageStatus, request);
 
     expect(res).toEqual('ok');
   });
 
   it('should broadcast failed proof of ownership message', async () => {
     const accessToken = fbServerApiDriver.given.accessToken();
+    const request = aProofOfOwnershipRequest();
+    const parsedRequest = JSON.parse(request.message.payload);
     const signedMessageStatus = aProofOfOwnershipFailedMessageStatus();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
@@ -152,14 +157,14 @@ describe('Server API', () => {
     const expectedRequestObject = {
       type: signedMessageStatus.type,
       status: signedMessageStatus.status,
-      request: JSON.parse(signedMessageStatus.request.message.payload),
+      request: parsedRequest,
       response: signedMessageStatus.response,
     };
 
     fbServerApiDriver.mock.broadcast_proof_of_ownership(accessToken, expectedRequestObject, 'ok');
 
     try {
-      const res = await fbServerApi.broadcastResponse(signedMessageStatus);
+      const res = await fbServerApi.broadcastResponse(signedMessageStatus, request);
       expect(res).toEqual('ok');
     } catch (e) {
       console.log(`Error: ${e}`);
@@ -168,6 +173,8 @@ describe('Server API', () => {
 
   it('should broadcast tx sign message', async () => {
     const accessToken = fbServerApiDriver.given.accessToken();
+    const request = aTxSignRequest();
+    const parsedRequest = JSON.parse(request.message.payload);
     const signedMessageStatus = aTxSignSignedMessageStatus();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
@@ -176,19 +183,21 @@ describe('Server API', () => {
     const expectedRequestObject = {
       type: signedMessageStatus.type,
       status: signedMessageStatus.status,
-      request: JSON.parse(signedMessageStatus.request.message.payload),
+      request: parsedRequest,
       response: signedMessageStatus.response,
     };
 
     fbServerApiDriver.mock.broadcast_tx_sign(accessToken, expectedRequestObject, 'ok');
 
-    const res = await fbServerApi.broadcastResponse(signedMessageStatus);
+    const res = await fbServerApi.broadcastResponse(signedMessageStatus, request);
 
     expect(res).toEqual('ok');
   });
 
   it('should broadcast fail tx sign message', async () => {
     const accessToken = fbServerApiDriver.given.accessToken();
+    const request = aTxSignRequest();
+    const parsedRequest = JSON.parse(request.message.payload);
     const signedMessageStatus = aTxSignFailedMessageStatus();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
@@ -197,19 +206,20 @@ describe('Server API', () => {
     const expectedRequestObject = {
       type: signedMessageStatus.type,
       status: signedMessageStatus.status,
-      request: JSON.parse(signedMessageStatus.request.message.payload),
+      request: parsedRequest,
       response: signedMessageStatus.response,
     };
 
     fbServerApiDriver.mock.broadcast_tx_sign(accessToken, expectedRequestObject, 'ok');
 
-    const res = await fbServerApi.broadcastResponse(signedMessageStatus);
+    const res = await fbServerApi.broadcastResponse(signedMessageStatus, request);
 
     expect(res).toEqual('ok');
   });
 
   it('should not broadcast on unknown type', async () => {
     const accessToken = fbServerApiDriver.given.accessToken();
+    const request = aTxSignRequest();
     const signedMessageStatus = aTxSignFailedMessageStatus();
     const deviceData = deviceDriver.given.deviceData();
     jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
@@ -219,24 +229,24 @@ describe('Server API', () => {
     // @ts-ignore
     signedMessageStatus.type = invalidType;
 
-    await expect(fbServerApi.broadcastResponse(signedMessageStatus)).rejects.toThrowErrorMatchingInlineSnapshot(`"Unknown type ${invalidType}"`);
+    await expect(fbServerApi.broadcastResponse(signedMessageStatus, request)).rejects.toThrowErrorMatchingInlineSnapshot(`"Unknown type ${invalidType}"`);
   });
 });
 
-export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
-  const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
-  const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
+const aMessageEnvelop = (type: RequestType): MessageEnvelop => {
   return {
-    type: responseType,
-    status: 'SIGNED',
-    request: {
-      message: messageBuilder.fbMessage(messageBuilder.aMessagePayload(requestType)).payload,
-      transportMetadata: {
-        msgId: c.natural(),
-        requestId: c.guid(),
-        type: requestType,
-      },
+    message: messageBuilder.fbMessage(messageBuilder.aMessagePayload(type)).payload,
+    transportMetadata: {
+      requestId: c.guid(),
+      type,
     },
+  };
+}
+const aSignedMessageStatus = (type: ResponseType): MessageStatus => {
+  return {
+    type,
+    status: 'SIGNED',
+    requestId: c.guid(),
     response: {
       signedMessages: [{
         message: c.string(),
@@ -245,68 +255,34 @@ export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
       }],
     }
   };
+}
+const aFailedMessageStatus = (type: ResponseType): MessageStatus => {
+  return {
+    type,
+    status: 'FAILED',
+    requestId: c.guid(),
+    response: {
+      errorMessage: 'tx not authorized',
+    },
+  };
+}
+export function aProofOfOwnershipRequest(): MessageEnvelop {
+  return aMessageEnvelop('KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST');
+}
+export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
+  return aSignedMessageStatus('KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE');
 }
 export function aProofOfOwnershipFailedMessageStatus(): MessageStatus {
-  const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
-  const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
-  return {
-    type: responseType,
-    status: 'FAILED',
-    request: {
-      message: messageBuilder.fbMessage(messageBuilder.aMessagePayload(requestType)).payload,
-      transportMetadata: {
-        msgId: c.natural(),
-        requestId: c.guid(),
-        type: requestType,
-      },
-    },
-    response: {
-      errorMessage: 'tx not authorized',
-    },
-  };
+  return aFailedMessageStatus('KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE');
+}
+export function aTxSignRequest(): MessageEnvelop {
+  return aMessageEnvelop('KEY_LINK_TX_SIGN_REQUEST');
 }
 export function aTxSignSignedMessageStatus(): MessageStatus {
-  const requestType = 'KEY_LINK_TX_SIGN_REQUEST';
-  const responseType = 'KEY_LINK_TX_SIGN_RESPONSE';
-  return {
-    type: responseType,
-    status: 'SIGNED',
-    request: {
-      message: messageBuilder.fbMessage(messageBuilder.aMessagePayload(requestType)).payload,
-      transportMetadata: {
-        msgId: c.natural(),
-        deviceId: c.guid(),
-        internalMessageId: c.guid(),
-        type: requestType,
-      },
-    },
-    response: {
-      signedMessages: [{
-        message: c.string(),
-        signature: 'signed payload',
-        index: 0,
-      }],
-    }
-  };
+  return aSignedMessageStatus('KEY_LINK_TX_SIGN_RESPONSE');
 }
 export function aTxSignFailedMessageStatus(): MessageStatus {
-  const requestType = 'KEY_LINK_TX_SIGN_REQUEST';
-  const responseType = 'KEY_LINK_TX_SIGN_RESPONSE';
-  return {
-    type: responseType,
-    status: 'FAILED',
-    request: {
-      message: messageBuilder.fbMessage(messageBuilder.aMessagePayload(requestType)).payload,
-      transportMetadata: {
-        msgId: c.natural(),
-        requestId: c.guid(),
-        type: requestType,
-      },
-    },
-    response: {
-      errorMessage: 'tx not authorized',
-    },
-  };
+  return aFailedMessageStatus('KEY_LINK_TX_SIGN_RESPONSE');
 }
 export const messageBuilder = {
   fbMsgEnvelope: (
@@ -361,7 +337,6 @@ export const messageBuilder = {
     return {
       message,
       transportMetadata: {
-        msgId: c.natural(),
         requestId,
         type
       }
@@ -455,7 +430,7 @@ export const fbServerApiDriver = {
       fbServerApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
     },
     broadcast_proof_of_ownership: (accessToken: AccessToken, status: any, response: string) => {
-      fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/external_key_proof_of_ownership_response`, status).reply(200, response);
+      fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/keylink_proof_of_ownership_response`, status).reply(200, response);
     },
     broadcast_tx_sign: (accessToken: AccessToken, status: any, response: string) => {
       fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/keylink_tx_sign_response`, status).reply(200, response);

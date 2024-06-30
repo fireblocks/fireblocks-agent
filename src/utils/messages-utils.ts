@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { CertificatesMap, FBMessage, FBMessageEnvelope, JWT, MessageEnvelop, TxMetadata, TxMetadataSignature } from '../types';
+import { CertificatesMap, DecodedMessage, FBMessage, FBMessageEnvelope, JWT, MessageEnvelop, TxMetadata, TxMetadataSignature } from '../types';
 
 const PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS = ['2'];
 
@@ -8,7 +8,7 @@ let certMap;
 export const decodeAndVerifyMessage = (
   fbMsgEnvelope: FBMessageEnvelope,
   certificates: CertificatesMap,
-): MessageEnvelop => {
+): DecodedMessage => {
   certMap = certificates;
   let fbMessage = fbMsgEnvelope.msg;
   if (typeof fbMessage === 'string') {
@@ -22,13 +22,17 @@ export const decodeAndVerifyMessage = (
 
   verifyFbMessage(fbMessage);
 
-  return {
+  const request: MessageEnvelop = {
     transportMetadata: {
-      msgId: fbMsgEnvelope.msgId,
       requestId: extractMessageUniqueId(fbMessage),
       type: fbMessage.type,
     },
     message: fbMessage.payload,
+  };
+
+  return {
+    request,
+    msgId: fbMsgEnvelope.msgId,
   };
 };
 

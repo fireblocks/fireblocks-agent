@@ -1,99 +1,114 @@
-import { FBMessageEnvelope, MessageEnvelop, MessageStatus, RequestType } from '../types';
+import { DecodedMessage, ExtendedMessageStatus, FBMessageEnvelope, RequestType } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
 import logger from './logger';
 
 interface IMessageService {
-  getPendingMessages(): string[];
+  getPendingMessages(): ExtendedMessageStatus[];
   handleMessages(messages: FBMessageEnvelope[]): Promise<void>;
-  updateStatus(messagesStatus: MessageStatus[]): Promise<void>;
+  updateStatus(messagesStatus: ExtendedMessageStatus[]): Promise<void>;
 }
 
 class MessageService implements IMessageService {
-  private msgCache: { [msgId: string]: MessageStatus } = {};
-  private supportedMessageTypes: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_TX_SIGN_REQUEST'];
-  private deprecatedMessageTypes: RequestType[] = ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST'];
-  private knownMessageTypes: RequestType[] = [].concat(this.supportedMessageTypes, this.deprecatedMessageTypes);
-  private requestTypeToResponseType = new Map<RequestType, ResponseType>([
-    ['EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE'],
-    ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE'],
-    ['KEY_LINK_TX_SIGN_REQUEST', 'KEY_LINK_TX_SIGN_RESPONSE'],
-  ]);
+  private MAX_CACHE_SIZE = 1024;
+  private msgCache: { [requestId: string]: ExtendedMessageStatus } = {};
+  private msgCacheOrder: string[] = [];
+  private knownMessageTypes: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_TX_SIGN_REQUEST'];
 
-  getPendingMessages(): string[] {
-    return Object.keys(this.msgCache);
+  getPendingMessages(): ExtendedMessageStatus[] {
+    return Object.values(this.msgCache).filter((msg) => msg.messageStatus.status === 'PENDING_SIGN');
   }
 
   async handleMessages(messages: FBMessageEnvelope[]) {
     const certificates = await fbServerApi.getCertificates();
-    const decodedMessages: MessageEnvelop[] = messages
-      .map((messageEnvelope: FBMessageEnvelope) => {
+    const decodedMessages: DecodedMessage[] = messages
+      .map((messageEnvelope: FBMessageEnvelope): DecodedMessage => {
         try {
-          const { message, transportMetadata } = decodeAndVerifyMessage(messageEnvelope, certificates);
-          logger.info(`Got message id ${transportMetadata.msgId} with type ${transportMetadata.type}`);
-          return { message, transportMetadata };
+          const { msgId, request } = decodeAndVerifyMessage(messageEnvelope, certificates);
+          const { transportMetadata } = request;
+          logger.info(`Got request id ${msgId} with type ${transportMetadata.type}`);
+          return { msgId, request };
         } catch (e) {
           logger.error(`Error decoding message ${e.message}`);
           return null;
         }
       })
-      .filter((_) => _ !== null && this.knownMessageTypes.includes(_.transportMetadata.type));
+      .filter((_) => _ !== null);
 
-    const unknownMessages: MessageEnvelop[] = [];
-    const invalidMessages: MessageEnvelop[] = [];
-    const messagesToHandle: MessageEnvelop[] = [];
+    const unknownMessages: DecodedMessage[] = [];
+    const messagesToHandle: DecodedMessage[] = [];
+    const cachedMessages: DecodedMessage[] = [];
     decodedMessages.forEach((decodedMessage) => {
-      if (this.supportedMessageTypes.includes(decodedMessage.transportMetadata.type)) {
-        if (decodedMessage.transportMetadata.requestId === "") {
-          invalidMessages.push(decodedMessage);
-        } else {
-          messagesToHandle.push(decodedMessage);
-        }
+      const { transportMetadata } = decodedMessage.request;
+      if (this.msgCache[transportMetadata.requestId]) {
+        cachedMessages.push(decodedMessage);
+      } else if (this.knownMessageTypes.includes(transportMetadata.type)) {
+        messagesToHandle.push(decodedMessage);
       } else {
         unknownMessages.push(decodedMessage);
       }
     });
 
-    if (!!messagesToHandle.length) {
-      const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle);
-      await this.updateStatus(msgStatuses);
-    }
-
-    if (!!deprecatedMessages.length) {
-      deprecatedMessages.forEach((msg) => {
-        logger.warn(`Got deprecated message id ${msg.transportMetadata.msgId} and type ${msg.transportMetadata.type}`);
+    if (!!cachedMessages.length) {
+      cachedMessages.forEach((msg) => logger.info(`Got cached message id ${msg.msgId} request id ${msg.request.transportMetadata.requestId}`));
+      const cachedMsgsStatus = cachedMessages.map((msg): ExtendedMessageStatus => {
+        return {
+          msgId: msg.msgId,
+          request: msg.request,
+          messageStatus: this.msgCache[msg.request.transportMetadata.requestId].messageStatus,
+        }
       });
 
-      const errorStatuses = deprecatedMessages.map((msg): MessageStatus => ({
-        type: this.requestTypeToResponseType.get(msg.transportMetadata.type),
-        status: 'FAILED',
-        request: msg,
-        response: {
-          errorMessage: 'Deprecated message type',
-        },
+      // We're calling updateStatus here to handle the case where the message was signed and we got it again from Fireblocks
+      await this.updateStatus(cachedMsgsStatus);
+    }
+
+    if (!!messagesToHandle.length) {
+      const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle.map((msg) => msg.request));
+      await this.updateStatus(msgStatuses.map((messageStatus): ExtendedMessageStatus => {
+        const decodedMessage = messagesToHandle.find((msg) => msg.request.transportMetadata.requestId === messageStatus.requestId);
+        return {
+          msgId: decodedMessage.msgId,
+          request: decodedMessage.request,
+          messageStatus,
+        };
       }));
-      await this.updateStatus(errorStatuses);
+    }
+
+    if (!!unknownMessages.length) {
+      unknownMessages.forEach((msg) => logger.error(`Got unknown message type ${msg.request.transportMetadata.type} and id ${msg.msgId}`));
+      await this.ackMessages(unknownMessages.map((msg) => msg.msgId));
     }
   }
 
-  async updateStatus(messagesStatus: MessageStatus[]) {
+  async addMessageToCache(messageStatus: ExtendedMessageStatus) {
+    if (Object.keys(this.msgCache).length >= this.MAX_CACHE_SIZE) {
+      delete this.msgCache[this.msgCacheOrder.shift()];
+    }
+
+    this.msgCache[messageStatus.messageStatus.requestId] = messageStatus;
+    this.msgCacheOrder.push(messageStatus.messageStatus.requestId);
+  }
+
+  async updateStatus(messagesStatus: ExtendedMessageStatus[]) {
     for (const msgStatus of messagesStatus) {
       try {
-        const { msgId, requestId } = msgStatus.request.transportMetadata;
+        const { msgId, request, messageStatus } = msgStatus;
+        const { requestId, status } = messageStatus;
         const isInCache = this.msgCache[requestId];
         if (!isInCache) {
-          this.msgCache[requestId] = msgStatus;
+          await this.addMessageToCache(msgStatus);
+        } else {
+          this.msgCache[messageStatus.requestId].msgId = msgId;
         }
-        if (msgStatus.status === 'SIGNED' || msgStatus.status === 'FAILED') {
+
+        if (status === 'SIGNED' || status === 'FAILED') {
           logger.info(`Got signed message id ${msgId}, cacheId: ${requestId}`);
-          const messageType = msgStatus.request.transportMetadata.type;
-          if (this.supportedMessageTypes.includes(messageType)) {
-            // Broadcast only for supported messages
-            await fbServerApi.broadcastResponse(msgStatus);
-          }
+          this.msgCache[messageStatus.requestId].messageStatus = messageStatus;
+
+          await fbServerApi.broadcastResponse(messageStatus, request);
           await fbServerApi.ackMessage(msgId);
-          delete this.msgCache[requestId];
         }
       } catch (e) {
         throw new Error(`Error updating status to fireblocks ${e.message}`);
@@ -101,13 +116,12 @@ class MessageService implements IMessageService {
     }
   }
 
-  async ackMessages(msgIds: number[]) {
-    for (const msgId of msgIds) {
-      try {
-        await fbServerApi.ackMessage(msgId);
-      } catch (e) {
-        throw new Error(`Error acking message ${msgId} to fireblocks ${e.message}`);
-      }
+  async ackMessages(messagesIds: number[]) {
+    try {
+      const promises = messagesIds.map(msgId => fbServerApi.ackMessage(msgId));
+      await Promise.all(promises);
+    } catch (e) {
+      throw new Error(`Error acknowledging messages ${e.message}`);
     }
   }
 

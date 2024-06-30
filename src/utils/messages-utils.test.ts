@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import { messageBuilder } from '../services/fb-server.api.test';
 import { FBMessage, FBMessageEnvelope, FBMessagePayload, MessageEnvelop, MessagePayload, RequestType, TxMetadata } from '../types';
 import * as utils from './messages-utils';
-
 const c = new Chance();
 
 describe('Messages utils', () => {
@@ -22,12 +21,11 @@ describe('Messages utils', () => {
     const expectedMessage: MessageEnvelop = {
       message: fbMessage.payload,
       transportMetadata: {
-        msgId: fbMessageEnvelope.msgId,
         requestId,
         type: fbMessage.type,
       },
     };
-    expect(messageEnvelope).toEqual(expectedMessage);
+    expect(messageEnvelope).toEqual({ request: expectedMessage, msgId: fbMessageEnvelope.msgId });
   });
 
   it('should not verify a message with false zServiceCertificate', () => {
@@ -112,7 +110,7 @@ describe('Messages utils', () => {
 
     // @ts-ignore
     const type = 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST' as RequestType;
-    const fbMsgPayload = aFbMessagePayload(privateKey, type);
+    const fbMsgPayload = aFbMessagePayload(privateKey, type, 'CONFIGURATION_MANAGER');
     const fbMessage: FBMessage = { type, payload: fbMsgPayload };
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
@@ -120,12 +118,11 @@ describe('Messages utils', () => {
     const expectedMessage: MessageEnvelop = {
       message: fbMessage.payload,
       transportMetadata: {
-        msgId: fbMessageEnvelope.msgId,
         requestId: "",
         type: fbMessage.type,
       },
     };
-    expect(messageEnvelope).toEqual(expectedMessage);
+    expect(messageEnvelope).toEqual({ request: expectedMessage, msgId: fbMessageEnvelope.msgId });
   });
 
   it('should verify tx sign request message', () => {
@@ -136,20 +133,19 @@ describe('Messages utils', () => {
       ps: PSpublicKey,
       vs: SSpublicKey,
     };
-    const fbMessage = aFbTxSignRequestMessage(SSprivateKey, PSprivateKey);
+    const txId = c.guid();
+    const fbMessage = aFbTxSignRequestMessage(SSprivateKey, PSprivateKey, { txId });
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
     const expectedMessage: MessageEnvelop = {
       message: fbMessage.payload,
       transportMetadata: {
-        deviceId: fbMessageEnvelope.deviceId,
-        internalMessageId: fbMessageEnvelope.internalMessageId,
-        msgId: fbMessageEnvelope.msgId,
+        requestId: txId,
         type: fbMessage.type,
       },
     };
-    expect(messageEnvelope).toEqual(expectedMessage);
+    expect(messageEnvelope).toEqual({ request: expectedMessage, msgId: fbMessageEnvelope.msgId });
   });
 
   it('should not verify a tx sign request message with false ps signature', () => {
@@ -193,10 +189,10 @@ function aCustomFbTxSignRequestMessage(privateKey: string, payloadFields?: Parti
   };
 }
 
-function aFbTxSignRequestMessage(privateKey: string, policyPrivateKey: string): FBMessage {
+function aFbTxSignRequestMessage(privateKey: string, policyPrivateKey: string, payloadFields?: Partial<MessagePayload>): FBMessage {
 
   const txMetadata = aTxMetadata(policyPrivateKey) as any;
-  return aCustomFbTxSignRequestMessage(privateKey, { metadata: txMetadata });
+  return aCustomFbTxSignRequestMessage(privateKey, { ...payloadFields, metadata: txMetadata });
 }
 
 function aCustomFbProofOfOwnershipMessage(privateKey: string, payloadFields?: Partial<MessagePayload>): FBMessage {

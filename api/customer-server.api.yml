@@ -49,9 +49,9 @@ components:
     MessagesStatusRequest:
       type: object
       required:
-        - msgIds
+        - requestsIds
       properties:
-        msgIds:
+        requestsIds:
           type: array
           items:
             type: string
@@ -88,13 +88,9 @@ components:
     TransportMetadata:
       description: Metadata necessary for internal Fireblocks operations.
       required:
-        - msgId
         - requestId
         - type
       properties:
-        msgId:
-          description: The unique message ID used for tracking the message. The ID is changed every time the message is received.
-          type: number
         requestId:
           description: The unique request ID used for tracking the request.
           type: string
@@ -106,8 +102,6 @@ components:
         - payload
       properties:
         payloadSignatureData:
-          $ref: "#/components/schemas/PayloadSignatureData"
-        signatureData:
           $ref: "#/components/schemas/PayloadSignatureData"
         payload:
           description: Stringified JSON that holds the message payload. Parsed object will be of type '#/components/schemas/MessagePayload'
@@ -223,7 +217,7 @@ components:
       required:
         - type
         - status
-        - request
+        - requestId
         - response
       properties:
         type:
@@ -232,8 +226,11 @@ components:
           type: string
           enum: [PENDING_SIGN, SIGNED, FAILED]
           example: SIGNED
-        request:
-          $ref: "#/components/schemas/MessageEnvelope"
+        requestId:
+          description: The unique request ID used exclusively for Proof of Ownership requests.
+          type: string
+          format: uuid
+          example: b015f35e-5d44-4d68-a0df-a1c625255abc
         response:
           $ref: "#/components/schemas/MessageResponse"
     MessageResponse:

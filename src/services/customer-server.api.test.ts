@@ -10,16 +10,16 @@ const c = new Chance();
 
 describe('Customer Server API', () => {
   it('should send message to sign', async () => {
-    const msgId = c.natural();
+    const requestId = c.guid();
     const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
     const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
     const aMessage = messageBuilder.fbMessage(messageBuilder.aMessagePayload(requestType));
-    const messagesToSign = customerServerApiDriver.given.aMessageRequest(msgId, aMessage.payload);
+    const messagesToSign = customerServerApiDriver.given.aMessageRequest(requestId, aMessage.payload);
     const expectedRes: MessageStatus[] = [
       {
         type: responseType,
         status: 'PENDING_SIGN',
-        request: messagesToSign[0],
+        requestId,
         response: {},
       },
     ];
@@ -33,13 +33,12 @@ describe('Customer Server API', () => {
 
 export const customerServerApiDriver = {
   given: {
-    aMessageRequest: (msgId: number, message: FBMessagePayload): MessageEnvelop[] => {
+    aMessageRequest: (requestId: string, message: FBMessagePayload): MessageEnvelop[] => {
       return [{
         message,
         transportMetadata: {
           type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
-          msgId,
-          requestId: c.guid(),
+          requestId,
         }
       }];
     },
