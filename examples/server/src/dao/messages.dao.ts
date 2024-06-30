@@ -44,6 +44,7 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
       _id: transportMetadata.requestId,
       type: newType,
       status: 'PENDING_SIGN',
+      requestId: transportMetadata.requestId,
       message: parsedPayload,
     } as DbMsg;
   });
