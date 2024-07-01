@@ -3,23 +3,24 @@ import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import Chance from 'chance';
 import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants';
-import { Message, MessageEnvelop, MessageStatus } from '../types';
+import { FBMessagePayload, MessageEnvelop, MessageStatus } from '../types';
 import service, { MessagesResponse, MessagesStatusRequest, MessagesStatusResponse } from './customer-server.api';
 import { messageBuilder } from './fb-server.api.test';
 const c = new Chance();
 
 describe('Customer Server API', () => {
-  it('should send tx to sign', async () => {
-    const msgId = c.natural();
-    const aMessage = messageBuilder.aMessage();
-    const messagesToSign = customerServerApiDriver.given.aMessageRequest(msgId, aMessage);
+  it('should send message to sign', async () => {
+    const requestId = c.guid();
+    const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
+    const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
+    const aMessage = messageBuilder.fbMessage(messageBuilder.aMessagePayload(requestType));
+    const messagesToSign = customerServerApiDriver.given.aMessageRequest(requestId, aMessage.payload);
     const expectedRes: MessageStatus[] = [
       {
-        msgId,
-        requestId: aMessage.requestId,
+        type: responseType,
         status: 'PENDING_SIGN',
-        payload: messagesToSign[0].payload,
-        type: messagesToSign[0].type,
+        requestId,
+        response: {},
       },
     ];
     customerServerApiDriver.mock.messagesToSign(messagesToSign, { statuses: expectedRes });
@@ -32,13 +33,14 @@ describe('Customer Server API', () => {
 
 export const customerServerApiDriver = {
   given: {
-    aMessageRequest: (msgId: number, message: Message): MessageEnvelop[] => {
-      return [{ msgId, message, type: 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST', payload: JSON.stringify(message) }];
-    },
-    aTxStatusRequest: (msgIds: number[] = []): MessagesStatusRequest => {
-      return {
-        msgIds,
-      };
+    aMessageRequest: (requestId: string, message: FBMessagePayload): MessageEnvelop[] => {
+      return [{
+        message,
+        transportMetadata: {
+          type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
+          requestId,
+        }
+      }];
     },
   },
   mock: {

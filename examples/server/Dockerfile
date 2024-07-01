@@ -1,4 +1,4 @@
-FROM alpine:3.15 as build
+FROM alpine:3.15 AS build
 
 ARG SOFTHSMV2_VERSION=2.6.1
 
@@ -17,7 +17,7 @@ RUN apk add --no-cache \
   && make \
   && make install
 
-FROM alpine:3.15 as prod
+FROM alpine:3.15 AS prod
 
 LABEL maintainer="Carlos Remuzzi carlosremuzzi@gmail.com"
 LABEL org.label-schema.description="yet another SoftHSMv2 dockerization"
@@ -62,4 +62,4 @@ USER root
 
 EXPOSE 5000
 # CMD npm run start
-CMD npm run start:dev
+CMD ["npm", "run", "start:dev"]
