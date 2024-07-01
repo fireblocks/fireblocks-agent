@@ -1,8 +1,8 @@
 openapi: 3.0.0
 info:
-  version: 1.0.0
+  version: 2.0.0
   title: Custom Server API
-  description: API between HSM Agent and custom client's server
+  description: API between Fireblocks Agent and the Customer Server in the Fireblocks Key Link enabled workspaces
 
 servers:
   - url: https://localhost:5000/v1
