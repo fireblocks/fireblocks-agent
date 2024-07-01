@@ -54,7 +54,9 @@ components:
         requestsIds:
           type: array
           items:
+            description: The unique request ID used for tracking the request.
             type: string
+            format: uuid
             example: e7568058-c090-4042-8a6a-957f2292b72c
     MessagesStatusResponse:
       type: object
@@ -99,6 +101,7 @@ components:
           $ref: "#/components/schemas/RequestType"
     Message:
       required:
+        - payloadSignatureData
         - payload
       properties:
         payloadSignatureData:
@@ -227,7 +230,7 @@ components:
           enum: [PENDING_SIGN, SIGNED, FAILED]
           example: SIGNED
         requestId:
-          description: The unique request ID used exclusively for Proof of Ownership requests.
+          description: The unique request ID used for tracking the request.
           type: string
           format: uuid
           example: b015f35e-5d44-4d68-a0df-a1c625255abc
