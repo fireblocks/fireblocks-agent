@@ -66,6 +66,7 @@ class MessageService implements IMessageService {
 
     if (!!messagesToHandle.length) {
       const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle.map((msg) => msg.request));
+      logger.info(`Got messages status for ${JSON.stringify(msgStatuses.map((status) => { return { requestId: status.requestId, status: status.status } }))}`);
       await this.updateStatus(msgStatuses.map((messageStatus): ExtendedMessageStatus => {
         const decodedMessage = messagesToHandle.find((msg) => msg.request.transportMetadata.requestId === messageStatus.requestId);
         return {
