@@ -25,10 +25,15 @@ export async function randomlySignOrFailMessagesAsync(requestsIds: string[]) {
       }
       else {
         const { signingDeviceKeyId, messagesToSign } = msg.message;
-        for (const { message, index } of messagesToSign) {
-          const signature = await hsmFacade.sign(signingDeviceKeyId, message, algorithm);
-          msg.response.signedMessages.push({ index, signature, message });
-        }
+        const signedMessages = await Promise.all(messagesToSign.map(async (msg): Promise<SignedMessage> => {
+          const signature = await hsmFacade.sign(signingDeviceKeyId, msg.message, algorithm);
+          return {
+            index: msg.index,
+            signature,
+            message: msg.message
+          };
+        }));
+        msg.response = { signedMessages };
       }
 
       await messagesDao.updateMessageStatus(msg);

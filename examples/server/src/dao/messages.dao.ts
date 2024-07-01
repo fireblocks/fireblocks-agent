@@ -35,17 +35,22 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
   const dbMsgs = messages.map(({ message, transportMetadata }: MessageEnvelope) => {
     const { payload } = message;
     const parsedPayload = JSON.parse(payload) as MessagePayload;
-    const newType = REQUEST_TYPE_TO_RESPONSE_TYPE.get(parsedPayload.type);
-    if (!newType) {
+    const responseType = REQUEST_TYPE_TO_RESPONSE_TYPE.get(parsedPayload.type);
+    if (!responseType) {
       throw new Error(`Unknown request type ${parsedPayload.type}`);
     }
 
-    return {
-      _id: transportMetadata.requestId,
-      type: newType,
+    const msgStatus: MessageStatus = {
+      type: responseType,
       status: 'PENDING_SIGN',
       requestId: transportMetadata.requestId,
+      response: {},
+    };
+
+    return {
+      _id: transportMetadata.requestId,
       message: parsedPayload,
+      ...msgStatus,
     } as DbMsg;
   });
 
