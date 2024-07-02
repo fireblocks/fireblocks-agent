@@ -290,45 +290,53 @@ This document provides a detailed overview of the Customer Server API, which fac
 
 ```json
 {
-  "type": "KEY_LINK_TX_SIGN_RESPONSE",
-  "status": "SIGNED",
-  "requestId": "c9355902-28e6-4af3-b0a3-a67eace05cea",
-  "response": {
-    "signedMessages": [
-      {
-        "index": 0,
-        "signature": "7832bfe7be9c381e5cd7203c52ff382062ae51ff81a408467ae3c3252e153b8d12c905eb98c37111df97aaa0aafe4c5216ace3ace1eab68058cbfccd27cfe134",
-        "message": "e73b141a9dfbdb655ac2771d8943a449154dfc13c00389bfec0f8c152851d7f9"
-      },
-      {
-        "index": 1,
-        "signature": "8f7f33683ab96f2778dfba6b7df3b72e09074133bcf881f8fdf6b1effd8fdd9a6b7762b1005511a2c334007168234fc11f0a5ecc6c2b03d4524281526ad349b0",
-        "message": "ca78566537c33d273fd0082ab2728bc58de58df1f5edef019c5a7f8560b2fb2e"
-      },
-      {
-        "index": 2,
-        "signature": "5527109e5a05bf178944692750f884ecdbbac329646fd3ef7ba2484c2de69ffc33c385c6db186b85ce50802676a1a727325c9d72a56001d0bb388fb4216a638f",
-        "message": "89b249002fc7113cac8cbf53a251431b73d82984c2655e4ffe8dccfcce2dba65"
-      }
+    "statuses": [
+        {
+            "type": "KEY_LINK_TX_SIGN_RESPONSE",
+            "status": "SIGNED",
+            "requestId": "c9355902-28e6-4af3-b0a3-a67eace05cea",
+            "response": {
+                "signedMessages": [
+                    {
+                        "index": 0,
+                        "signature": "7832bfe7be9c381e5cd7203c52ff382062ae51ff81a408467ae3c3252e153b8d12c905eb98c37111df97aaa0aafe4c5216ace3ace1eab68058cbfccd27cfe134",
+                        "message": "e73b141a9dfbdb655ac2771d8943a449154dfc13c00389bfec0f8c152851d7f9"
+                    },
+                    {
+                        "index": 1,
+                        "signature": "8f7f33683ab96f2778dfba6b7df3b72e09074133bcf881f8fdf6b1effd8fdd9a6b7762b1005511a2c334007168234fc11f0a5ecc6c2b03d4524281526ad349b0",
+                        "message": "ca78566537c33d273fd0082ab2728bc58de58df1f5edef019c5a7f8560b2fb2e"
+                    },
+                    {
+                        "index": 2,
+                        "signature": "5527109e5a05bf178944692750f884ecdbbac329646fd3ef7ba2484c2de69ffc33c385c6db186b85ce50802676a1a727325c9d72a56001d0bb388fb4216a638f",
+                        "message": "89b249002fc7113cac8cbf53a251431b73d82984c2655e4ffe8dccfcce2dba65"
+                    }
+                ]
+            }
+        }
     ]
-  }
 }
 ```
 #### KEY_LINK_TX_SIGN_RESPONSE (XRP_TEST - Single Message to Sign)
 ```json
 {
-    "type": "KEY_LINK_TX_SIGN_RESPONSE",
-    "status": "SIGNED",
-    "requestId": "aa456e65-3aea-4bbb-9d90-f5cb8d833b1c",
-    "response": {
-        "signedMessages": [
-            {
-                "index": 0,
-                "signature": "4ebfb539ca767977ead891471c5d5f49aee7ef7c825fc13e0df524e0ee23fc58dccc86b0247dcfa9e6b82922c87acec20f37538d03215ea30102ef2d26a795a9",
-                "message": "02d5afae9b1104e36cd059d72880d1ba54bdc26e8a63c88eeb7e0ce2aa996051"
+    "statuses": [
+        {
+            "type": "KEY_LINK_TX_SIGN_RESPONSE",
+            "status": "SIGNED",
+            "requestId": "aa456e65-3aea-4bbb-9d90-f5cb8d833b1c",
+            "response": {
+                "signedMessages": [
+                    {
+                        "index": 0,
+                        "signature": "4ebfb539ca767977ead891471c5d5f49aee7ef7c825fc13e0df524e0ee23fc58dccc86b0247dcfa9e6b82922c87acec20f37538d03215ea30102ef2d26a795a9",
+                        "message": "02d5afae9b1104e36cd059d72880d1ba54bdc26e8a63c88eeb7e0ce2aa996051"
+                    }
+                ]
             }
-        ]
-    }
+        }
+    ]
 }
 ```
 ---
