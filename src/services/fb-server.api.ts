@@ -56,7 +56,7 @@ const fbServerApi = {
         response: msgStatus.response,
       };
 
-      if (!TYPE_TO_ENDPOINT.hasOwnProperty(type)) {
+      if (!(type in TYPE_TO_ENDPOINT)) {
         throw new Error(`Unknown type ${type}`);
       }
 

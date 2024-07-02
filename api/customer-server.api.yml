@@ -221,6 +221,7 @@ components:
           $ref: "#/components/schemas/TransportMetadata"
     Message:
       required:
+        - payloadSignatureData
         - payload
       properties:
         payloadSignatureData:
@@ -320,7 +321,9 @@ components:
         requestsIds:
           type: array
           items:
+            description: The unique request ID used for tracking the request.
             type: string
+            format: uuid
             example: e7568058-c090-4042-8a6a-957f2292b72c
     TransportMetadata:
       description: Metadata necessary for internal Fireblocks operations.

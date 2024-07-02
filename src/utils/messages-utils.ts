@@ -88,7 +88,7 @@ const getVerifyDetailsFromPayloadSignature = (payloadSignature: { service: strin
 const getPayloadVerifyDetails = (fbMessage: FBMessage): VerifyDetails => {
   const fbMsgPayload = fbMessage.payload;
   const payloadSignatureData = fbMsgPayload.payloadSignatureData;
-  if (payloadSignatureData === undefined && payloadSignatureData === null) {
+  if (payloadSignatureData === undefined || payloadSignatureData === null) {
     throw new Error('Payload signature data is missing');
   }
 

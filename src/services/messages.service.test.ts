@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import Chance from 'chance';
-import { ExtendedMessageStatus, MessageStatus, RequestType } from '../types';
+import { ExtendedMessageStatusCache, MessageStatus, RequestType } from '../types';
 import * as messagesUtils from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
@@ -83,7 +83,7 @@ describe('messages service', () => {
 
     await service.handleMessages([fbMessageEnvelope]);
 
-    const pendingMessages: ExtendedMessageStatus[] = service.getPendingMessages();
+    const pendingMessages: ExtendedMessageStatusCache[] = service.getPendingMessages();
     expect(pendingMessages).toEqual([{ messageStatus, msgId, request: msgEnvelop }]);
   });
 
@@ -91,7 +91,7 @@ describe('messages service', () => {
     const msgId = c.natural();
     const request = aProofOfOwnershipRequest();
     const signedMessageStatus = aProofOfOwnershipSignedMessageStatus();
-    const extendedMessageStatus: ExtendedMessageStatus = {
+    const extendedMessageStatusCache: ExtendedMessageStatusCache = {
       messageStatus: signedMessageStatus,
       msgId,
       request,
@@ -99,7 +99,7 @@ describe('messages service', () => {
 
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
-    await service.updateStatus([extendedMessageStatus]);
+    await service.updateStatus([extendedMessageStatusCache]);
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId);
     expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(signedMessageStatus, request);
   });
@@ -108,7 +108,7 @@ describe('messages service', () => {
     const msgId = c.natural();
     const request = aProofOfOwnershipRequest();
     const failedMessageStatus = aProofOfOwnershipFailedMessageStatus();
-    const extendedMessageStatus: ExtendedMessageStatus = {
+    const extendedMessageStatusCache: ExtendedMessageStatusCache = {
       messageStatus: failedMessageStatus,
       msgId,
       request,
@@ -116,7 +116,7 @@ describe('messages service', () => {
 
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
-    await service.updateStatus([extendedMessageStatus]);
+    await service.updateStatus([extendedMessageStatusCache]);
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId);
     expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(failedMessageStatus, request);
   });
@@ -180,7 +180,7 @@ describe('messages service', () => {
     await service.handleMessages([fbMessageEnvelope]);
     expect(customerServerApi.messagesToSign).toHaveBeenCalledTimes(1);
     let pendingMessages = service.getPendingMessages();
-    const extendedMessagesStatus: ExtendedMessageStatus = { msgId, messageStatus: msgStatus, request: msgEnvelop };
+    const extendedMessagesStatus: ExtendedMessageStatusCache = { msgId, messageStatus: msgStatus, request: msgEnvelop };
     expect(pendingMessages).toEqual([extendedMessagesStatus]);
 
     // Same requestId but different msgId
@@ -190,7 +190,7 @@ describe('messages service', () => {
     await service.handleMessages([fbMessageEnvelope]);
     expect(customerServerApi.messagesToSign).toHaveBeenCalledTimes(1);
     pendingMessages = service.getPendingMessages();
-    const extendedMessagesStatus2: ExtendedMessageStatus = { msgId: msgId2, messageStatus: msgStatus, request: msgEnvelop };
+    const extendedMessagesStatus2: ExtendedMessageStatusCache = { msgId: msgId2, messageStatus: msgStatus, request: msgEnvelop };
     expect(pendingMessages).toEqual([extendedMessagesStatus2]);
 
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
