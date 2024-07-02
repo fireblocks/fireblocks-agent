@@ -26,7 +26,7 @@ describe('HSM Agent', () => {
 
   it('should fetch and handle messages', async () => {
     jest.useFakeTimers();
-    const someMessages = [messageBuilder.fbMsgEnvelope()];
+    const someMessages = [messageBuilder.fbProofOfOwnershipMsgEnvelope()];
     jest.spyOn(fbServerApi, 'getMessages').mockImplementation(jest.fn(() => Promise.resolve(someMessages)));
     jest.spyOn(messagesService, 'handleMessages').mockImplementation(jest.fn(() => Promise.resolve()));
 

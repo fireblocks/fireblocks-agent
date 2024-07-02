@@ -1,7 +1,12 @@
 import { Collection, MongoClient } from 'mongodb';
 import logger from '../services/logger';
-import { Message, MessageEnvelope, MessageStatus } from '../types';
+import { MessageEnvelope, MessagePayload, MessageStatus, RequestType, ResponseType } from '../types';
 import { getMongoUri } from './mongo.connect';
+
+const REQUEST_TYPE_TO_RESPONSE_TYPE = new Map<RequestType, ResponseType>([
+  ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE'],
+  ['KEY_LINK_TX_SIGN_REQUEST', 'KEY_LINK_TX_SIGN_RESPONSE'],
+]);
 
 let _msgRef: Collection<DbMsg>;
 const getMessagesCollection = async () => {
@@ -18,41 +23,63 @@ const getMessagesCollection = async () => {
 export const updateMessageStatus = async (msg: MessageStatus) => {
   const msgRef = await getMessagesCollection();
   const dbMsg = {
-    _id: msg.msgId,
+    _id: msg.requestId,
     ...msg,
   };
   return msgRef.updateOne({ _id: dbMsg._id }, { $set: dbMsg }, { upsert: true });
 };
 
 export const insertMessages = async (messages: MessageEnvelope[]): Promise<MessageStatus[]> => {
+  logger.info(`entering insertMessages ${JSON.stringify(messages.map((_) => _.transportMetadata.requestId))}`);
   const msgRef = await getMessagesCollection();
-  const dbMsgs = messages.map(({ msgId, type, message, payload }: MessageEnvelope) => {
-    return {
-      _id: msgId,
-      msgId,
-      requestId: message.requestId,
-      type,
-      message,
-      payload,
+  const dbMsgs = messages.map(({ message, transportMetadata }: MessageEnvelope) => {
+    const { payload } = message;
+    const parsedPayload = JSON.parse(payload) as MessagePayload;
+    const responseType = REQUEST_TYPE_TO_RESPONSE_TYPE.get(parsedPayload.type);
+    if (!responseType) {
+      throw new Error(`Unknown request type ${parsedPayload.type}`);
+    }
+
+    const msgStatus: MessageStatus = {
+      type: responseType,
       status: 'PENDING_SIGN',
+      requestId: transportMetadata.requestId,
+      response: {},
+    };
+
+    return {
+      _id: transportMetadata.requestId,
+      message: parsedPayload,
+      ...msgStatus,
     } as DbMsg;
   });
-  const insertRes = await msgRef.insertMany(dbMsgs);
-  const messagesRes = await getMessagesStatus(Object.values(insertRes.insertedIds));
+
+  const bulkOperations = dbMsgs.map((dbMsg) => ({
+    updateOne: {
+      filter: { _id: dbMsg._id },
+      update: {
+        $set: dbMsg,
+      },
+      upsert: true,
+    },
+  }));
+
+  await msgRef.bulkWrite(bulkOperations);
+  const messagesRes = await getMessagesStatus(dbMsgs.map((dbMsg) => dbMsg._id));
   return messagesRes;
 };
 
-export const getMessagesStatus = async (msgIds: number[]): Promise<MessageStatus[]> => {
-  logger.info(`entering getMessagesStatus ${JSON.stringify(msgIds)}`);
+export const getMessagesStatus = async (requestsIds: string[]): Promise<MessageStatus[]> => {
+  logger.info(`entering getMessagesStatus ${JSON.stringify(requestsIds)}`);
   const txRef = await getMessagesCollection();
-  const cursor = await txRef.find({ _id: { $in: msgIds } });
+  const cursor = await txRef.find({ _id: { $in: requestsIds } });
   const res = await cursor.toArray();
   return toMsgStatus(res);
 };
 
-export const getMessages = async (msgIds: number[]): Promise<DbMsg[]> => {
+export const getMessages = async (requestsIds: string[]): Promise<DbMsg[]> => {
   const txRef = await getMessagesCollection();
-  const cursor = await txRef.find({ _id: { $in: msgIds } });
+  const cursor = await txRef.find({ _id: { $in: requestsIds } });
   const res = await cursor.toArray();
   return res;
 };
@@ -66,6 +93,6 @@ function toMsgStatus(dbMsgs: Partial<DbMsg>[]): MessageStatus[] {
 }
 
 interface DbMsg extends MessageStatus {
-  _id: number;
-  message: Message;
+  _id: string;
+  message: MessagePayload;
 }

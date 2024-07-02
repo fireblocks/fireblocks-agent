@@ -5,7 +5,7 @@ import {
   AccessTokenRequest,
   CertificatesMap,
   FBMessageEnvelope,
-  Message,
+  MessageEnvelop,
   MessageStatus,
   PairDeviceRequest,
   PairDeviceResponse,
@@ -15,7 +15,8 @@ import deviceService from './device.service';
 import logger from './logger';
 
 const TYPE_TO_ENDPOINT = {
-  EXTERNAL_KEY_PROOF_OF_OWNERSHIP_RESPONSE: 'external_key_proof_of_ownership_response',
+  KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE: 'keylink_proof_of_ownership_response',
+  KEY_LINK_TX_SIGN_RESPONSE: 'keylink_tx_sign_response',
 };
 
 let certificatesMapCache;
@@ -41,27 +42,30 @@ const fbServerApi = {
       throw e;
     }
   },
-  broadcastResponse: async (msgStatus: MessageStatus): Promise<void> => {
+
+  broadcastResponse: async (msgStatus: MessageStatus, request: MessageEnvelop): Promise<void> => {
     try {
       logger.info(`entering broadcastResponse`);
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
-      const { status, type, signedPayload, errorMessage, payload } = msgStatus;
-      const message = JSON.parse(payload) as Message;
-      const responseType = type.replace('_REQUEST', '_RESPONSE');
-      const requestObject = {
-        type: responseType,
-        status,
-        payload: {
-          payload: message,
-          ...(signedPayload && { signedPayload }),
-          ...(errorMessage && { errorMessage }),
-        },
+      const { type } = msgStatus;
+      const parsedPayload = JSON.parse(request.message.payload);
+      const responseObject = {
+        type,
+        status: msgStatus.status,
+        request: parsedPayload,
+        response: msgStatus.response,
       };
-      const url = `${MOBILE_GATEWAY_URL}/${TYPE_TO_ENDPOINT[responseType]}`;
-      logger.info(`broadcasting to ${url} response ${JSON.stringify(requestObject)}`);
+
+      if (!(type in TYPE_TO_ENDPOINT)) {
+        throw new Error(`Unknown type ${type}`);
+      }
+
+      const endpoint = TYPE_TO_ENDPOINT[type];
+      const url = `${MOBILE_GATEWAY_URL}/${endpoint}`;
+      logger.info(`broadcasting to ${url} response ${JSON.stringify(responseObject)}`);
       const res = await axios.post(
         url,
-        requestObject,
+        responseObject,
         buildHeaders(accessToken),
       );
       logger.info(`Exiting broadcastResponse`);
@@ -86,6 +90,7 @@ const fbServerApi = {
       throw e;
     }
   },
+
   getCertificates: async (): Promise<CertificatesMap> => {
     try {
       if (certificatesMapCache) {
@@ -104,6 +109,7 @@ const fbServerApi = {
   ackMessage: async (msgId: number) => {
     try {
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
+      logger.info(`Acking message ${msgId}`);
       const res = await axios.put(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }, buildHeaders(accessToken));
       return res.data;
     } catch (e) {

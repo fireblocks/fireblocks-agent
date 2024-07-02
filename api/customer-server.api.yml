@@ -49,13 +49,15 @@ components:
     MessagesStatusRequest:
       type: object
       required:
-        - msgIds
+        - requestsIds
       properties:
-        msgIds:
+        requestsIds:
           type: array
           items:
-            type: number
-            example: 425878000014
+            description: The unique request ID used for tracking the request.
+            type: string
+            format: uuid
+            example: e7568058-c090-4042-8a6a-957f2292b72c
     MessagesStatusResponse:
       type: object
       required:
@@ -75,101 +77,204 @@ components:
           items:
             $ref: "#/components/schemas/MessageEnvelope"
     MessageEnvelope:
+      description: Contains the message and transportMetadata necessary for internal Fireblocks operations.
       type: object
       required:
-        - msgId
-        - type
         - message
-        - payload
+        - transportMetadata
       properties:
-        msgId:
-          type: number
-          example: 425878000014
-        type:
-          $ref: "#/components/schemas/TxType"
         message:
           $ref: "#/components/schemas/Message"
-        payload:
-          type: string
-          format: string
-          description: Original message payload
-    MessageStatus:
-      type: object
+        transportMetadata:
+          $ref: "#/components/schemas/TransportMetadata"
+    TransportMetadata:
+      description: Metadata necessary for internal Fireblocks operations.
       required:
-        - msgId
         - requestId
-        - status
         - type
-        - payload
       properties:
-        type:
-          $ref: "#/components/schemas/TxType"
-        msgId:
-          type: number
-          example: 425878000014
         requestId:
+          description: The unique request ID used for tracking the request.
           type: string
-        status:
-          type: string
-          enum: [PENDING_SIGN, SIGNED, FAILED]
-          example: SIGNED
-        errorMessage:
-          type: string
-          example: Transction 8c2b2b3d-fb83-497e-8138-72446b9184b6 failed due to insufficient funds
-        signedPayload:
-          type: string
-          example: singed-tx-string
-        payload:
-          type: string
-          description: Original message payload
-    TxType:
-      type: string
-      enum:
-        [EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST, EXTERNAL_KEY_SIGNING_REQUEST]
-      example: EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST
-    Algorithm:
-      description: algorithm to sign with
-      type: string
-      enum: [ECDSA_SECP256K1, EDDSA_ED25519]
-      example: ECDSA_SECP256K1
+          format: uuid
+        type:
+          $ref: "#/components/schemas/RequestType"
     Message:
       required:
+        - payloadSignatureData
+        - payload
+      properties:
+        payloadSignatureData:
+          $ref: "#/components/schemas/PayloadSignatureData"
+        payload:
+          description: Stringified JSON that holds the message payload. Parsed object will be of type '#/components/schemas/MessagePayload'
+          type: string
+          example: '{ "type": "KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST", "tenantId": "ea7d0d9a-6a10-4288-9b91-da8fb0b149f2" }'
+    PayloadSignatureData:
+      description: The signature data of the payload and the service that signed it.
+      type: object
+      required:
+        - signature
+        - service
+      properties:
+        signature:
+          type: string
+          example: 3de97a18822d06fd19bea82522917c634c134a13ace2b887cf12e37dfd343d30
+        service:
+          type: string
+          example: signing_service
+    MessagePayload:
+      required:
         - tenantId
-        - timestamp
-        - version
-        - fbKeyId
-        - requestId
-        - signingDeviceKeyId
+        - type
         - algorithm
-        - data
+        - signingDeviceKeyId
+        - keyId
+        - messagesToSign
       properties:
         tenantId:
+          description: The identifier of customer's Fireblocks tenant/workspace
           type: string
           format: uuid
           example: ea7d0d9a-6a10-4288-9b91-da8fb0b149f2
+        type:
+          $ref: "#/components/schemas/RequestType"
+        algorithm:
+          $ref: "#/components/schemas/Algorithm"
+        signingDeviceKeyId:
+          description: The identifier of the signing key on the customer's servers
+          type: string
+          example: 70721651-a7f3-42f6-a984-6e058269495f
+        keyId:
+          description: The identifier of the signing key on Fireblocks
+          type: string
+          format: uuid
+          example: 70721651-a7f3-42f6-a984-6e058269495f
+        messagesToSign:
+          description: An array including the messages to be signed
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageToSign"
+        requestId:
+          description: The unique request ID used exclusively for Proof of Ownership requests.
+          type: string
+          format: uuid
+          example: b015f35e-5d44-4d68-a0df-a1c625255abc
+        txId:
+          description: The unique transaction ID used exclusively for transaction signing requests.
+          type: string
+          format: uuid
+          example: 8c2b2b3d-fb83-497e-8138-72446b9184b6
         timestamp:
           type: number
           example: 1704122262
         version:
-          type: number
-          example: 1
-        fbKeyId:
           type: string
-          format: uuid
-          example: 70721651-a7f3-42f6-a984-6e058269495f
+          example: 1.0.0
+        metadata:
+          description: The metadata provides comprehensive information about the transaction, policy outcomes, and other pertinent details.
+          type: object
+    TxMetadata:
+      description: The metadata provides comprehensive information about the transaction, policy outcomes, and other pertinent details.
+      required:
+        - txMetaData
+        - txMetaDataSignatures
+      properties:
+        txMetaData:
+          type: string
+        txMetaDataSignatures:
+          type: array
+          items:
+            $ref: "#/components/schemas/TxMetadataSignature"
+    TxMetadataSignature:
+      description: The signature of the transaction metadata.
+      required:
+        - id
+        - type
+        - signature
+      properties:
+        id:
+          type: string
+          example: policy_service
+        type:
+          type: string
+          example: SERVICE
+        signature:
+          type: string
+          example: 3de97a18822d06fd19bea82522917c634c134a13ace2b887cf12e37dfd343d30
+    MessageToSign:
+      description: A message that needs to be signed by the customer's key.
+      type: object
+      required:
+        - message
+        - index
+      properties:
+        message:
+          description: The message to be signed.
+          type: string
+        index:
+          description: The index of the message.
+          type: number
+    MessageStatus:
+      type: object
+      required:
+        - type
+        - status
+        - requestId
+        - response
+      properties:
+        type:
+          $ref: "#/components/schemas/ResponseType"
+        status:
+          type: string
+          enum: [PENDING_SIGN, SIGNED, FAILED]
+          example: SIGNED
         requestId:
+          description: The unique request ID used for tracking the request.
           type: string
           format: uuid
           example: b015f35e-5d44-4d68-a0df-a1c625255abc
-        signingDeviceKeyId:
+        response:
+          $ref: "#/components/schemas/MessageResponse"
+    MessageResponse:
+      type: object
+      properties:
+        signedMessages:
+          type: array
+          items:
+            $ref: "#/components/schemas/SignedMessage"
+        errorMessage:
           type: string
-          example: 70721651-a7f3-42f6-a984-6e058269495f
-        algorithm:
-          $ref: "#/components/schemas/Algorithm"
-        data:
-          description: The string to sign
+          example: Error signing the request.
+    SignedMessage:
+      type: object
+      required:
+        - message
+        - signature
+        - index
+      properties:
+        message:
+          type: string
+        index:
+          type: number
+        signature:
           type: string
           example: 3de97a18822d06fd19bea82522917c634c134a13ace2b887cf12e37dfd343d30
+    RequestType:
+      description: The type of the message.
+      type: string
+      enum: [KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST, KEY_LINK_TX_SIGN_REQUEST]
+      example: KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST
+    ResponseType:
+      description: Indicates the type of message for which the status is provided.
+      type: string
+      enum: [KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE, KEY_LINK_TX_SIGN_RESPONSE]
+      example: KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE
+    Algorithm:
+      description: The cryptographic algorithm used for signing.
+      type: string
+      enum: [ECDSA_SECP256K1, EDDSA_ED25519]
+      example: ECDSA_SECP256K1
     Error:
       type: object
       required:
