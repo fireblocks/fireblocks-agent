@@ -148,6 +148,23 @@ describe('Messages utils', () => {
     expect(messageEnvelope).toEqual({ request: expectedMessage, msgId: fbMessageEnvelope.msgId });
   });
 
+  it('should not verify a tx sign request message with false signing service signature', () => {
+    const { privateKey } = aKeyPair();
+    const { privateKey: PSprivateKey, publicKey: PSpublicKey } = aKeyPair();
+    const { privateKey: SSprivateKey, publicKey: SSpublicKey } = aKeyPair();
+    const certificates = {
+      zs: 'my-zs-secret',
+      ps: PSpublicKey,
+      vs: SSpublicKey,
+    };
+    const fbMessage = aFbTxSignRequestMessage(privateKey, PSprivateKey);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+
+    const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
+
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Invalid signature from signing_service"');
+  });
+
   it('should not verify a tx sign request message with false ps signature', () => {
     const { privateKey } = aKeyPair();
     const { privateKey: PSprivateKey, publicKey: PSpublicKey } = aKeyPair();

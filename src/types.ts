@@ -52,7 +52,7 @@ export interface DecodedMessage {
   msgId: number;
 }
 
-export interface ExtendedMessageStatus {
+export interface ExtendedMessageStatusCache {
   messageStatus: MessageStatus;
   msgId: number;
   request: MessageEnvelop;

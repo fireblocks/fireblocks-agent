@@ -1,22 +1,22 @@
-import { DecodedMessage, ExtendedMessageStatus, FBMessageEnvelope, RequestType } from '../types';
+import { AGENT_REQUESTS_CACHE_SIZE } from '../constants';
+import { DecodedMessage, ExtendedMessageStatusCache, FBMessageEnvelope, RequestType } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
 import logger from './logger';
 
 interface IMessageService {
-  getPendingMessages(): ExtendedMessageStatus[];
+  getPendingMessages(): ExtendedMessageStatusCache[];
   handleMessages(messages: FBMessageEnvelope[]): Promise<void>;
-  updateStatus(messagesStatus: ExtendedMessageStatus[]): Promise<void>;
+  updateStatus(messagesStatus: ExtendedMessageStatusCache[]): Promise<void>;
 }
 
 class MessageService implements IMessageService {
-  private MAX_CACHE_SIZE = 1024;
-  private msgCache: { [requestId: string]: ExtendedMessageStatus } = {};
+  private msgCache: { [requestId: string]: ExtendedMessageStatusCache } = {};
   private msgCacheOrder: string[] = [];
   private knownMessageTypes: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_TX_SIGN_REQUEST'];
 
-  getPendingMessages(): ExtendedMessageStatus[] {
+  getPendingMessages(): ExtendedMessageStatusCache[] {
     return Object.values(this.msgCache).filter((msg) => msg.messageStatus.status === 'PENDING_SIGN');
   }
 
@@ -52,7 +52,7 @@ class MessageService implements IMessageService {
 
     if (!!cachedMessages.length) {
       cachedMessages.forEach((msg) => logger.info(`Got cached message id ${msg.msgId} request id ${msg.request.transportMetadata.requestId}`));
-      const cachedMsgsStatus = cachedMessages.map((msg): ExtendedMessageStatus => {
+      const cachedMsgsStatus = cachedMessages.map((msg): ExtendedMessageStatusCache => {
         return {
           msgId: msg.msgId,
           request: msg.request,
@@ -67,7 +67,7 @@ class MessageService implements IMessageService {
     if (!!messagesToHandle.length) {
       const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle.map((msg) => msg.request));
       logger.info(`Got messages status for ${JSON.stringify(msgStatuses.map((status) => { return { requestId: status.requestId, status: status.status } }))}`);
-      await this.updateStatus(msgStatuses.map((messageStatus): ExtendedMessageStatus => {
+      await this.updateStatus(msgStatuses.map((messageStatus): ExtendedMessageStatusCache => {
         const decodedMessage = messagesToHandle.find((msg) => msg.request.transportMetadata.requestId === messageStatus.requestId);
         return {
           msgId: decodedMessage.msgId,
@@ -83,8 +83,8 @@ class MessageService implements IMessageService {
     }
   }
 
-  async addMessageToCache(messageStatus: ExtendedMessageStatus) {
-    if (Object.keys(this.msgCache).length >= this.MAX_CACHE_SIZE) {
+  async addMessageToCache(messageStatus: ExtendedMessageStatusCache) {
+    if (Object.keys(this.msgCache).length >= AGENT_REQUESTS_CACHE_SIZE) {
       delete this.msgCache[this.msgCacheOrder.shift()];
     }
 
@@ -92,7 +92,7 @@ class MessageService implements IMessageService {
     this.msgCacheOrder.push(messageStatus.messageStatus.requestId);
   }
 
-  async updateStatus(messagesStatus: ExtendedMessageStatus[]) {
+  async updateStatus(messagesStatus: ExtendedMessageStatusCache[]) {
     for (const msgStatus of messagesStatus) {
       try {
         const { msgId, request, messageStatus } = msgStatus;
@@ -105,14 +105,14 @@ class MessageService implements IMessageService {
         }
 
         if (status === 'SIGNED' || status === 'FAILED') {
-          logger.info(`Got signed message id ${msgId}, cacheId: ${requestId}`);
+          logger.info(`Got message from customer server with status: ${status}, msgId ${msgId}, cacheId: ${requestId}`);
           this.msgCache[messageStatus.requestId].messageStatus = messageStatus;
 
           await fbServerApi.broadcastResponse(messageStatus, request);
           await fbServerApi.ackMessage(msgId);
         }
       } catch (e) {
-        throw new Error(`Error updating status to fireblocks ${e.message}`);
+        throw new Error(`Error updating status to fireblocks ${e.message} for message ${msgStatus.msgId} and status ${msgStatus.messageStatus}`);
       }
     }
   }

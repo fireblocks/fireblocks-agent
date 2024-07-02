@@ -1,4 +1,4 @@
-import { ExtendedMessageStatus } from 'types';
+import { ExtendedMessageStatusCache } from 'types';
 import { CUSTOMER_SERVER_PULL_CADENCE } from './constants';
 import customerServerApi from './services/customer-server.api';
 import logger from './services/logger';
@@ -14,7 +14,7 @@ class CustomerClient {
         if (!!serverStatuses.length) {
           logger.info(`Got messages status for ${JSON.stringify(serverStatuses.map((status) => { return { requestId: status.requestId, status: status.status } }))}`);
 
-          await messagesService.updateStatus(serverStatuses.map((messagesStatus): ExtendedMessageStatus => {
+          await messagesService.updateStatus(serverStatuses.map((messagesStatus): ExtendedMessageStatusCache => {
             const decodedMsg = messages.find((msg) => msg.messageStatus.requestId === messagesStatus.requestId);
             return {
               msgId: decodedMsg.msgId,
