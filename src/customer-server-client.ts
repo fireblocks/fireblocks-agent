@@ -24,7 +24,7 @@ class CustomerClient {
         }));
       }
     } catch (e) {
-      logger.error(`Got error from customer server ${e.message}`);
+      logger.error(`Got error from customer server: "${e.message}"`);
     }
     setTimeout(this.pullMessagesStatus, CUSTOMER_SERVER_PULL_CADENCE_MS);
   };
