@@ -5,7 +5,7 @@ import { authMiddleware } from './middlewares/authorization.middleware';
 import './pre-start';
 import apiRouter from './routes/api.router';
 import logger from './services/logger';
-const PORT = 3000;
+const PORT = 5000;
 const SERVER_START_MSG = `Custom server started on http://localhost:${PORT}`;
 
 const app = express();
