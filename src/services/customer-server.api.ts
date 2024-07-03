@@ -28,7 +28,7 @@ const customerServerApi = {
       });
       return res.data;
     } catch (e) {
-      logger.error(`Error on customer server api {messagesStatus} request`, e);
+      logger.error(`Error on customer server api request`);
       throw e;
     }
   },
