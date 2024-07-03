@@ -16,13 +16,13 @@ describe('Customer server client', () => {
     jest.clearAllMocks();
   });
 
-  it('should not fetch tx status when msgIds is empty', async () => {
+  it('should fetch tx status when msgIds is empty', async () => {
     jest.spyOn(messagesService, 'getPendingMessages').mockReturnValue([]);
     jest.spyOn(customerServerApi, 'messagesStatus');
 
     await service.pullMessagesStatus();
 
-    expect(customerServerApi.messagesStatus).not.toHaveBeenCalled();
+    expect(customerServerApi.messagesStatus).toHaveBeenCalledTimes(1);
   });
 
   it('should fetch tx status every 30 sec', async () => {
