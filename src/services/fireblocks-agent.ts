@@ -42,9 +42,9 @@ class FireblocksAgentImpl implements FireblocksAgent {
 
   _runLoopStep = async () => {
     const start = Date.now();
-    logger.info(`Waiting for a message`);
+    logger.info(`Waiting for a message from Fireblocks`);
     const messages = await fbServerApi.getMessages();
-    logger.info(`Got ${messages.length} messages after ${Date.now() - start}ms`);
+    logger.info(`Got ${messages.length} messages from Fireblocks after ${Date.now() - start}ms`);
     await messageService.handleMessages(messages);
   };
 }
