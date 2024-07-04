@@ -16,12 +16,17 @@ class CustomerClient {
 
           await messagesService.updateStatus(serverStatuses.map((messagesStatus): ExtendedMessageStatusCache => {
             const decodedMsg = messages.find((msg) => msg.messageStatus.requestId === messagesStatus.requestId);
+            if (!decodedMsg) {
+              logger.error(`Message with requestId ${messagesStatus.requestId} not found in cache`);
+              return null;
+            }
+
             return {
               msgId: decodedMsg.msgId,
               request: decodedMsg.request,
               messageStatus: messagesStatus,
             };
-          }));
+          }).filter((msg) => msg !== null));
         }
       }
     } catch (e) {

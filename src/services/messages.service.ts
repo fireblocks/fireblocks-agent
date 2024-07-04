@@ -69,12 +69,17 @@ class MessageService implements IMessageService {
       logger.info(`Got messages status for ${JSON.stringify(msgStatuses.map((status) => { return { requestId: status.requestId, status: status.status } }))}`);
       await this.updateStatus(msgStatuses.map((messageStatus): ExtendedMessageStatusCache => {
         const decodedMessage = messagesToHandle.find((msg) => msg.request.transportMetadata.requestId === messageStatus.requestId);
+        if (!decodedMessage) {
+          logger.error(`Message with requestId ${messageStatus.requestId} not found in cache`);
+          return null;
+        }
+
         return {
           msgId: decodedMessage.msgId,
           request: decodedMessage.request,
           messageStatus,
         };
-      }));
+      }).filter((msg) => msg !== null));
     }
 
     if (!!unknownMessages.length) {
@@ -106,10 +111,9 @@ class MessageService implements IMessageService {
 
         if (status === 'SIGNED' || status === 'FAILED') {
           logger.info(`Got message from customer server with status: ${status}, msgId ${msgId}, cacheId: ${requestId}`);
-          this.msgCache[messageStatus.requestId].messageStatus = messageStatus;
-
           await fbServerApi.broadcastResponse(messageStatus, request);
           await fbServerApi.ackMessage(msgId);
+          this.msgCache[messageStatus.requestId].messageStatus = messageStatus;
         }
       } catch (e) {
         throw new Error(`Error updating status to fireblocks ${e.message} for message ${msgStatus.msgId} and status ${msgStatus.messageStatus}`);
