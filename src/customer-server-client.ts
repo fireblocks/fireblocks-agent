@@ -12,12 +12,12 @@ class CustomerClient {
         logger.info(`Pulling messages status for ${JSON.stringify(requestsIds)}`);
         const { statuses: serverStatuses } = await customerServerApi.messagesStatus({ requestsIds });
         if (!!serverStatuses.length) {
-          logger.info(`Got messages status for ${JSON.stringify(serverStatuses.map((status) => { return { requestId: status.requestId, status: status.status } }))}`);
+          logger.info(`Got from customer server messages status for ${JSON.stringify(serverStatuses.map((status) => { return { requestId: status.requestId, status: status.status } }))}`);
 
           await messagesService.updateStatus(serverStatuses.map((messagesStatus): ExtendedMessageStatusCache => {
             const decodedMsg = messages.find((msg) => msg.messageStatus.requestId === messagesStatus.requestId);
             if (!decodedMsg) {
-              logger.error(`Message with requestId ${messagesStatus.requestId} not found in cache`);
+              logger.error(`Message with requestId ${messagesStatus.requestId} not in pending cache messages`);
               return null;
             }
 
