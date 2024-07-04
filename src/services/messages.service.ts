@@ -70,7 +70,7 @@ class MessageService implements IMessageService {
       await this.updateStatus(msgStatuses.map((messageStatus): ExtendedMessageStatusCache => {
         const decodedMessage = messagesToHandle.find((msg) => msg.request.transportMetadata.requestId === messageStatus.requestId);
         if (!decodedMessage) {
-          logger.error(`Message with requestId ${messageStatus.requestId} not found in cache`);
+          logger.error(`Message with requestId ${messageStatus.requestId} wasn't expected`);
           return null;
         }
 
