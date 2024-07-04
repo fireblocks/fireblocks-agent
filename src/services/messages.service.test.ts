@@ -215,7 +215,7 @@ describe('messages service', () => {
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId3);
   });
 
-  it('got same response from customer server twice', async () => {
+  it('got same unexpected status from customer server in response to messagesToSign', async () => {
     const requestId = c.guid();
     const msgId = c.natural();
     const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
@@ -229,48 +229,34 @@ describe('messages service', () => {
 
     const msgStatus: MessageStatus = {
       type: responseType,
-      status: 'PENDING_SIGN',
+      status: 'SIGNED',
       requestId,
       response: {},
     };
 
-    jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([msgStatus]);
-
-    await service.handleMessages([fbMessageEnvelope]);
-    let pendingMessages = service.getPendingMessages();
-    expect(pendingMessages).toEqual([{ msgId, messageStatus: msgStatus, request: msgEnvelop }]);
-
-    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
-    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
-
-    msgStatus.status = 'SIGNED';
-    await service.updateStatus([{ request: msgEnvelop, msgId, messageStatus: msgStatus }]);
-
-    pendingMessages = service.getPendingMessages();
-    expect(pendingMessages).toEqual([]);
-
-    const requestId2 = c.guid();
-    const msgId2 = c.natural();
-    const aTxToSignMessage2 = messageBuilder.aMessagePayload(requestType, { requestId: requestId2 });
-    const fbMessage2 = messageBuilder.fbMessage(aTxToSignMessage2);
-    const fbMessageEnvelope2 = messageBuilder.fbProofOfOwnershipMsgEnvelope({}, fbMessage2);
-    const msgEnvelop2 = messageBuilder.aMessageEnvelope(requestId, requestType, fbMessage2.payload);
-
-    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue({ request: msgEnvelop2, msgId: msgId2 });
-
     const msgStatus2: MessageStatus = {
       type: responseType,
       status: 'SIGNED',
-      requestId: requestId2,
+      requestId: c.guid(),
       response: {},
     };
-    jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([msgStatus, msgStatus2]);
 
-    await service.handleMessages([fbMessageEnvelope2]);
+    const msgStatus3: MessageStatus = {
+      type: responseType,
+      status: 'INVALID' as any,
+      requestId: c.guid(),
+      response: {},
+    };
+
+    jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([msgStatus2, msgStatus3, msgStatus]);
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+
+    await service.handleMessages([fbMessageEnvelope]);
 
     // Verify the agent ignores a message it didn't asked for
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId);
-    expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(msgStatus, msgEnvelop2);
+    expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(msgStatus, msgEnvelop);
   });
 
 });
