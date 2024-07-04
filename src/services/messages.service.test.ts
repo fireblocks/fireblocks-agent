@@ -214,4 +214,49 @@ describe('messages service', () => {
     expect(customerServerApi.messagesToSign).toHaveBeenCalledTimes(1);
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId3);
   });
+
+  it('got same unexpected status from customer server in response to messagesToSign', async () => {
+    const requestId = c.guid();
+    const msgId = c.natural();
+    const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
+    const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
+    const aTxToSignMessage = messageBuilder.aMessagePayload(requestType, { requestId });
+    const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
+    const fbMessageEnvelope = messageBuilder.fbProofOfOwnershipMsgEnvelope({}, fbMessage);
+    const msgEnvelop = messageBuilder.aMessageEnvelope(requestId, requestType, fbMessage.payload);
+
+    jest.spyOn(messagesUtils, 'decodeAndVerifyMessage').mockReturnValue({ request: msgEnvelop, msgId });
+
+    const msgStatus: MessageStatus = {
+      type: responseType,
+      status: 'SIGNED',
+      requestId,
+      response: {},
+    };
+
+    const msgStatus2: MessageStatus = {
+      type: responseType,
+      status: 'SIGNED',
+      requestId: c.guid(),
+      response: {},
+    };
+
+    const msgStatus3: MessageStatus = {
+      type: responseType,
+      status: 'INVALID' as any,
+      requestId: c.guid(),
+      response: {},
+    };
+
+    jest.spyOn(customerServerApi, 'messagesToSign').mockResolvedValue([msgStatus2, msgStatus3, msgStatus]);
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+
+    await service.handleMessages([fbMessageEnvelope]);
+
+    // Verify the agent ignores a message it didn't asked for
+    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId);
+    expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(msgStatus, msgEnvelop);
+  });
+
 });

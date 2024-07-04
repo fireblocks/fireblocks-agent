@@ -42,7 +42,7 @@ describe('Customer server client', () => {
     //@ts-ignore
     jest.spyOn(customerServerApi, 'messagesStatus').mockImplementation(() => {
       return {
-        messages: [],
+        statuses: [],
       };
     });
 
@@ -57,5 +57,44 @@ describe('Customer server client', () => {
     //pass 30 seconds
     await jest.advanceTimersByTimeAsync(2000);
     expect(customerServerApi.messagesStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it(`got same unexpected status from customer server in response to messagesStatus`, async () => {
+    const requestId = c.guid();
+    const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
+    const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE'
+    const aTxToSignMessage = messageBuilder.aMessagePayload(requestType, { requestId });
+    const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
+    const msgEnvelop = messageBuilder.aMessageEnvelope(requestId, requestType, fbMessage.payload);
+    const messageStatus: MessageStatus = {
+      type: responseType,
+      status: 'SIGNED',
+      requestId,
+      response: {},
+    };
+    const messageStatus2: MessageStatus = {
+      type: responseType,
+      status: 'SIGNED',
+      requestId: c.guid(),
+      response: {},
+    };
+    const messageStatus3: MessageStatus = {
+      type: responseType,
+      status: 'INVALID' as any,
+      requestId: c.guid(),
+      response: {},
+    };
+    jest.spyOn(messagesService, 'getPendingMessages').mockReturnValue([{ messageStatus, msgId: c.natural(), request: msgEnvelop }]);
+    jest.spyOn(messagesService, 'updateStatus').mockResolvedValue();
+    // @ts-ignore
+    jest.spyOn(customerServerApi, 'messagesStatus').mockImplementation(() => {
+      return {
+        statuses: [messageStatus2, messageStatus3, messageStatus],
+      };
+    });
+
+
+    await service.pullMessagesStatus();
+    expect(messagesService.updateStatus).toHaveBeenCalledWith([{ msgId: expect.any(Number), request: msgEnvelop, messageStatus }]);
   });
 });
