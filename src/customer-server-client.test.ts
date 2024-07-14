@@ -6,6 +6,8 @@ import { messageBuilder } from './services/fb-server.api.test';
 import messagesService from './services/messages.service';
 import { MessageStatus } from './types';
 const c = new Chance();
+import https from 'https';
+const httpsAgent = new https.Agent();
 
 describe('Customer server client', () => {
   beforeEach(() => {
@@ -20,7 +22,7 @@ describe('Customer server client', () => {
     jest.spyOn(messagesService, 'getPendingMessages').mockReturnValue([]);
     jest.spyOn(customerServerApi, 'messagesStatus');
 
-    await service.pullMessagesStatus();
+    await service.pullMessagesStatus(httpsAgent);
 
     expect(customerServerApi.messagesStatus).toHaveBeenCalledTimes(1);
   });
@@ -47,7 +49,7 @@ describe('Customer server client', () => {
     });
 
     //set a response for an empty request
-    await service.pullMessagesStatus();
+    await service.pullMessagesStatus(httpsAgent);
     expect(customerServerApi.messagesStatus).toHaveBeenCalledTimes(1);
 
     //advance 29 seconds
@@ -94,7 +96,7 @@ describe('Customer server client', () => {
     });
 
 
-    await service.pullMessagesStatus();
+    await service.pullMessagesStatus(httpsAgent);
     expect(messagesService.updateStatus).toHaveBeenCalledWith([{ msgId: expect.any(Number), request: msgEnvelop, messageStatus }]);
   });
 });

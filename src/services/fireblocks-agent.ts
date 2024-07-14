@@ -4,9 +4,10 @@ import deviceService, { DeviceData } from './device.service';
 import fbServerApi from './fb-server.api';
 import logger from './logger';
 import messageService from './messages.service';
+import https from 'https';
 export interface FireblocksAgent {
   pairDevice(pairingToken: JWT, deviceId: GUID): void;
-  runAgentMainLoop(): Promise<void>;
+  runAgentMainLoop(httpsAgent: https.Agent): Promise<void>;
   isValidPairingToken(pairingToken: JWT): boolean;
 }
 
@@ -21,10 +22,10 @@ class FireblocksAgentImpl implements FireblocksAgent {
     deviceService.saveDeviceData({ userId, deviceId, refreshToken });
   }
 
-  runAgentMainLoop = async () => {
+  runAgentMainLoop = async (httpsAgent: https.Agent) => {
     while (true) {
       try {
-        await this._runLoopStep();
+        await this._runLoopStep(httpsAgent);
       } catch (e) {
         logger.error(`Error in agent main loop ${e}`);
       }
@@ -40,12 +41,12 @@ class FireblocksAgentImpl implements FireblocksAgent {
     }
   }
 
-  _runLoopStep = async () => {
+  _runLoopStep = async (httpsAgent) => {
     const start = Date.now();
     logger.info(`Waiting for messages from Fireblocks...`);
     const messages = await fbServerApi.getMessages();
     logger.info(`Got ${messages.length} messages from Fireblocks after ${Date.now() - start}ms`);
-    await messageService.handleMessages(messages);
+    await messageService.handleMessages(messages, httpsAgent);
   };
 }
 

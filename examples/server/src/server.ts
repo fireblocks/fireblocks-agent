@@ -25,10 +25,10 @@ app.use(helmet());
 app.use(`/api`, apiRouter);
 
 // Use HTTPS if private key and certificate are provided
-logger.info(process.env.SELF_SIGNED_SSL_PRIV_KEY_PATH);
-logger.info(process.env.SELF_SIGNED_SSL_CERT_PATH);
+const ssl_priv_key_path = process.env.SELF_SIGNED_SSL_PRIV_KEY_PATH ?? '';
+const ssl_cert_path = process.env.SELF_SIGNED_SSL_CERT_PATH ?? '';
 if (fs.existsSync(process.env.SELF_SIGNED_SSL_PRIV_KEY_PATH) && fs.existsSync(process.env.SELF_SIGNED_SSL_CERT_PATH)) {
-  logger.info('Found private key and SSL certificate - Using HTTPS');
+  logger.info(`Found private key and SSL certificate - Using HTTPS`);
   const sslOptions = {
     key: fs.readFileSync(process.env.SELF_SIGNED_SSL_PRIV_KEY_PATH),
     cert: fs.readFileSync(process.env.SELF_SIGNED_SSL_CERT_PATH),
@@ -36,6 +36,6 @@ if (fs.existsSync(process.env.SELF_SIGNED_SSL_PRIV_KEY_PATH) && fs.existsSync(pr
   https.createServer(sslOptions, app).listen(PORT, () => logger.info(SERVER_START_MSG));
 }
 else {
-  logger.info('Using HTTP');
+  logger.info(`Could not find private key ${ssl_priv_key_path} or SSL certificate ${ssl_cert_path} - Using HTTP`);
   app.listen(PORT, () => logger.info(SERVER_START_MSG));
 }

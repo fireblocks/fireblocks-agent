@@ -8,4 +8,4 @@ export const CUSTOMER_SERVER_PULL_CADENCE_MS = Number(process.env.CUSTOMER_SERVE
 export const AGENT_REQUESTS_CACHE_SIZE = Number(process.env.AGENT_REQUESTS_CACHE_SIZE ?? 1024);
 export const CUSTOMER_SERVER_AUTHORIZATION = process.env.CUSTOMER_SERVER_AUTHORIZATION;
 export const TOKEN_PATH = `${__dirname}/.fireblocks-refresh-token`;
-export const SSL_CERT_PATH = `${__dirname}/ssl-cert.crt`;
+export const SSL_CERT_PATH = process.env.SSL_CERT_PATH;

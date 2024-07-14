@@ -2,19 +2,12 @@ import axios from 'axios';
 import fs from 'fs';
 import https from 'https';
 import { components, paths } from '../../api/customer-server';
-import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL, SSL_CERT_PATH } from '../constants';
+import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL} from '../constants';
 import logger from './logger';
 const customerServerApi = {
-  messagesToSign: async (messages: MessageEnvelope[]): Promise<MessageStatus[]> => {
+  messagesToSign: async (messages: MessageEnvelope[], httpsAgent: https.Agent): Promise<MessageStatus[]> => {
     fs.writeFileSync(`messages_to_sign.json`, JSON.stringify({ messages })); //TODO: delete
     try {
-      if (fs.existsSync(SSL_CERT_PATH)) {
-        // HTTPS
-        const cert = fs.readFileSync(SSL_CERT_PATH);
-        const httpsAgent = new https.Agent({
-          ca: cert
-        });
-
         const res = await axios.post(
           `${CUSTOMER_SERVER_URL}/messagesToSign`,
           { messages },
@@ -24,51 +17,23 @@ const customerServerApi = {
           },
         );
         return res.data.statuses;
-      } else {
-        // HTTP
-        const res = await axios.post(
-          `${CUSTOMER_SERVER_URL}/messagesToSign`,
-          { messages },
-          {
-            headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
-          },
-        );
-        return res.data.statuses;
-      }
     } catch (e) {
       logger.error(`Error on customer server api request /messagesToSign`);
       throw e;
     }
   },
 
-  messagesStatus: async (pendingMessages: MessagesStatusRequest): Promise<MessagesStatusResponse> => {
+  messagesStatus: async (pendingMessages: MessagesStatusRequest, httpsAgent: https.Agent): Promise<MessagesStatusResponse> => {
     try {
-      if (fs.existsSync(SSL_CERT_PATH)) {
-        // HTTPS
-        const cert = fs.readFileSync(SSL_CERT_PATH);
-        const httpsAgent = new https.Agent({
-          ca: cert
-        });
-        const res = await axios.post(
-          `${CUSTOMER_SERVER_URL}/messagesStatus`,
-          pendingMessages,
-          {
-            headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
-            httpsAgent,
-          },
-        );
-        return res.data;
-      } else {
-        // HTTP
-        const res = await axios.post(
-          `${CUSTOMER_SERVER_URL}/messagesStatus`,
-          pendingMessages,
-          {
-            headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
-          },
-        );
-        return res.data;
-      }
+      const res = await axios.post(
+        `${CUSTOMER_SERVER_URL}/messagesStatus`,
+        pendingMessages,
+        {
+          headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
+          httpsAgent,
+        },
+      );
+      return res.data;
     } catch (e) {
       logger.error(`Error on customer server api request /messagesStatus`);
       throw e;
