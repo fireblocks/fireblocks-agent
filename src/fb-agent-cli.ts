@@ -10,7 +10,6 @@ import logger from './services/logger';
 import https from 'https';
 
 async function main(httpsAgent: https.Agent) {
-  console.clear();
   console.log(chalk.blue(figlet.textSync('FIREBLOCKS', { horizontalLayout: 'full' })));
   console.log(chalk.blue('Welcome to the Fireblocks Agent'));
 
@@ -54,7 +53,7 @@ const promptPairingToken = async () => {
 };
 
 export const start = async (httpsAgent: https.Agent) => {
-  const spinner = ora('Fireblocks HSM Agent is loading please wait').start();
+  const spinner = ora('Fireblocks HSM Agent is loading please wait\n').start();
   const TIME_TO_LET_PM2_START_AND_ATTACH = process.env.NODE_ENV === 'prod' ? 2000 : 0;
   setTimeout(() => {
     spinner.stop();

@@ -1,7 +1,7 @@
 import express from 'express';
-import fs from 'fs'; // Import filesystem module
+import fs from 'fs';
 import helmet from 'helmet';
-import https from 'https'; // Import HTTPS module
+import https from 'https';
 import morgan from 'morgan';
 import { authMiddleware } from './middlewares/authorization.middleware';
 import './pre-start';
@@ -27,11 +27,11 @@ app.use(`/api`, apiRouter);
 // Use HTTPS if private key and certificate are provided
 const ssl_priv_key_path = process.env.SELF_SIGNED_SSL_PRIV_KEY_PATH ?? '';
 const ssl_cert_path = process.env.SELF_SIGNED_SSL_CERT_PATH ?? '';
-if (fs.existsSync(process.env.SELF_SIGNED_SSL_PRIV_KEY_PATH) && fs.existsSync(process.env.SELF_SIGNED_SSL_CERT_PATH)) {
+if (fs.existsSync(ssl_priv_key_path) && fs.existsSync(ssl_cert_path)) {
   logger.info(`Found private key and SSL certificate - Using HTTPS`);
   const sslOptions = {
-    key: fs.readFileSync(process.env.SELF_SIGNED_SSL_PRIV_KEY_PATH),
-    cert: fs.readFileSync(process.env.SELF_SIGNED_SSL_CERT_PATH),
+    key: fs.readFileSync(ssl_priv_key_path),
+    cert: fs.readFileSync(ssl_cert_path),
   };
   https.createServer(sslOptions, app).listen(PORT, () => logger.info(SERVER_START_MSG));
 }

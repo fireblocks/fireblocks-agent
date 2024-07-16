@@ -33,7 +33,7 @@ class CustomerClient {
     } catch (e) {
       logger.error(`Got error from customer server: "${e.message}"`);
     }
-    setTimeout((httpsAgent) => {this.pullMessagesStatus(httpsAgent)}, CUSTOMER_SERVER_PULL_CADENCE_MS);
+    setTimeout(() => {this.pullMessagesStatus(httpsAgent)}, CUSTOMER_SERVER_PULL_CADENCE_MS);
   };
 }
 
