@@ -21,7 +21,5 @@ RUN npm install \
     && npm run build 
 #    && rm -fr node_modules
 
-#EXPOSE 3000
-
 # Start the app using serve command
 CMD ["/bin/bash", "-c", "pm2 start dist/index.js && pm2 attach 0"]

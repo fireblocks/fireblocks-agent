@@ -8,6 +8,7 @@ import fbServerApi from './fb-server.api';
 import { fbServerApiDriver, messageBuilder } from './fb-server.api.test';
 import agent from './fireblocks-agent';
 import messagesService from './messages.service';
+import https from 'https';
 const c = new Chance();
 
 describe('HSM Agent', () => {
@@ -30,7 +31,7 @@ describe('HSM Agent', () => {
     jest.spyOn(fbServerApi, 'getMessages').mockImplementation(jest.fn(() => Promise.resolve(someMessages)));
     jest.spyOn(messagesService, 'handleMessages').mockImplementation(jest.fn(() => Promise.resolve()));
 
-    await agent._runLoopStep();
+    await agent._runLoopStep(new https.Agent());
 
     expect(fbServerApi.getMessages).toHaveBeenCalledTimes(1);
     expect(messagesService.handleMessages).toHaveBeenCalledTimes(1);

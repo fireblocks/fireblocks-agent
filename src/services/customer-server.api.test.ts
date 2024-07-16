@@ -6,7 +6,9 @@ import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants
 import { FBMessagePayload, MessageEnvelop, MessageStatus } from '../types';
 import service, { MessagesResponse, MessagesStatusRequest, MessagesStatusResponse } from './customer-server.api';
 import { messageBuilder } from './fb-server.api.test';
+import https from 'https';
 const c = new Chance();
+const httpsAgent = new https.Agent();
 
 describe('Customer Server API', () => {
   it('should send message to sign', async () => {
@@ -25,7 +27,7 @@ describe('Customer Server API', () => {
     ];
     customerServerApiDriver.mock.messagesToSign(messagesToSign, { statuses: expectedRes });
 
-    const res = await service.messagesToSign(messagesToSign);
+    const res = await service.messagesToSign(messagesToSign, httpsAgent);
 
     expect(res).toEqual(expectedRes);
   });

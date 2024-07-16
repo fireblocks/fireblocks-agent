@@ -3,13 +3,13 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import ora from 'ora';
 import { v4 as uuid } from 'uuid';
-import { CUSTOMER_SERVER_URL, MOBILE_GATEWAY_URL } from './constants';
+import { CUSTOMER_SERVER_URL, MOBILE_GATEWAY_URL, SSL_CERT_PATH } from './constants';
 import deviceService from './services/device.service';
 import fbAgent from './services/fireblocks-agent';
 import logger from './services/logger';
+import https from 'https';
 
-async function main() {
-  console.clear();
+async function main(httpsAgent: https.Agent) {
   console.log(chalk.blue(figlet.textSync('FIREBLOCKS', { horizontalLayout: 'full' })));
   console.log(chalk.blue('Welcome to the Fireblocks Agent'));
 
@@ -18,8 +18,8 @@ async function main() {
   }
 
   const { userId, deviceId } = deviceService.getDeviceData();
-  console.log(`Fireblocks Agent info:\n\tuserId: ${userId}\n\tdeviceId: ${deviceId}\n\tFireblocks URL: ${MOBILE_GATEWAY_URL}\n\tCustomer server URL: ${CUSTOMER_SERVER_URL}`);
-  fbAgent.runAgentMainLoop();
+  console.log(`Fireblocks Agent info:\n\tuserId: ${userId}\n\tdeviceId: ${deviceId}\n\tFireblocks URL: ${MOBILE_GATEWAY_URL}\n\tCustomer server URL: ${CUSTOMER_SERVER_URL}\n\tSSL Cert Path: ${SSL_CERT_PATH}`);
+  fbAgent.runAgentMainLoop(httpsAgent);
 }
 
 const pairDevice = async (): Promise<boolean> => {
@@ -32,7 +32,7 @@ const pairDevice = async (): Promise<boolean> => {
     spinner.succeed(chalk.green(`Great! your device is now paired!`));
     return true;
   } catch (e) {
-    spinner.fail(chalk.red(`Couldn't pair device, got error ${e.message}`));
+    spinner.fail(chalk.red(`Couldn't pair device, got error: "${e.message}"`));
     logger.error(`Error in pair device ${e}`);
     return false;
   }
@@ -52,11 +52,11 @@ const promptPairingToken = async () => {
   return token;
 };
 
-export const start = async () => {
-  const spinner = ora('Fireblocks HSM Agent is loading please wait').start();
+export const start = async (httpsAgent: https.Agent) => {
+  const spinner = ora('Fireblocks HSM Agent is loading please wait\n').start();
   const TIME_TO_LET_PM2_START_AND_ATTACH = process.env.NODE_ENV === 'prod' ? 2000 : 0;
   setTimeout(() => {
     spinner.stop();
-    main();
+    main(httpsAgent);
   }, TIME_TO_LET_PM2_START_AND_ATTACH);
 };

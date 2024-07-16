@@ -30,16 +30,20 @@ Fireblocks Agent is an open-source on-prem service written in Typescript which i
   - `cd examples/server`
   - `npm run build:docker`
   - `npm run start:docker`
-- Copy `.env.prod` and name it `.env.{env}` for example `.env.dev9`
-- Edit your newly created `.env.{env}` file with the right config
-- Start fireblocks agent with your desired env i.e `npm run start --env=prod`
+
+- Configure and run Fireblocks agent:
+- Copy `.env.prod` and name it `.env.{env-name}` (e.g. `.env.test`)
+- Edit your newly created `.env.{env-name}` file with the right configuration
+- Start the Fireblocks agent with your desired environment:
+  - `npm run start --env=env-name`
 
 ### Fireblocks Agent Environment Variables
-The fireblocks agent expect a configuration file (for production it's called `.env.prod`) with several parameters:
+The Fireblocks agent expect a configuration file (for production it's called `.env.prod`) with several parameters:
 * `MOBILE_GATEWAY_URL` - In production this value should be `https://mobile-api.fireblocks.io`
 * `CUSTOMER_SERVER_URL` - The client's custom server url
-* `CUSTOMER_SERVER_PULL_CADENCE` - Cadence of pulling messages status
-* `CUSTOMER_SERVER_AUTHORIZATION` - If exists, the fireblocks agent will send its value on the `Authorization` header for each request. The client can use it for authorizing the fireblocks agent or keep track on which agent is calling it
+* `CUSTOMER_SERVER_PULL_CADENCE_MS` - Cadence of pulling messages status
+* `CUSTOMER_SERVER_AUTHORIZATION` - If exists, the Fireblocks agent will send its value on the `Authorization` header for each request. The client can use it for authorizing the fireblocks agent or keep track on which agent is calling it
+* `SSL_CERT_PATH` - If exists, a path to a self-signed SSL certificate which will be used to validate the server certificate
 
 
 # About the Fireblocks Key Link Workspace
@@ -49,10 +53,10 @@ The Fireblocks Key Link workspace consists of several components (aka actors). E
 
 * Console - Fireblocks web console. [Link](https://console.fireblocks.io/v2/)
 * Mobile App - Fireblocks mobile app.
-* Mobile API Gateway - Fireblocks REST API Server. The firblocks agent communicates with this server in the registration flow and for receiving new messages.
+* Mobile API Gateway - Fireblocks REST API Server. The Fireblocks agent communicates with this server in the registration flow and for receiving new messages.
 * Developer API - Fireblocks back office server for workspace setup and configuration.
 * Fireblocks Agent - An on-prem service written in Typescript which is responsible for receiving new messages to sign from Fireblocks, relay these messages to the client's HSM and return the signed result back to Fireblocks.
-* Customer Server - The client's own server which receives messages to sign from the fireblocks agent. Sign them via the client's HSM and provide the fireblocks agent with the signed messages.
+* Customer Server - The client's own server which receives messages to sign from the Fireblocks agent. Sign them via the client's HSM and provide the Fireblocks agent with the signed messages.
 * HSM component - The actual HSM implementation. Can be on prem or a cloud based HSM, or a different Key Management System.
 
 ## About the Customer Server
@@ -75,7 +79,7 @@ The entry point for the server can be found [here](examples/server/src/server.ts
 ![Pair the Fireblocks Agent Device flow](docs/flows/pair_device_sd.png)
 
 ### Add a Validator Key
-This procedure should happen once. Fireblocks will need a validator key to approve new signing keys. This flow is done via the fireblocks sdk and not via this program.
+This procedure should happen once. Fireblocks will need a validator key to approve new signing keys. This flow is done via the Fireblocks sdk and not via this program.
 
 ![Add validator key flow](docs/flows/add_validator_key.png)
 

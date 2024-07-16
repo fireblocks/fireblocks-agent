@@ -9,7 +9,7 @@ services:
       - softhsm:/usr/local/lib/softhsm/
       - tokens:/tokens/
     ports:
-      - 3000:3000
+      - 5000:5000
       - 35729:35729
   customer-database:
     image: mongo:6

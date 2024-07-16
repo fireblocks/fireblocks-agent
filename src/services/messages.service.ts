@@ -4,10 +4,10 @@ import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
 import logger from './logger';
-
+import https from 'https';
 interface IMessageService {
   getPendingMessages(): ExtendedMessageStatusCache[];
-  handleMessages(messages: FBMessageEnvelope[]): Promise<void>;
+  handleMessages(messages: FBMessageEnvelope[], httpsAgent: https.Agent): Promise<void>;
   updateStatus(messagesStatus: ExtendedMessageStatusCache[]): Promise<void>;
 }
 
@@ -20,7 +20,7 @@ class MessageService implements IMessageService {
     return Object.values(this.msgCache).filter((msg) => msg.messageStatus.status === 'PENDING_SIGN');
   }
 
-  async handleMessages(messages: FBMessageEnvelope[]) {
+  async handleMessages(messages: FBMessageEnvelope[], httpsAgent: https.Agent) {
     const certificates = await fbServerApi.getCertificates();
     const decodedMessages: DecodedMessage[] = messages
       .map((messageEnvelope: FBMessageEnvelope): DecodedMessage => {
@@ -65,7 +65,7 @@ class MessageService implements IMessageService {
     }
 
     if (!!messagesToHandle.length) {
-      const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle.map((msg) => msg.request));
+      const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle.map((msg) => msg.request), httpsAgent);
       logger.info(`Got from customer server messages status for ${JSON.stringify(msgStatuses.map((status) => { return { requestId: status.requestId, status: status.status } }))}`);
       await this.updateStatus(msgStatuses.map((messageStatus): ExtendedMessageStatusCache => {
         const decodedMessage = messagesToHandle.find((msg) => msg.request.transportMetadata.requestId === messageStatus.requestId);

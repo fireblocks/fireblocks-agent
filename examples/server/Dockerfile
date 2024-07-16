@@ -57,7 +57,6 @@ RUN npm run initToken
 RUN npm install \
   && npm run build
 
-
 USER root
 
 EXPOSE 5000
