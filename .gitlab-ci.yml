@@ -2,6 +2,8 @@ image: registry.gitlab.com/fireblocks/shell/infra/images/node-infra-18:latest
 
 stages:
   - check_version
+  - lint
+  - test
 
 check_version_change:
   stage: check_version
@@ -22,3 +24,37 @@ check_version_change:
       fi
   only:
     - merge_requests
+
+format:
+  stage: lint
+  allow_failure: false
+  tags:
+    - build-shell
+  script:
+    - npm install
+    - npm run format:check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      when: always
+    - if: $CI_COMMIT_BRANCH == "github" || $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: never
+
+test:
+  image: registry.gitlab.com/fireblocks/shell/infra/images/node-infra-18:latest
+  stage: test
+  tags:
+    - build-shell
+  allow_failure: false
+  script:
+    - npm install
+    - npm run build
+    - npm test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_TITLE =~ /^Draft:/
+      when: manual
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      when: always
+    - if: $CI_COMMIT_BRANCH == "github" || $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: never
