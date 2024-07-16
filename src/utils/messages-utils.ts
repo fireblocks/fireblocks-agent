@@ -16,7 +16,7 @@ export const decodeAndVerifyMessage = (
       const zsCertificate = certMap['zs'];
       fbMessage = jwt.verify(fbMsgEnvelope.msg as JWT, zsCertificate) as FBMessage;
     } catch (e) {
-      throw new Error('JWT Message signature is invalid');
+      throw new Error(`JWT Message signature is invalid. Full message: ${fbMsgEnvelope.msg}`);
     }
   }
 

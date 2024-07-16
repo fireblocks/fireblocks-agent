@@ -39,7 +39,7 @@ describe('Messages utils', () => {
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
-    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"JWT Message signature is invalid"');
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot(`"JWT Message signature is invalid. Full message: ${fbMessageEnvelope.msg}"`);
   });
 
   it('should not verify a message with false vsCertificate', () => {
