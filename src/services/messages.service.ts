@@ -116,7 +116,7 @@ class MessageService implements IMessageService {
           this.msgCache[messageStatus.requestId].messageStatus = messageStatus;
         }
       } catch (e) {
-        throw new Error(`Error updating status for message ${msgStatus.msgId} and status ${JSON.stringify(msgStatus.messageStatus)}. Error: ${e.message}`);
+        logger.error(`Error updating status for message ${msgStatus.msgId} and status ${JSON.stringify(msgStatus.messageStatus)}. Error: ${e.message}`);
       }
     }
   }
