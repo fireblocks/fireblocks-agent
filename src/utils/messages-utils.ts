@@ -1,6 +1,15 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { CertificatesMap, DecodedMessage, FBMessage, FBMessageEnvelope, JWT, MessageEnvelop, TxMetadata, TxMetadataSignature } from '../types';
+import {
+  CertificatesMap,
+  DecodedMessage,
+  FBMessage,
+  FBMessageEnvelope,
+  JWT,
+  MessageEnvelop,
+  TxMetadata,
+  TxMetadataSignature,
+} from '../types';
 
 const PROOF_OF_OWNERSHIP_SUPPORTED_MAJOR_VERSIONS = ['2'];
 
@@ -39,12 +48,14 @@ export const decodeAndVerifyMessage = (
 const verifyFbMessage = (message: FBMessage): boolean => {
   const toVerify = getDataToVerify(message);
   for (const verifying of toVerify) {
-    if (!verifyRSASignatureFromCertificate(
-      verifying.payload,
-      verifying.signatureInfo.signature,
-      verifying.certificate,
-      verifying.signatureInfo.format,
-    )) {
+    if (
+      !verifyRSASignatureFromCertificate(
+        verifying.payload,
+        verifying.signatureInfo.signature,
+        verifying.certificate,
+        verifying.signatureInfo.format,
+      )
+    ) {
       throw new Error(`Invalid signature from ${verifying.service}`);
     }
   }
@@ -65,9 +76,12 @@ function verifyRSASignatureFromCertificate(
 
 const getPolicySignature = (txMetaDataSignatures: Array<TxMetadataSignature>): TxMetadataSignature => {
   return txMetaDataSignatures.find((_) => _.id === 'policy_service');
-}
+};
 
-const getVerifyDetailsFromPayloadSignature = (payloadSignature: { service: string, signature: string }, payload: string): VerifyDetails => {
+const getVerifyDetailsFromPayloadSignature = (
+  payloadSignature: { service: string; signature: string },
+  payload: string,
+): VerifyDetails => {
   const serviceSigner = payloadSignature.service.toLowerCase();
   const messageVerifier = KEY_TO_VERIFIER_MAP[serviceSigner];
   if (!certMap.hasOwnProperty(messageVerifier)) {
@@ -83,7 +97,7 @@ const getVerifyDetailsFromPayloadSignature = (payloadSignature: { service: strin
       format: 'hex',
     },
   };
-}
+};
 
 const getPayloadVerifyDetails = (fbMessage: FBMessage): VerifyDetails => {
   const fbMsgPayload = fbMessage.payload;
@@ -93,7 +107,7 @@ const getPayloadVerifyDetails = (fbMessage: FBMessage): VerifyDetails => {
   }
 
   return getVerifyDetailsFromPayloadSignature(payloadSignatureData, fbMsgPayload.payload);
-}
+};
 
 const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
   const res: VerifyDetails[] = [];
@@ -121,7 +135,12 @@ const getDataToVerify = (fbMessage: FBMessage): VerifyDetails[] => {
       const txMetadata: TxMetadata = parsedPayload.metadata;
       const policySignature = getPolicySignature(txMetadata.txMetaDataSignatures);
       const policyServiceName = policySignature.id.toLowerCase();
-      res.push(getVerifyDetailsFromPayloadSignature({ service: policyServiceName, signature: policySignature.signature }, txMetadata.txMetaData));
+      res.push(
+        getVerifyDetailsFromPayloadSignature(
+          { service: policyServiceName, signature: policySignature.signature },
+          txMetadata.txMetaData,
+        ),
+      );
       break;
     }
   }
@@ -133,8 +152,8 @@ const extractMessageUniqueId = (fbMessage: FBMessage): string => {
   const fbMsgPayload = fbMessage.payload;
   const parsedMessage = JSON.parse(fbMsgPayload.payload);
 
-  return parsedMessage.requestId ?? parsedMessage.txId ?? "";
-}
+  return parsedMessage.requestId ?? parsedMessage.txId ?? '';
+};
 
 interface VerifyDetails {
   payload: string;

@@ -27,7 +27,9 @@ class MessageService implements IMessageService {
         try {
           const { msgId, request } = decodeAndVerifyMessage(messageEnvelope, certificates);
           const { transportMetadata } = request;
-          logger.info(`Got from Fireblocks message id ${msgId} with type ${transportMetadata.type} and request id ${transportMetadata.requestId}`);
+          logger.info(
+            `Got from Fireblocks message id ${msgId} with type ${transportMetadata.type} and request id ${transportMetadata.requestId}`,
+          );
           return { msgId, request };
         } catch (e) {
           logger.error(`Error decoding message ${e.message}`);
@@ -51,13 +53,15 @@ class MessageService implements IMessageService {
     });
 
     if (!!cachedMessages.length) {
-      cachedMessages.forEach((msg) => logger.info(`Found cached message id ${msg.msgId} request id ${msg.request.transportMetadata.requestId}`));
+      cachedMessages.forEach((msg) =>
+        logger.info(`Found cached message id ${msg.msgId} request id ${msg.request.transportMetadata.requestId}`),
+      );
       const cachedMsgsStatus = cachedMessages.map((msg): ExtendedMessageStatusCache => {
         return {
           msgId: msg.msgId,
           request: msg.request,
           messageStatus: this.msgCache[msg.request.transportMetadata.requestId].messageStatus,
-        }
+        };
       });
 
       // We're calling updateStatus here to handle the case where the message was signed and we got it again from Fireblocks
@@ -65,25 +69,44 @@ class MessageService implements IMessageService {
     }
 
     if (!!messagesToHandle.length) {
-      const msgStatuses = await customerServerApi.messagesToSign(messagesToHandle.map((msg) => msg.request), httpsAgent);
-      logger.info(`Got from customer server messages status for ${JSON.stringify(msgStatuses.map((status) => { return { requestId: status.requestId, status: status.status } }))}`);
-      await this.updateStatus(msgStatuses.map((messageStatus): ExtendedMessageStatusCache => {
-        const decodedMessage = messagesToHandle.find((msg) => msg.request.transportMetadata.requestId === messageStatus.requestId);
-        if (!decodedMessage) {
-          logger.error(`Message with requestId ${messageStatus.requestId} wasn't expected`);
-          return null;
-        }
+      const msgStatuses = await customerServerApi.messagesToSign(
+        messagesToHandle.map((msg) => msg.request),
+        httpsAgent,
+      );
+      logger.info(
+        `Got from customer server messages status for ${JSON.stringify(
+          msgStatuses.map((status) => {
+            return { requestId: status.requestId, status: status.status };
+          }),
+        )}`,
+      );
+      await this.updateStatus(
+        msgStatuses
+          .map((messageStatus): ExtendedMessageStatusCache => {
+            const decodedMessage = messagesToHandle.find(
+              (msg) => msg.request.transportMetadata.requestId === messageStatus.requestId,
+            );
+            if (!decodedMessage) {
+              logger.error(`Message with requestId ${messageStatus.requestId} wasn't expected`);
+              return null;
+            }
 
-        return {
-          msgId: decodedMessage.msgId,
-          request: decodedMessage.request,
-          messageStatus,
-        };
-      }).filter((msg) => msg !== null));
+            return {
+              msgId: decodedMessage.msgId,
+              request: decodedMessage.request,
+              messageStatus,
+            };
+          })
+          .filter((msg) => msg !== null),
+      );
     }
 
     if (!!unknownMessages.length) {
-      unknownMessages.forEach((msg) => logger.error(`Got from Fireblocks unknown message type ${msg.request.transportMetadata.type} and id ${msg.msgId}`));
+      unknownMessages.forEach((msg) =>
+        logger.error(
+          `Got from Fireblocks unknown message type ${msg.request.transportMetadata.type} and id ${msg.msgId}`,
+        ),
+      );
       await this.ackMessages(unknownMessages.map((msg) => msg.msgId));
     }
   }
@@ -110,20 +133,28 @@ class MessageService implements IMessageService {
         }
 
         if (status === 'SIGNED' || status === 'FAILED') {
-          logger.info(`Got ${isInCache ? "cached" : "from customer server"} message with final status: ${status}, msgId ${msgId}, cacheId: ${requestId}`);
+          logger.info(
+            `Got ${
+              isInCache ? 'cached' : 'from customer server'
+            } message with final status: ${status}, msgId ${msgId}, cacheId: ${requestId}`,
+          );
           await fbServerApi.broadcastResponse(messageStatus, request);
           await fbServerApi.ackMessage(msgId);
           this.msgCache[messageStatus.requestId].messageStatus = messageStatus;
         }
       } catch (e) {
-        logger.error(`Error updating status for message ${msgStatus.msgId} and status ${JSON.stringify(msgStatus.messageStatus)}. Error: ${e.message}`);
+        logger.error(
+          `Error updating status for message ${msgStatus.msgId} and status ${JSON.stringify(
+            msgStatus.messageStatus,
+          )}. Error: ${e.message}`,
+        );
       }
     }
   }
 
   async ackMessages(messagesIds: number[]) {
     try {
-      const promises = messagesIds.map(msgId => fbServerApi.ackMessage(msgId));
+      const promises = messagesIds.map((msgId) => fbServerApi.ackMessage(msgId));
       await Promise.all(promises);
     } catch (e) {
       throw new Error(`Error acknowledging messages ${e.message}`);

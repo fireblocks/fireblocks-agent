@@ -15,25 +15,37 @@ class CustomerClient {
       const { statuses: serverStatuses } = await customerServerApi.messagesStatus({ requestsIds }, httpsAgent);
       logger.info(`Got ${messages.length} statuses from Customer server`);
       if (!!serverStatuses.length) {
-        logger.info(`Got from customer server messages status for ${JSON.stringify(serverStatuses.map((status) => { return { requestId: status.requestId, status: status.status } }))}`);
+        logger.info(
+          `Got from customer server messages status for ${JSON.stringify(
+            serverStatuses.map((status) => {
+              return { requestId: status.requestId, status: status.status };
+            }),
+          )}`,
+        );
 
-        await messagesService.updateStatus(serverStatuses.map((messagesStatus): ExtendedMessageStatusCache => {
-          const decodedMsg = messages.find((msg) => msg.messageStatus.requestId === messagesStatus.requestId);
-          if (!decodedMsg) {
-            logger.error(`Message with requestId ${messagesStatus.requestId} not in pending cache messages`);
-            return null;
-          }
-          return {
-            msgId: decodedMsg.msgId,
-            request: decodedMsg.request,
-            messageStatus: messagesStatus,
-          };
-        }).filter((msg) => msg !== null));
+        await messagesService.updateStatus(
+          serverStatuses
+            .map((messagesStatus): ExtendedMessageStatusCache => {
+              const decodedMsg = messages.find((msg) => msg.messageStatus.requestId === messagesStatus.requestId);
+              if (!decodedMsg) {
+                logger.error(`Message with requestId ${messagesStatus.requestId} not in pending cache messages`);
+                return null;
+              }
+              return {
+                msgId: decodedMsg.msgId,
+                request: decodedMsg.request,
+                messageStatus: messagesStatus,
+              };
+            })
+            .filter((msg) => msg !== null),
+        );
       }
     } catch (e) {
       logger.error(`Got error from customer server: "${e.message}"`);
     }
-    setTimeout(() => {this.pullMessagesStatus(httpsAgent)}, CUSTOMER_SERVER_PULL_CADENCE_MS);
+    setTimeout(() => {
+      this.pullMessagesStatus(httpsAgent);
+    }, CUSTOMER_SERVER_PULL_CADENCE_MS);
   };
 }
 
