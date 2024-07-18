@@ -1,4 +1,24 @@
-include:
-  - project: 'fireblocks/shell/common/templates/ci-infra'
-    file:
-      - 'npm-package-ci.yml'
+image: registry.gitlab.com/fireblocks/shell/infra/images/node-infra-18:latest
+
+stages:
+  - check_version
+
+check_version_change:
+  stage: check_version
+  allow_failure: false
+  tags:
+    - build-shell
+  script:
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - |
+      if ! git diff --name-only origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME..$CI_COMMIT_SHA | grep "src/version.ts"; then
+        echo "Error: version.ts was not modified in this merge request."
+        exit 1
+      fi
+    - |
+      if ! git diff origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME..$CI_COMMIT_SHA -- src/version.ts | grep -E "export\s+const\s+AGENT_VERSION\s*=\s*"; then
+        echo "Error: version constant was not modified in version.ts."
+        exit 1
+      fi
+  only:
+    - merge_requests
