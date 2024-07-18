@@ -11,6 +11,7 @@ import {
   PairDeviceResponse,
 } from 'types';
 import { MOBILE_GATEWAY_URL } from '../constants';
+import { AGENT_VERSION } from '../version';
 import deviceService from './device.service';
 import logger from './logger';
 
@@ -122,6 +123,7 @@ const fbServerApi = {
 function buildHeaders(accessToken: AccessToken) {
   const headers = {
     'x-access-token': accessToken,
+    'User-Agent': `FireblocksAgent/${AGENT_VERSION}`,
   };
   return { headers };
 }
