@@ -18,7 +18,9 @@ async function main(httpsAgent: https.Agent) {
   }
 
   const { userId, deviceId } = deviceService.getDeviceData();
-  console.log(`Fireblocks Agent info:\n\tuserId: ${userId}\n\tdeviceId: ${deviceId}\n\tFireblocks URL: ${MOBILE_GATEWAY_URL}\n\tCustomer server URL: ${CUSTOMER_SERVER_URL}\n\tSSL Cert Path: ${SSL_CERT_PATH}`);
+  console.log(
+    `Fireblocks Agent info:\n\tuserId: ${userId}\n\tdeviceId: ${deviceId}\n\tFireblocks URL: ${MOBILE_GATEWAY_URL}\n\tCustomer server URL: ${CUSTOMER_SERVER_URL}\n\tSSL Cert Path: ${SSL_CERT_PATH}`,
+  );
   fbAgent.runAgentMainLoop(httpsAgent);
 }
 

@@ -229,7 +229,9 @@ describe('Server API', () => {
     // @ts-ignore
     signedMessageStatus.type = invalidType;
 
-    await expect(fbServerApi.broadcastResponse(signedMessageStatus, request)).rejects.toThrowErrorMatchingInlineSnapshot(`"Unknown type ${invalidType}"`);
+    await expect(
+      fbServerApi.broadcastResponse(signedMessageStatus, request),
+    ).rejects.toThrowErrorMatchingInlineSnapshot(`"Unknown type ${invalidType}"`);
   });
 });
 
@@ -241,21 +243,23 @@ const aMessageEnvelop = (type: RequestType): MessageEnvelop => {
       type,
     },
   };
-}
+};
 const aSignedMessageStatus = (type: ResponseType): MessageStatus => {
   return {
     type,
     status: 'SIGNED',
     requestId: c.guid(),
     response: {
-      signedMessages: [{
-        message: c.string(),
-        signature: 'signed payload',
-        index: 0,
-      }],
-    }
+      signedMessages: [
+        {
+          message: c.string(),
+          signature: 'signed payload',
+          index: 0,
+        },
+      ],
+    },
   };
-}
+};
 const aFailedMessageStatus = (type: ResponseType): MessageStatus => {
   return {
     type,
@@ -265,7 +269,7 @@ const aFailedMessageStatus = (type: ResponseType): MessageStatus => {
       errorMessage: 'tx not authorized',
     },
   };
-}
+};
 export function aProofOfOwnershipRequest(): MessageEnvelop {
   return aMessageEnvelop('KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST');
 }
@@ -338,8 +342,8 @@ export const messageBuilder = {
       message,
       transportMetadata: {
         requestId,
-        type
-      }
+        type,
+      },
     };
   },
   fbMessage: (msgPayload: MessagePayload): FBMessage => {
@@ -362,10 +366,12 @@ export const messageBuilder = {
       algorithm: 'ECDSA_SECP256K1',
       signingDeviceKeyId: c.guid(),
       keyId: c.guid(),
-      messagesToSign: [{
-        message: c.string(),
-        index: 0,
-      }],
+      messagesToSign: [
+        {
+          message: c.string(),
+          index: 0,
+        },
+      ],
       ...message,
     };
   },
@@ -430,10 +436,16 @@ export const fbServerApiDriver = {
       fbServerApiDriver.axiosMock().onPut(`${MOBILE_GATEWAY_URL}/msg`, { msgId, nack: false }).reply(200, response);
     },
     broadcast_proof_of_ownership: (accessToken: AccessToken, status: any, response: string) => {
-      fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/keylink_proof_of_ownership_response`, status).reply(200, response);
+      fbServerApiDriver
+        .axiosMock()
+        .onPost(`${MOBILE_GATEWAY_URL}/keylink_proof_of_ownership_response`, status)
+        .reply(200, response);
     },
     broadcast_tx_sign: (accessToken: AccessToken, status: any, response: string) => {
-      fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/keylink_tx_sign_response`, status).reply(200, response);
+      fbServerApiDriver
+        .axiosMock()
+        .onPost(`${MOBILE_GATEWAY_URL}/keylink_tx_sign_response`, status)
+        .reply(200, response);
     },
     accessToken: (accessTokenReq?: Partial<AccessTokenRequest>, resultAccessToken: string = c.string()) => {
       const generatedReq = fbServerApiDriver.given.accessTokenRequest();

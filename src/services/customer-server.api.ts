@@ -23,16 +23,15 @@ const customerServerApi = {
     }
   },
 
-  messagesStatus: async (pendingMessages: MessagesStatusRequest, httpsAgent: https.Agent): Promise<MessagesStatusResponse> => {
+  messagesStatus: async (
+    pendingMessages: MessagesStatusRequest,
+    httpsAgent: https.Agent,
+  ): Promise<MessagesStatusResponse> => {
     try {
-      const res = await axios.post(
-        `${CUSTOMER_SERVER_URL}/messagesStatus`,
-        pendingMessages,
-        {
-          headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
-          httpsAgent,
-        },
-      );
+      const res = await axios.post(`${CUSTOMER_SERVER_URL}/messagesStatus`, pendingMessages, {
+        headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
+        httpsAgent,
+      });
       return res.data;
     } catch (e) {
       logger.info(`messagesStatus: Failed - e=${e}`);

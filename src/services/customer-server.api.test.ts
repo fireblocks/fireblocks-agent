@@ -2,11 +2,11 @@ import { describe, expect, it } from '@jest/globals';
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import Chance from 'chance';
+import https from 'https';
 import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants';
 import { FBMessagePayload, MessageEnvelop, MessageStatus } from '../types';
 import service, { MessagesResponse, MessagesStatusRequest, MessagesStatusResponse } from './customer-server.api';
 import { messageBuilder } from './fb-server.api.test';
-import https from 'https';
 const c = new Chance();
 const httpsAgent = new https.Agent();
 
@@ -36,13 +36,15 @@ describe('Customer Server API', () => {
 export const customerServerApiDriver = {
   given: {
     aMessageRequest: (requestId: string, message: FBMessagePayload): MessageEnvelop[] => {
-      return [{
-        message,
-        transportMetadata: {
-          type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
-          requestId,
-        }
-      }];
+      return [
+        {
+          message,
+          transportMetadata: {
+            type: 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST',
+            requestId,
+          },
+        },
+      ];
     },
   },
   mock: {

@@ -2,7 +2,15 @@ import Chance from 'chance';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { messageBuilder } from '../services/fb-server.api.test';
-import { FBMessage, FBMessageEnvelope, FBMessagePayload, MessageEnvelop, MessagePayload, RequestType, TxMetadata } from '../types';
+import {
+  FBMessage,
+  FBMessageEnvelope,
+  FBMessagePayload,
+  MessageEnvelop,
+  MessagePayload,
+  RequestType,
+  TxMetadata,
+} from '../types';
 import * as utils from './messages-utils';
 const c = new Chance();
 
@@ -39,7 +47,9 @@ describe('Messages utils', () => {
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
-    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"JWT Message signature is invalid"');
+    expect(expectToThrow).toThrowErrorMatchingInlineSnapshot(
+      `"JWT Message signature is invalid. Full message: ${fbMessageEnvelope.msg}"`,
+    );
   });
 
   it('should not verify a message with false vsCertificate', () => {
@@ -92,7 +102,7 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       cm: publicKey,
     };
-    const invalid_version = "0.0.0";
+    const invalid_version = '0.0.0';
     const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey, { version: invalid_version });
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
 
@@ -118,7 +128,7 @@ describe('Messages utils', () => {
     const expectedMessage: MessageEnvelop = {
       message: fbMessage.payload,
       transportMetadata: {
-        requestId: "",
+        requestId: '',
         type: fbMessage.type,
       },
     };
@@ -206,14 +216,17 @@ function aCustomFbTxSignRequestMessage(privateKey: string, payloadFields?: Parti
   };
 }
 
-function aFbTxSignRequestMessage(privateKey: string, policyPrivateKey: string, payloadFields?: Partial<MessagePayload>): FBMessage {
-
+function aFbTxSignRequestMessage(
+  privateKey: string,
+  policyPrivateKey: string,
+  payloadFields?: Partial<MessagePayload>,
+): FBMessage {
   const txMetadata = aTxMetadata(policyPrivateKey) as any;
   return aCustomFbTxSignRequestMessage(privateKey, { ...payloadFields, metadata: txMetadata });
 }
 
 function aCustomFbProofOfOwnershipMessage(privateKey: string, payloadFields?: Partial<MessagePayload>): FBMessage {
-  const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
+  const type = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
   const fbMsgPayload = aFbMessagePayload(privateKey, type, 'CONFIGURATION_MANAGER', payloadFields);
   return {
     type,
@@ -222,10 +235,15 @@ function aCustomFbProofOfOwnershipMessage(privateKey: string, payloadFields?: Pa
 }
 
 function aFbProofOfOwnershipMessage(privateKey: string, payloadFields?: Partial<MessagePayload>): FBMessage {
-  return aCustomFbProofOfOwnershipMessage(privateKey, { ...payloadFields, version: "2.0.0" });
+  return aCustomFbProofOfOwnershipMessage(privateKey, { ...payloadFields, version: '2.0.0' });
 }
 
-function aFbMessagePayload(privateKey: string, type: RequestType, service: string, payloadFields?: Partial<MessagePayload>): FBMessagePayload {
+function aFbMessagePayload(
+  privateKey: string,
+  type: RequestType,
+  service: string,
+  payloadFields?: Partial<MessagePayload>,
+): FBMessagePayload {
   const payload = messageBuilder.aMessagePayload(type, payloadFields);
   const payloadStr = JSON.stringify(payload);
 

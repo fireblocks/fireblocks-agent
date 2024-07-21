@@ -4,7 +4,12 @@ import { ExtendedMessageStatusCache, MessageStatus, RequestType } from '../types
 import * as messagesUtils from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
-import { aProofOfOwnershipFailedMessageStatus, aProofOfOwnershipRequest, aProofOfOwnershipSignedMessageStatus, messageBuilder } from './fb-server.api.test';
+import {
+  aProofOfOwnershipFailedMessageStatus,
+  aProofOfOwnershipRequest,
+  aProofOfOwnershipSignedMessageStatus,
+  messageBuilder,
+} from './fb-server.api.test';
 import service from './messages.service';
 import https from 'https';
 
@@ -56,7 +61,9 @@ describe('messages service', () => {
   });
 
   it('should ignore non encoded messages', async () => {
-    const aNonEncodedMessage = messageBuilder.fbMessage(messageBuilder.aMessagePayload('KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'));
+    const aNonEncodedMessage = messageBuilder.fbMessage(
+      messageBuilder.aMessagePayload('KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'),
+    );
     const messageEnvelope = messageBuilder.fbProofOfOwnershipMsgEnvelope({}, aNonEncodedMessage, false);
     jest.spyOn(customerServerApi, 'messagesToSign');
     await service.handleMessages([messageEnvelope], httpsAgent);
@@ -67,8 +74,8 @@ describe('messages service', () => {
   it('should get pending messages from cache', async () => {
     const requestId = c.guid();
     const msgId = c.natural();
-    const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'
-    const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE'
+    const requestType = 'KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST';
+    const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
     const aTxToSignMessage = messageBuilder.aMessagePayload(requestType, { requestId });
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
     const fbMessageEnvelope = messageBuilder.fbProofOfOwnershipMsgEnvelope({}, fbMessage);
@@ -192,7 +199,11 @@ describe('messages service', () => {
     await service.handleMessages([fbMessageEnvelope], httpsAgent);
     expect(customerServerApi.messagesToSign).toHaveBeenCalledTimes(1);
     pendingMessages = service.getPendingMessages();
-    const extendedMessagesStatus2: ExtendedMessageStatusCache = { msgId: msgId2, messageStatus: msgStatus, request: msgEnvelop };
+    const extendedMessagesStatus2: ExtendedMessageStatusCache = {
+      msgId: msgId2,
+      messageStatus: msgStatus,
+      request: msgEnvelop,
+    };
     expect(pendingMessages).toEqual([extendedMessagesStatus2]);
 
     jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
@@ -260,5 +271,4 @@ describe('messages service', () => {
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId);
     expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(msgStatus, msgEnvelop);
   });
-
 });
