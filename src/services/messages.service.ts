@@ -1,10 +1,10 @@
+import https from 'https';
 import { AGENT_REQUESTS_CACHE_SIZE } from '../constants';
 import { DecodedMessage, ExtendedMessageStatusCache, FBMessageEnvelope, RequestType } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
 import logger from './logger';
-import https from 'https';
 interface IMessageService {
   getPendingMessages(): ExtendedMessageStatusCache[];
   handleMessages(messages: FBMessageEnvelope[], httpsAgent: https.Agent): Promise<void>;
@@ -121,6 +121,7 @@ class MessageService implements IMessageService {
   }
 
   async updateStatus(messagesStatus: ExtendedMessageStatusCache[]) {
+    let promises = [];
     for (const msgStatus of messagesStatus) {
       try {
         const { msgId, request, messageStatus } = msgStatus;
@@ -128,19 +129,35 @@ class MessageService implements IMessageService {
         const isInCache = this.msgCache[requestId];
         if (!isInCache) {
           await this.addMessageToCache(msgStatus);
-        } else {
+        } else if (msgId) {
+          // If there was a change in the prefix of msgId, all cached msgIds are invalid
+          if (
+            this.msgCache[messageStatus.requestId].msgId != null &&
+            Math.floor(this.msgCache[messageStatus.requestId].msgId / 1000000) != Math.floor(msgId / 1000000)
+          ) {
+            for (const key in this.msgCache) {
+              this.msgCache[key].msgId = null;
+            }
+          }
           this.msgCache[messageStatus.requestId].msgId = msgId;
         }
 
+        let latestMsgId = this.msgCache[messageStatus.requestId].msgId;
         if (status === 'SIGNED' || status === 'FAILED') {
           logger.info(
             `Got ${
               isInCache ? 'cached' : 'from customer server'
-            } message with final status: ${status}, msgId ${msgId}, cacheId: ${requestId}`,
+            } message with final status: ${status}, msgId ${latestMsgId}, cacheId: ${requestId}`,
           );
-          await fbServerApi.broadcastResponse(messageStatus, request);
-          await fbServerApi.ackMessage(msgId);
-          this.msgCache[messageStatus.requestId].messageStatus = messageStatus;
+          // broadcast always and ack only if we have a valid msgId
+          promises.push(
+            fbServerApi
+              .broadcastResponse(messageStatus, request)
+              .then(() => (this.msgCache[messageStatus.requestId].messageStatus = messageStatus)),
+          );
+          if (latestMsgId) {
+            promises.push(fbServerApi.ackMessage(latestMsgId));
+          }
         }
       } catch (e) {
         logger.error(
@@ -150,6 +167,7 @@ class MessageService implements IMessageService {
         );
       }
     }
+    await Promise.all(promises);
   }
 
   async ackMessages(messagesIds: number[]) {

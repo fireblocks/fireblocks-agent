@@ -100,8 +100,6 @@ describe('Customer server client', () => {
     });
 
     await service.pullMessagesStatus(httpsAgent);
-    expect(messagesService.updateStatus).toHaveBeenCalledWith([
-      { msgId: expect.any(Number), request: msgEnvelop, messageStatus },
-    ]);
+    expect(messagesService.updateStatus).toHaveBeenCalledWith([{ msgId: null, request: msgEnvelop, messageStatus }]);
   });
 });

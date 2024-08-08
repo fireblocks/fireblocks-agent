@@ -32,7 +32,7 @@ class CustomerClient {
                 return null;
               }
               return {
-                msgId: decodedMsg.msgId,
+                msgId: null,
                 request: decodedMsg.request,
                 messageStatus: messagesStatus,
               };

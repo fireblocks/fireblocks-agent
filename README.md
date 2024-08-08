@@ -34,6 +34,8 @@ Fireblocks Agent is an open-source on-prem service written in Typescript which i
 - Configure and run Fireblocks agent:
 - Copy `.env.prod` and name it `.env.{env-name}` (e.g. `.env.test`)
 - Edit your newly created `.env.{env-name}` file with the right configuration
+- Build the Fireblocks agent:
+  - `npm run build`
 - Start the Fireblocks agent with your desired environment:
   - `npm run start --env=env-name`
 

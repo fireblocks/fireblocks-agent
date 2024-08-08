@@ -84,6 +84,13 @@ export const getMessages = async (requestsIds: string[]): Promise<DbMsg[]> => {
   return res;
 };
 
+export const getAllPendingMessages = async (): Promise<DbMsg[]> => {
+  const txRef = await getMessagesCollection();
+  const cursor = await txRef.find({ status: "PENDING_SIGN" });
+  const res = await cursor.toArray();
+  return res;
+};
+
 function toMsgStatus(dbMsgs: Partial<DbMsg>[]): MessageStatus[] {
   dbMsgs.forEach((_) => {
     delete _._id;
