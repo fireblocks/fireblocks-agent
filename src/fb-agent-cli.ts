@@ -8,6 +8,7 @@ import deviceService from './services/device.service';
 import fbAgent from './services/fireblocks-agent';
 import logger from './services/logger';
 import https from 'https';
+import { AGENT_VERSION } from './version';
 
 async function main(httpsAgent: https.Agent) {
   console.log(chalk.blue(figlet.textSync('FIREBLOCKS', { horizontalLayout: 'full' })));
@@ -19,7 +20,7 @@ async function main(httpsAgent: https.Agent) {
 
   const { userId, deviceId } = deviceService.getDeviceData();
   console.log(
-    `Fireblocks Agent info:\n\tuserId: ${userId}\n\tdeviceId: ${deviceId}\n\tFireblocks URL: ${MOBILE_GATEWAY_URL}\n\tCustomer server URL: ${CUSTOMER_SERVER_URL}\n\tSSL Cert Path: ${SSL_CERT_PATH}`,
+    `Fireblocks Agent info:\n\tversion: ${AGENT_VERSION}\n\tuserId: ${userId}\n\tdeviceId: ${deviceId}\n\tFireblocks URL: ${MOBILE_GATEWAY_URL}\n\tCustomer server URL: ${CUSTOMER_SERVER_URL}\n\tSSL Cert Path: ${SSL_CERT_PATH}`,
   );
   fbAgent.runAgentMainLoop(httpsAgent);
 }
@@ -29,8 +30,7 @@ const pairDevice = async (): Promise<boolean> => {
   try {
     const token = await promptPairingToken();
     spinner = ora('Pairing device with Fireblocks').start();
-    const deviceId = uuid();
-    await fbAgent.pairDevice(token, deviceId);
+    await fbAgent.pairDevice(token);
     spinner.succeed(chalk.green(`Great! your device is now paired!`));
     return true;
   } catch (e) {

@@ -54,26 +54,52 @@ export const insertMessages = async (messages: MessageEnvelope[]): Promise<Messa
     } as DbMsg;
   });
 
-  const bulkOperations = dbMsgs.map((dbMsg) => ({
+  // Adding new messages to the DB
+  const bulkOperations = dbMsgs.map((msg) => ({
     updateOne: {
-      filter: { _id: dbMsg._id },
+      filter: { _id: msg._id },
       update: {
-        $set: dbMsg,
+        $setOnInsert: msg,
       },
       upsert: true,
     },
-  }));
-
-  await msgRef.bulkWrite(bulkOperations);
-  const messagesRes = await getMessagesStatus(dbMsgs.map((dbMsg) => dbMsg._id));
-  return messagesRes;
+  }))
+  logger.info(`insertMessages: writing ${bulkOperations.length} messages to DB`);
+  const result = await msgRef.bulkWrite(bulkOperations);
+  logger.info(`insertMessages: found ${result.upsertedCount} new messages and ${result.matchedCount} old messages in DB`);
+  let newMessages = dbMsgs.filter((e, i) => Object.keys(result.upsertedIds).includes(String(i)))
+  return toMsgStatus(newMessages);
 };
 
 export const getMessagesStatus = async (requestsIds: string[]): Promise<MessageStatus[]> => {
-  logger.info(`entering getMessagesStatus ${JSON.stringify(requestsIds)}`);
+  logger.info(`entering getMessagesStatus. Got request for ${requestsIds.length} messages`);
   const txRef = await getMessagesCollection();
-  const cursor = await txRef.find({ _id: { $in: requestsIds } });
-  const res = await cursor.toArray();
+
+  const stats = await txRef.aggregate([
+    {
+      $group: {
+        _id: null,
+        total: { $sum: 1 },
+        pendingSign: { $sum: { $cond: [{ $eq: ["$status", "PENDING_SIGN"] }, 1, 0] } },
+        signed: { $sum: { $cond: [{ $eq: ["$status", "SIGNED"] }, 1, 0] } },
+        failed: { $sum: { $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0] } },
+      },
+    },
+  ]).toArray();
+  
+  if (stats.length > 0) {
+    const { total, pendingSign, signed, failed } = stats[0];
+    logger.info(`Full DB statistics: TOTAL: ${total}, PENDING_SIGN: ${pendingSign}, SIGNED: ${signed}, FAILED: ${failed}`);
+  } else {
+    logger.warning(`Could not read full DB statistics`);
+  }
+  
+  const res = await txRef.find({ _id: { $in: requestsIds } }).toArray();
+  logger.info(`Results statistics: `+
+              `TOTAL: ${res.length}` +
+              `, PENDING_SIGN: ${res.filter((_) => _.status === "PENDING_SIGN").length}` +
+              `, SIGNED: ${res.filter((_) => _.status === "SIGNED").length}` +
+              `, FAILED: ${res.filter((_) => _.status === "FAILED").length}`);
   return toMsgStatus(res);
 };
 

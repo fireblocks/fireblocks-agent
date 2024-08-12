@@ -19,8 +19,8 @@ describe('HSM Agent', () => {
     const pairingToken = hsmAgentDriver.given.jwtToken({ userId });
     const deviceId = c.guid();
 
-    fbServerApiDriver.mock.pairDevice({ userId, pairingToken, deviceId });
-    await agent.pairDevice(pairingToken, deviceId);
+    fbServerApiDriver.mock.pairDevice({ userId, pairingToken }, undefined, deviceId);
+    await agent.pairDevice(pairingToken);
 
     expect(deviceService.isPaired()).toBe(true);
   });

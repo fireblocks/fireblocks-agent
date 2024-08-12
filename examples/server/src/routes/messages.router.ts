@@ -8,6 +8,7 @@ const msgRouter = Router();
 
 msgRouter.post('/messagesToSign', async (req: Request<{}, {}, MessagesRequest>, res: Response<MessagesResponse>) => {
   const { messages } = req.body;
+  logger.info(`received ${messages.length} messages to sign`);
   const messagesStatus: MessageStatus[] = await messagesDao.insertMessages(messages);
 
   //the next line we simulate the hsm work and sign the messages immediately if HSM_MODE is HOT, otherwise don't sign just save message in DB.
@@ -19,7 +20,7 @@ msgRouter.post('/messagesToSign', async (req: Request<{}, {}, MessagesRequest>, 
     await hsmSignService.signMessages(requestsIds);
   }
 
-  const messagesStatusAfterSign = await messagesDao.getMessagesStatus(requestsIds);
+  const messagesStatusAfterSign = await messagesDao.getMessagesStatus(messages.map((_) => _.transportMetadata.requestId));
 
   res.status(200).json({ statuses: messagesStatusAfterSign });
 });

@@ -5,12 +5,12 @@ export type RefreshToken = string;
 export type JWT = string;
 export type AccessToken = string;
 export interface PairDeviceRequest {
-  deviceId: GUID;
   userId: GUID;
   pairingToken: JWT;
 }
 export interface PairDeviceResponse {
   refreshToken: RefreshToken;
+  deviceId: GUID;
 }
 
 export interface AccessTokenRequest {

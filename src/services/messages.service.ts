@@ -28,7 +28,7 @@ class MessageService implements IMessageService {
           const { msgId, request } = decodeAndVerifyMessage(messageEnvelope, certificates);
           const { transportMetadata } = request;
           logger.info(
-            `Got from Fireblocks message id ${msgId} with type ${transportMetadata.type} and request id ${transportMetadata.requestId}`,
+            `Got from Fireblocks msgId ${msgId} with type ${transportMetadata.type} and requestId ${transportMetadata.requestId}`,
           );
           return { msgId, request };
         } catch (e) {
@@ -53,8 +53,13 @@ class MessageService implements IMessageService {
     });
 
     if (!!cachedMessages.length) {
+      logger.info(`Found ${cachedMessages.length} cached messages`);
       cachedMessages.forEach((msg) =>
-        logger.info(`Found cached message id ${msg.msgId} request id ${msg.request.transportMetadata.requestId}`),
+        logger.info(
+          `Found cached message. requestId: ${msg.request.transportMetadata.requestId}, msgId: ${
+            msg.msgId
+          }, cached msgId: ${this.msgCache[msg.request.transportMetadata.requestId].msgId}`,
+        ),
       );
       const cachedMsgsStatus = cachedMessages.map((msg): ExtendedMessageStatusCache => {
         return {
@@ -69,6 +74,7 @@ class MessageService implements IMessageService {
     }
 
     if (!!messagesToHandle.length) {
+      logger.info(`sending ${messagesToHandle.length} messages to customer server to sign`);
       const msgStatuses = await customerServerApi.messagesToSign(
         messagesToHandle.map((msg) => msg.request),
         httpsAgent,
@@ -118,11 +124,25 @@ class MessageService implements IMessageService {
 
     this.msgCache[messageStatus.messageStatus.requestId] = messageStatus;
     this.msgCacheOrder.push(messageStatus.messageStatus.requestId);
+    logger.info(
+      `Added message to cache. msgId: ${messageStatus.msgId}, requestId: ${messageStatus.messageStatus.requestId} `,
+    );
+  }
+
+  async deleteMessageFromCache(requestId: string): Promise<void> {
+    delete this.msgCache[requestId];
+    delete this.msgCacheOrder[requestId];
+    logger.info(`Removed message from cache. requestId: ${requestId}`);
   }
 
   async updateStatus(messagesStatus: ExtendedMessageStatusCache[]) {
     let broadcastPromises = [];
     let ackPromises = [];
+    logger.info(
+      `Number of messages to update: ${Object.keys(messagesStatus).length}, Number of massages in cache: ${
+        Object.keys(this.msgCache).length
+      }`,
+    );
     for (const msgStatus of messagesStatus) {
       try {
         const { msgId, request, messageStatus } = msgStatus;
@@ -131,33 +151,45 @@ class MessageService implements IMessageService {
         if (!isInCache) {
           await this.addMessageToCache(msgStatus);
         } else if (msgId) {
-          // If there was a change in the prefix of msgId, all cached msgIds are invalid
-          if (
-            this.msgCache[messageStatus.requestId].msgId != null &&
-            Math.floor(this.msgCache[messageStatus.requestId].msgId / 1000000) != Math.floor(msgId / 1000000)
-          ) {
-            for (const key in this.msgCache) {
-              this.msgCache[key].msgId = null;
+          const cachedMsgId = this.msgCache[requestId].msgId;
+          if (cachedMsgId && cachedMsgId != msgId) {
+            logger.info(`cachedMsgId: ${cachedMsgId} and msgId: ${msgId} for requestId: ${requestId} are different`);
+            const msgIdPrefix = Math.floor(msgId / 1000000);
+            const cachedMsgIdPrefix = Math.floor(this.msgCache[messageStatus.requestId].msgId / 1000000);
+            if (msgIdPrefix != cachedMsgIdPrefix) {
+              // There was a change in the prefix of msgId, invalidating cached msgIds with different prefix
+              logger.info(`MsgIdPrefix changed from ${cachedMsgIdPrefix} to ${msgIdPrefix}`);
+              for (const key in this.msgCache) {
+                if (this.msgCache[key].msgId && Math.floor(this.msgCache[key].msgId / 1000000) != msgIdPrefix) {
+                  logger.info(`Invalidating cachedMsgId ${this.msgCache[key].msgId} for requestId: ${key}`);
+                  this.msgCache[key].msgId = null;
+                }
+              }
             }
           }
+          logger.info(`Updating cachedMsgId from ${cachedMsgId} to ${msgId} for requestId: ${requestId}`);
           this.msgCache[messageStatus.requestId].msgId = msgId;
         }
 
-        let latestMsgId = this.msgCache[messageStatus.requestId].msgId;
+        const finalMsgId = this.msgCache[messageStatus.requestId].msgId;
         if (status === 'SIGNED' || status === 'FAILED') {
           logger.info(
-            `Got ${
-              isInCache ? 'cached' : 'from customer server'
-            } message with final status: ${status}, msgId ${latestMsgId}, cacheId: ${requestId}`,
+            `Got from ${
+              msgId === null ? 'customer server' : 'Fireblocks'
+            } message with final status: ${status}, latestMsgId ${finalMsgId}, requestId: ${requestId}`,
           );
           // broadcast always and ack only if we have a valid msgId
           broadcastPromises.push(
-            fbServerApi
-              .broadcastResponse(messageStatus, request)
-              .then(() => (this.msgCache[messageStatus.requestId].messageStatus = messageStatus)),
+            fbServerApi.broadcastResponse(messageStatus, request).then(() => {
+              if (this.msgCache[messageStatus.requestId]) {
+                this.msgCache[messageStatus.requestId].messageStatus = messageStatus;
+              }
+            }),
           );
-          if (latestMsgId) {
-            ackPromises.push(fbServerApi.ackMessage(latestMsgId));
+          if (finalMsgId) {
+            ackPromises.push(
+              fbServerApi.ackMessage(finalMsgId).then(() => this.deleteMessageFromCache(messageStatus.requestId)),
+            );
           }
         }
       } catch (e) {

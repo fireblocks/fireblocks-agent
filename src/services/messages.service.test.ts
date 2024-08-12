@@ -224,7 +224,7 @@ describe('messages service', () => {
     jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
 
     await service.handleMessages([fbMessageEnvelope], httpsAgent);
-    expect(customerServerApi.messagesToSign).toHaveBeenCalledTimes(1);
+    expect(customerServerApi.messagesToSign).toHaveBeenCalledTimes(2); // called again since message was deleted from cache after ack
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId3);
   });
 

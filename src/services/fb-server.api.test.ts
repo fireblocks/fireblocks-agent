@@ -32,11 +32,13 @@ describe('Server API', () => {
   it('should pair device', async () => {
     const pairDeviceReq = fbServerApiDriver.given.pairDeviceRequest();
     const refreshToken = `some-valid-refresh-token`;
-    fbServerApiDriver.mock.pairDevice(pairDeviceReq, refreshToken);
+    const deviceId = c.guid();
+    fbServerApiDriver.mock.pairDevice(pairDeviceReq, refreshToken, deviceId);
 
     const pairDeviceRes = await fbServerApi.pairDevice(pairDeviceReq);
 
     expect(pairDeviceRes.refreshToken).toBe(refreshToken);
+    expect(pairDeviceRes.deviceId).toBe(deviceId);
   });
 
   it('should get access token', async () => {
@@ -391,7 +393,6 @@ export const fbServerApiDriver = {
     pairDeviceRequest: (): PairDeviceRequest => {
       return {
         userId: c.guid(),
-        deviceId: c.guid(),
         pairingToken: 'some-valid-jwt',
       };
     },
@@ -405,7 +406,11 @@ export const fbServerApiDriver = {
     },
   },
   mock: {
-    pairDevice: (pairDeviceReq?: Partial<PairDeviceRequest>, resultRefreshToken: string = c.string()) => {
+    pairDevice: (
+      pairDeviceReq?: Partial<PairDeviceRequest>,
+      resultRefreshToken: string = c.string(),
+      resultDeviceId: string = c.string(),
+    ) => {
       const generatedReq = fbServerApiDriver.given.pairDeviceRequest();
       const pairRequest = {
         ...generatedReq,
@@ -414,7 +419,7 @@ export const fbServerApiDriver = {
       fbServerApiDriver
         .axiosMock()
         .onPost(`${MOBILE_GATEWAY_URL}/pair_device`, pairRequest)
-        .reply(200, { refreshToken: resultRefreshToken });
+        .reply(200, { refreshToken: resultRefreshToken, deviceId: resultDeviceId });
     },
     messages: (accessToken: AccessToken, message: FBMessageEnvelope[] | FBMessageEnvelope) => {
       fbServerApiDriver
