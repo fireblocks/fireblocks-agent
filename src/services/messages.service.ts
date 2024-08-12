@@ -1,5 +1,5 @@
 import https from 'https';
-import { AGENT_REQUESTS_CACHE_SIZE } from '../constants';
+import { AGENT_REQUESTS_CACHE_SIZE, BROADCAST_BATCH_SIZE } from '../constants';
 import { DecodedMessage, ExtendedMessageStatusCache, FBMessageEnvelope, RequestType } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
@@ -121,7 +121,8 @@ class MessageService implements IMessageService {
   }
 
   async updateStatus(messagesStatus: ExtendedMessageStatusCache[]) {
-    let promises = [];
+    let broadcastPromises = [];
+    let ackPromises = [];
     for (const msgStatus of messagesStatus) {
       try {
         const { msgId, request, messageStatus } = msgStatus;
@@ -150,13 +151,13 @@ class MessageService implements IMessageService {
             } message with final status: ${status}, msgId ${latestMsgId}, cacheId: ${requestId}`,
           );
           // broadcast always and ack only if we have a valid msgId
-          promises.push(
+          broadcastPromises.push(
             fbServerApi
               .broadcastResponse(messageStatus, request)
               .then(() => (this.msgCache[messageStatus.requestId].messageStatus = messageStatus)),
           );
           if (latestMsgId) {
-            promises.push(fbServerApi.ackMessage(latestMsgId));
+            ackPromises.push(fbServerApi.ackMessage(latestMsgId));
           }
         }
       } catch (e) {
@@ -166,8 +167,13 @@ class MessageService implements IMessageService {
           )}. Error: ${e.message}`,
         );
       }
+      if (broadcastPromises.length >= BROADCAST_BATCH_SIZE) {
+        logger.info(`Awaiting ack for broadcasting ${broadcastPromises.length} messages`);
+        await Promise.all([...broadcastPromises, ...ackPromises]);
+        broadcastPromises = ackPromises = [];
+      }
     }
-    await Promise.all(promises);
+    await Promise.all([...broadcastPromises, ...ackPromises]);
   }
 
   async ackMessages(messagesIds: number[]) {
