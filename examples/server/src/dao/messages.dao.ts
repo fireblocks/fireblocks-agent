@@ -91,7 +91,7 @@ export const getMessagesStatus = async (requestsIds: string[]): Promise<MessageS
     const { total, pendingSign, signed, failed } = stats[0];
     logger.info(`Full DB statistics: TOTAL: ${total}, PENDING_SIGN: ${pendingSign}, SIGNED: ${signed}, FAILED: ${failed}`);
   } else {
-    logger.warning(`Could not read full DB statistics`);
+    logger.warn(`Could not read full DB statistics`);
   }
   
   const res = await txRef.find({ _id: { $in: requestsIds } }).toArray();
