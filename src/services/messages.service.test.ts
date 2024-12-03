@@ -23,6 +23,7 @@ describe('messages service', () => {
   });
   afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   const types: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_TX_SIGN_REQUEST'];
@@ -60,15 +61,17 @@ describe('messages service', () => {
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId);
   });
 
-  it('should ignore non encoded messages', async () => {
+  it('should ack non/badly encoded messages', async () => {
     const aNonEncodedMessage = messageBuilder.fbMessage(
       messageBuilder.aMessagePayload('KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST'),
     );
     const messageEnvelope = messageBuilder.fbProofOfOwnershipMsgEnvelope({}, aNonEncodedMessage, false);
     jest.spyOn(customerServerApi, 'messagesToSign');
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
     await service.handleMessages([messageEnvelope], httpsAgent);
 
     expect(customerServerApi.messagesToSign).not.toBeCalled();
+    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(messageEnvelope.msgId);
   });
 
   it('should get pending messages from cache', async () => {

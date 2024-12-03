@@ -1,6 +1,6 @@
 import https from 'https';
 import { AGENT_REQUESTS_CACHE_SIZE, BROADCAST_BATCH_SIZE } from '../constants';
-import { DecodedMessage, ExtendedMessageStatusCache, FBMessageEnvelope, RequestType } from '../types';
+import { DecodedMessage, ExtendedMessageStatusCache, FBMessageEnvelope, RequestType, InvalidMessage } from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
@@ -22,6 +22,7 @@ class MessageService implements IMessageService {
 
   async handleMessages(messages: FBMessageEnvelope[], httpsAgent: https.Agent) {
     const certificates = await fbServerApi.getCertificates();
+    const invalidMessages: InvalidMessage[] = [];
     const decodedMessages: DecodedMessage[] = messages
       .map((messageEnvelope: FBMessageEnvelope): DecodedMessage => {
         try {
@@ -33,6 +34,7 @@ class MessageService implements IMessageService {
           return { msgId, request };
         } catch (e) {
           logger.error(`Error decoding message ${e.message}`);
+          invalidMessages.push({ msgId: messageEnvelope.msgId });
           return null;
         }
       })
@@ -114,6 +116,13 @@ class MessageService implements IMessageService {
         ),
       );
       await this.ackMessages(unknownMessages.map((msg) => msg.msgId));
+    }
+
+    if (!!invalidMessages.length) {
+      invalidMessages.forEach((msg) =>
+        logger.error(`Got from Fireblocks invalid message with msgIs: ${msg.msgId} - discarding`),
+      );
+      await this.ackMessages(invalidMessages.map((msg) => msg.msgId));
     }
   }
 

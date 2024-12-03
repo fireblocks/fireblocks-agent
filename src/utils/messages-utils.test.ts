@@ -42,13 +42,14 @@ describe('Messages utils', () => {
       zs: 'my-zs-secret',
       cm: publicKey,
     };
-    const fbMessage = aFbProofOfOwnershipMessage(privateKey);
+    const requestId = c.guid();
+    const fbMessage = aFbProofOfOwnershipMessage(privateKey, { requestId: requestId });
     const fbMessageEnvelope = buildASignedMessage(fbMessage, 'false-certificate');
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
     expect(expectToThrow).toThrowErrorMatchingInlineSnapshot(
-      `"JWT Message signature is invalid. Full message: ${fbMessageEnvelope.msg}"`,
+      `"JWT Message signature is invalid. msgId: ${fbMessageEnvelope.msgId} type: ${fbMessage.type} requestId: ${requestId} Full message: ${fbMessageEnvelope.msg}"`,
     );
   });
 

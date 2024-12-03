@@ -57,3 +57,7 @@ export interface ExtendedMessageStatusCache {
   msgId: number;
   request: MessageEnvelop;
 }
+
+export interface InvalidMessage {
+  msgId: number;
+}
