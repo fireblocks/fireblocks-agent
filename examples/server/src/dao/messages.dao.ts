@@ -86,20 +86,20 @@ export const getMessagesStatus = async (requestsIds: string[]): Promise<MessageS
       },
     },
   ]).toArray();
-  
+
   if (stats.length > 0) {
     const { total, pendingSign, signed, failed } = stats[0];
     logger.info(`Full DB statistics: TOTAL: ${total}, PENDING_SIGN: ${pendingSign}, SIGNED: ${signed}, FAILED: ${failed}`);
   } else {
     logger.warn(`Could not read full DB statistics`);
   }
-  
+
   const res = await txRef.find({ _id: { $in: requestsIds } }).toArray();
-  logger.info(`Results statistics: `+
-              `TOTAL: ${res.length}` +
-              `, PENDING_SIGN: ${res.filter((_) => _.status === "PENDING_SIGN").length}` +
-              `, SIGNED: ${res.filter((_) => _.status === "SIGNED").length}` +
-              `, FAILED: ${res.filter((_) => _.status === "FAILED").length}`);
+  logger.info(`Results statistics: ` +
+    `TOTAL: ${res.length}` +
+    `, PENDING_SIGN: ${res.filter((_) => _.status === "PENDING_SIGN").length}` +
+    `, SIGNED: ${res.filter((_) => _.status === "SIGNED").length}` +
+    `, FAILED: ${res.filter((_) => _.status === "FAILED").length}`);
   return toMsgStatus(res);
 };
 
