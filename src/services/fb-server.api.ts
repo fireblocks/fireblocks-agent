@@ -36,7 +36,6 @@ const fbServerApi = {
   getAccessToken: async (accessTokenReq: AccessTokenRequest): Promise<AccessToken> => {
     try {
       const res = await axios.post(`${MOBILE_GATEWAY_URL}/access_token`, accessTokenReq);
-      fs.writeFileSync(`accessToken.log`, JSON.stringify(res.data.accessToken));
       return res.data.accessToken;
     } catch (e) {
       logger.error(`Error on getAccessToken request ${e}`);
