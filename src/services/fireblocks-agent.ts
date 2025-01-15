@@ -1,11 +1,11 @@
+import https from 'https';
 import jwt from 'jsonwebtoken';
-import { GUID, JWT, PairingToken } from 'types';
+import { JWT, PairingToken } from 'types';
+import { AGENT_VERSION } from '../version';
 import deviceService, { DeviceData } from './device.service';
 import fbServerApi from './fb-server.api';
 import logger from './logger';
 import messageService from './messages.service';
-import https from 'https';
-import { AGENT_VERSION } from '../version';
 export interface FireblocksAgent {
   pairDevice(pairingToken: JWT): void;
   runAgentMainLoop(httpsAgent: https.Agent): Promise<void>;
@@ -46,7 +46,9 @@ class FireblocksAgentImpl implements FireblocksAgent {
     logger.info(`Waiting for messages from Fireblocks... (version=${AGENT_VERSION})`);
     const messages = await fbServerApi.getMessages();
     logger.info(`Got ${messages.length} messages from Fireblocks after ${Date.now() - start}ms`);
-    await messageService.handleMessages(messages, httpsAgent);
+    messageService.handleMessages(messages, httpsAgent).catch((e) => {
+      logger.error(`Error in agent handle messages ${e}`);
+    });
   };
 }
 
