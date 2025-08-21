@@ -41,21 +41,21 @@ export type RequestType = components['schemas']['RequestType'];
 export type ResponseType = components['schemas']['ResponseType'];
 export type FBMessagePayload = components['schemas']['Message'];
 export type MessageStatus = components['schemas']['MessageStatus'];
-export type MessageEnvelop = components['schemas']['MessageEnvelope'];
+export type MessageEnvelope = components['schemas']['MessageEnvelope'];
 export type MessagePayload = components['schemas']['MessagePayload'];
 export type TransportMetadata = components['schemas']['TransportMetadata'];
 export type TxMetadata = components['schemas']['TxMetadata'];
 export type TxMetadataSignature = components['schemas']['TxMetadataSignature'];
 
 export interface DecodedMessage {
-  request: MessageEnvelop;
+  request: MessageEnvelope;
   msgId: number;
 }
 
 export interface ExtendedMessageStatusCache {
   messageStatus: MessageStatus;
   msgId: number;
-  request: MessageEnvelop;
+  request: MessageEnvelope;
 }
 
 export interface InvalidMessage {

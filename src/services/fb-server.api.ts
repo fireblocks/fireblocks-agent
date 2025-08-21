@@ -5,7 +5,7 @@ import {
   AccessTokenRequest,
   CertificatesMap,
   FBMessageEnvelope,
-  MessageEnvelop,
+  MessageEnvelope,
   MessageStatus,
   PairDeviceRequest,
   PairDeviceResponse,
@@ -43,7 +43,7 @@ const fbServerApi = {
     }
   },
 
-  broadcastResponse: async (msgStatus: MessageStatus, request: MessageEnvelop): Promise<void> => {
+  broadcastResponse: async (msgStatus: MessageStatus, request: MessageEnvelope): Promise<void> => {
     try {
       logger.info(`entering broadcastResponse`);
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());

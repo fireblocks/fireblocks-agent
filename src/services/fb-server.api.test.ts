@@ -11,7 +11,7 @@ import {
   FBMessage,
   FBMessageEnvelope,
   FBMessagePayload,
-  MessageEnvelop,
+  MessageEnvelope,
   MessagePayload,
   MessageStatus,
   PairDeviceRequest,
@@ -237,7 +237,7 @@ describe('Server API', () => {
   });
 });
 
-const aMessageEnvelop = (type: RequestType): MessageEnvelop => {
+const aMessageEnvelope = (type: RequestType): MessageEnvelope => {
   return {
     message: messageBuilder.fbMessage(messageBuilder.aMessagePayload(type)).payload,
     transportMetadata: {
@@ -272,8 +272,8 @@ const aFailedMessageStatus = (type: ResponseType): MessageStatus => {
     },
   };
 };
-export function aProofOfOwnershipRequest(): MessageEnvelop {
-  return aMessageEnvelop('KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST');
+export function aProofOfOwnershipRequest(): MessageEnvelope {
+  return aMessageEnvelope('KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST');
 }
 export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
   return aSignedMessageStatus('KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE');
@@ -281,8 +281,8 @@ export function aProofOfOwnershipSignedMessageStatus(): MessageStatus {
 export function aProofOfOwnershipFailedMessageStatus(): MessageStatus {
   return aFailedMessageStatus('KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE');
 }
-export function aTxSignRequest(): MessageEnvelop {
-  return aMessageEnvelop('KEY_LINK_TX_SIGN_REQUEST');
+export function aTxSignRequest(): MessageEnvelope {
+  return aMessageEnvelope('KEY_LINK_TX_SIGN_REQUEST');
 }
 export function aTxSignSignedMessageStatus(): MessageStatus {
   return aSignedMessageStatus('KEY_LINK_TX_SIGN_RESPONSE');
@@ -339,7 +339,7 @@ export const messageBuilder = {
       ...fbMsgEnvelope,
     };
   },
-  aMessageEnvelope: (requestId: string, type: RequestType, message: FBMessagePayload): MessageEnvelop => {
+  aMessageEnvelope: (requestId: string, type: RequestType, message: FBMessagePayload): MessageEnvelope => {
     return {
       message,
       transportMetadata: {

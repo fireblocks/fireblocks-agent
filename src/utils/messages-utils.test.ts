@@ -6,7 +6,7 @@ import {
   FBMessage,
   FBMessageEnvelope,
   FBMessagePayload,
-  MessageEnvelop,
+  MessageEnvelope,
   MessagePayload,
   RequestType,
   TxMetadata,
@@ -26,7 +26,7 @@ describe('Messages utils', () => {
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
-    const expectedMessage: MessageEnvelop = {
+    const expectedMessage: MessageEnvelope = {
       message: fbMessage.payload,
       transportMetadata: {
         requestId,
@@ -126,7 +126,7 @@ describe('Messages utils', () => {
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
-    const expectedMessage: MessageEnvelop = {
+    const expectedMessage: MessageEnvelope = {
       message: fbMessage.payload,
       transportMetadata: {
         requestId: '',
@@ -149,7 +149,7 @@ describe('Messages utils', () => {
     const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
-    const expectedMessage: MessageEnvelop = {
+    const expectedMessage: MessageEnvelope = {
       message: fbMessage.payload,
       transportMetadata: {
         requestId: txId,

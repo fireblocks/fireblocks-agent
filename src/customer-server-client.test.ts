@@ -33,7 +33,7 @@ describe('Customer server client', () => {
     const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
     const aTxToSignMessage = messageBuilder.aMessagePayload(requestType, { requestId });
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
-    const msgEnvelop = messageBuilder.aMessageEnvelope(requestId, requestType, fbMessage.payload);
+    const msgEnvelope = messageBuilder.aMessageEnvelope(requestId, requestType, fbMessage.payload);
     const messageStatus: MessageStatus = {
       type: responseType,
       status: 'PENDING_SIGN',
@@ -42,7 +42,7 @@ describe('Customer server client', () => {
     };
     jest
       .spyOn(messagesService, 'getPendingMessages')
-      .mockReturnValue([{ messageStatus, msgId: c.natural(), request: msgEnvelop }]);
+      .mockReturnValue([{ messageStatus, msgId: c.natural(), request: msgEnvelope }]);
     //@ts-ignore
     jest.spyOn(customerServerApi, 'messagesStatus').mockImplementation(() => {
       return {
@@ -69,7 +69,7 @@ describe('Customer server client', () => {
     const responseType = 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE';
     const aTxToSignMessage = messageBuilder.aMessagePayload(requestType, { requestId });
     const fbMessage = messageBuilder.fbMessage(aTxToSignMessage);
-    const msgEnvelop = messageBuilder.aMessageEnvelope(requestId, requestType, fbMessage.payload);
+    const msgEnvelope = messageBuilder.aMessageEnvelope(requestId, requestType, fbMessage.payload);
     const messageStatus: MessageStatus = {
       type: responseType,
       status: 'SIGNED',
@@ -90,7 +90,7 @@ describe('Customer server client', () => {
     };
     jest
       .spyOn(messagesService, 'getPendingMessages')
-      .mockReturnValue([{ messageStatus, msgId: c.natural(), request: msgEnvelop }]);
+      .mockReturnValue([{ messageStatus, msgId: c.natural(), request: msgEnvelope }]);
     jest.spyOn(messagesService, 'updateStatus').mockResolvedValue();
     // @ts-ignore
     jest.spyOn(customerServerApi, 'messagesStatus').mockImplementation(() => {
@@ -100,6 +100,6 @@ describe('Customer server client', () => {
     });
 
     await service.pullMessagesStatus(httpsAgent);
-    expect(messagesService.updateStatus).toHaveBeenCalledWith([{ msgId: null, request: msgEnvelop, messageStatus }]);
+    expect(messagesService.updateStatus).toHaveBeenCalledWith([{ msgId: null, request: msgEnvelope, messageStatus }]);
   });
 });

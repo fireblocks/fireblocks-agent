@@ -6,7 +6,7 @@ import {
   FBMessage,
   FBMessageEnvelope,
   JWT,
-  MessageEnvelop,
+  MessageEnvelope,
   TxMetadata,
   TxMetadataSignature,
 } from '../types';
@@ -36,7 +36,7 @@ export const decodeAndVerifyMessage = (
 
   verifyFbMessage(fbMessage);
 
-  const request: MessageEnvelop = {
+  const request: MessageEnvelope = {
     transportMetadata: {
       requestId: extractMessageUniqueId(fbMessage),
       type: fbMessage.type,
