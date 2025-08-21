@@ -4,7 +4,7 @@ import MockAdapter from 'axios-mock-adapter';
 import Chance from 'chance';
 import https from 'https';
 import { CUSTOMER_SERVER_AUTHORIZATION, CUSTOMER_SERVER_URL } from '../constants';
-import { FBMessagePayload, MessageEnvelop, MessageStatus } from '../types';
+import { FBMessagePayload, MessageEnvelope, MessageStatus } from '../types';
 import service, { MessagesResponse, MessagesStatusRequest, MessagesStatusResponse } from './customer-server.api';
 import { messageBuilder } from './fb-server.api.test';
 const c = new Chance();
@@ -35,7 +35,7 @@ describe('Customer Server API', () => {
 
 export const customerServerApiDriver = {
   given: {
-    aMessageRequest: (requestId: string, message: FBMessagePayload): MessageEnvelop[] => {
+    aMessageRequest: (requestId: string, message: FBMessagePayload): MessageEnvelope[] => {
       return [
         {
           message,
@@ -48,7 +48,7 @@ export const customerServerApiDriver = {
     },
   },
   mock: {
-    messagesToSign: (messages: MessageEnvelop[], result?: MessagesResponse) => {
+    messagesToSign: (messages: MessageEnvelope[], result?: MessagesResponse) => {
       const axiosMock = new MockAdapter(axios);
       axiosMock
         .onPost(
