@@ -89,12 +89,14 @@ services:
     deploy:
       replicas: 2 # default pool size; override with --scale customer-server-signer=N
 
+  # Internal-only in cluster mode: the customer-server containers reach it as
+  # mongodb://customer-database:27017 on the Docker network. Unlike the
+  # single-process docker-compose.yml, no host port is published (the unauthenticated
+  # example database should not be reachable from outside the compose network).
   customer-database:
     image: mongo:6
     volumes:
       - database:/data/db
-    ports:
-      - "27017:27017"
 
 # Same external volumes as docker-compose.yml (created by `npm run docker:volumes`),
 # so keys and messages are shared with the single-process setup.
