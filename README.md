@@ -30,6 +30,7 @@ Fireblocks Agent is an open-source on-prem service written in Typescript which i
   - `cd examples/server`
   - `npm run build:docker`
   - `npm run start:docker`
+  - Optional: to scale signing across CPU cores, run the example server in [cluster mode](examples/server/README.md#running-in-cluster-mode-optional) instead
 
 - Configure and run Fireblocks agent:
 - Copy `.env.prod` and name it `.env.{env-name}` (e.g. `.env.test`)
