@@ -38,6 +38,11 @@ class HSM implements HSMFacade {
     private pkcs11: pkcs11js.PKCS11;
     private slot: pkcs11js.Handle;
     private session: pkcs11js.Handle;
+    // Per-process cache of private key handles by key id. PKCS#11 object
+    // handles remain valid for the lifetime of the session (which lives as
+    // long as this process), so caching them avoids re-scanning the whole
+    // token with C_FindObjects on every sign/verify call.
+    private privateKeyHandles: Map<string, pkcs11js.Handle> = new Map();
     constructor() {
         this.pkcs11 = new pkcs11js.PKCS11();
         this.pkcs11.load(LIBRARY);
@@ -225,6 +230,9 @@ class HSM implements HSMFacade {
             ]
         );
 
+        // the fresh handle can be used for signing right away in this process
+        this.privateKeyHandles.set(keyId, keys.privateKey);
+
         logger.debug('pub CKA_ID: ' + JSON.stringify(
             (this.pkcs11.C_GetAttributeValue(
                 this.session,
@@ -249,6 +257,12 @@ class HSM implements HSMFacade {
     }
 
     private getPrivateKeyObject(keyId: string) {
+        // Served from the per-process handle cache when possible
+        const cachedHandle = this.privateKeyHandles.get(keyId);
+        if (cachedHandle !== undefined) {
+            return cachedHandle;
+        }
+
         // Find the private key by ID
         const template = [
             { type: pkcs11js.CKA_CLASS, value: pkcs11js.CKO_PRIVATE_KEY },
@@ -266,6 +280,7 @@ class HSM implements HSMFacade {
             throw new Error(`Key not found : ${keyId}`)
         }
 
+        this.privateKeyHandles.set(keyId, hObject);
         logger.info(`Private key found ${keyId}`);
         return hObject;
     }
