@@ -9,7 +9,7 @@ check_version_change:
   stage: check_version
   allow_failure: false
   tags:
-    - build-shell
+    - kub-shell
   script:
     - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
     - |
