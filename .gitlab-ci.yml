@@ -29,7 +29,7 @@ format:
   stage: lint
   allow_failure: false
   tags:
-    - build-shell
+    - kub-shell
   script:
     - npm install
     - npm run format:check
@@ -44,7 +44,7 @@ test:
   image: registry.gitlab.com/fireblocks/shell/infra/images/node-infra-18:latest
   stage: test
   tags:
-    - build-shell
+    - kub-shell
   allow_failure: false
   script:
     - npm install
