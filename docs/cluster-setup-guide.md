@@ -2,7 +2,7 @@
 
 **Audience:** Customers evaluating Fireblocks Key Link with the example (SoftHSM-based) customer server, running workloads that need higher signing throughput.
 
-**Applies to:** Fireblocks Agent v2.4.0+ / example customer server with `docker-compose.cluster.yml`.
+**Applies to:** Fireblocks Agent v2.2.9+ / example customer server with `docker-compose.cluster.yml`.
 
 > ⚠️ **Evaluation use only.** The example customer server uses SoftHSM (a software HSM emulator) and an unauthenticated MongoDB instance. It is intended for proof-of-concept and evaluation environments only — **do not use it to protect production key material**. For production, integrate your own customer server with a certified HSM.
 
@@ -188,7 +188,7 @@ To enable TLS with a self-signed certificate:
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `port is already allocated` on startup | Single-process mode (or another cluster instance) is still running | `docker compose down` the other mode first |
+| `port is already allocated` on startup | Single-process mode (or another cluster instance) is still running | Run `docker compose down` for single-process mode, or `docker compose -f docker-compose.cluster.yml down` for cluster mode |
 | Signing fails with "key not found" on some requests only | Signers started before the keys were generated | `docker compose -f docker-compose.cluster.yml restart customer-server-signer` |
 | `curl http://localhost:5000/healthz` fails | nginx not up, or port conflict | `docker compose -f docker-compose.cluster.yml ps` and check nginx logs: `docker compose -f docker-compose.cluster.yml logs nginx` |
 | Throughput doesn't improve with more replicas | Host is out of CPU cores, or load is not signing-bound | Check `docker stats`; keep N ≤ physical cores |
