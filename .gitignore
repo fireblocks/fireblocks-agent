@@ -3,7 +3,7 @@ node_modules
 coverage
 .fireblocks-refresh-token*
 .env*
-!.env.example
+!.env.prod
 messages*.json
 *.log
 .DS_Store
