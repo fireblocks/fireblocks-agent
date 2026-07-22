@@ -1,10 +1,45 @@
 import https from 'https';
 import { AGENT_REQUESTS_CACHE_SIZE, BROADCAST_BATCH_SIZE } from '../constants';
-import { DecodedMessage, ExtendedMessageStatusCache, FBMessageEnvelope, RequestType, InvalidMessage } from '../types';
+import {
+  DecodedMessage,
+  ExtendedMessageStatusCache,
+  FBMessageEnvelope,
+  MessageEnvelop,
+  MessageStatus,
+  RequestType,
+  InvalidMessage,
+} from '../types';
 import { decodeAndVerifyMessage } from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
+import fbServerWsApi from './fb-server-ws.api';
 import logger from './logger';
+
+// Messages delivered over the WebSocket must be acked over the same socket
+// (MAG keeps the msgId->deliveryTag mapping per connection); otherwise HTTP.
+//
+// AT-LEAST-ONCE BY DESIGN: the ack rides whichever transport is currently connected.
+// Because MAG's msgId->deliveryTag mapping is per-connection, if the socket reconnects
+// between a message's delivery and its ack, the ack no-ops on the new connection and MAG
+// redelivers the message. The agent then re-signs it; signing is idempotent, so the
+// redelivery is harmless. This is an intentional at-least-once guarantee (not a bug) and
+// is forward-compatible with a future MAG that supports cross-connection acks.
+const ackViaTransport = (msgId: number): Promise<void> =>
+  fbServerWsApi.isConnected() ? fbServerWsApi.ackMessage(msgId) : fbServerApi.ackMessage(msgId);
+
+// Sign responses ride the WebSocket when it is connected, else HTTP -- a transport swap only; the
+// broadcast still runs concurrently with (and decoupled from) the ack, exactly as before.
+//
+// ONLY tx-sign responses may use the socket. MAG's WS branch routes every framed broadcast to
+// broadcastMsg -- the SAME downstream as the HTTP keylink_tx_sign_response route, so tx-sign is
+// safe over WS. KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE MUST stay on HTTP: its HTTP route dispatches
+// to a DIFFERENT downstream (zServiceMessageSender), which MAG's broadcastMsg-only WS branch cannot
+// reach -- sending it over the socket would mis-route it.
+const broadcastViaTransport = (messageStatus: MessageStatus, request: MessageEnvelop): Promise<void> =>
+  messageStatus.type === 'KEY_LINK_TX_SIGN_RESPONSE' && fbServerWsApi.isConnected()
+    ? fbServerWsApi.broadcastResponse(messageStatus, request)
+    : fbServerApi.broadcastResponse(messageStatus, request);
+
 interface IMessageService {
   getPendingMessages(): ExtendedMessageStatusCache[];
   handleMessages(messages: FBMessageEnvelope[], httpsAgent: https.Agent): Promise<void>;
@@ -13,7 +48,10 @@ interface IMessageService {
 
 class MessageService implements IMessageService {
   private msgCache: { [requestId: string]: ExtendedMessageStatusCache } = {};
-  private msgCacheOrder: string[] = [];
+  // Insertion-ordered set of cached requestIds for O(1) LRU eviction. A Set (not an array)
+  // so deleteMessageFromCache can actually remove an entry — the old `delete arr[uuid]` was a
+  // no-op on an array indexed by string, which let msgCacheOrder grow unbounded (slow leak).
+  private msgCacheOrder: Set<string> = new Set();
   private knownMessageTypes: RequestType[] = ['KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST', 'KEY_LINK_TX_SIGN_REQUEST'];
 
   getPendingMessages(): ExtendedMessageStatusCache[] {
@@ -76,7 +114,21 @@ class MessageService implements IMessageService {
     }
 
     if (!!messagesToHandle.length) {
-      logger.info(`sending ${messagesToHandle.length} messages to customer server to sign`);
+      // Count individual signatures: each request carries a batch of digests in messagesToSign,
+      // so the request count (messagesToHandle.length) is NOT the signature count.
+      const signatureCount = messagesToHandle.reduce((sum, msg) => {
+        try {
+          // digests live in the encoded payload: message.payload (JSON string) -> messagesToSign
+          const payload = (msg.request as any)?.message?.payload;
+          const parsed = typeof payload === 'string' ? JSON.parse(payload) : payload;
+          return sum + (Array.isArray(parsed?.messagesToSign) ? parsed.messagesToSign.length : 0);
+        } catch {
+          return sum;
+        }
+      }, 0);
+      logger.info(
+        `sending ${messagesToHandle.length} messages (${signatureCount} signatures) to customer server to sign`,
+      );
       const msgStatuses = await customerServerApi.messagesToSign(
         messagesToHandle.map((msg) => msg.request),
         httpsAgent,
@@ -127,20 +179,26 @@ class MessageService implements IMessageService {
   }
 
   async addMessageToCache(messageStatus: ExtendedMessageStatusCache) {
-    if (Object.keys(this.msgCache).length >= AGENT_REQUESTS_CACHE_SIZE) {
-      delete this.msgCache[this.msgCacheOrder.shift()];
+    if (this.msgCacheOrder.size >= AGENT_REQUESTS_CACHE_SIZE) {
+      // Evict the oldest inserted entry (Set iteration order == insertion order).
+      const oldest = this.msgCacheOrder.values().next().value;
+      if (oldest !== undefined) {
+        this.msgCacheOrder.delete(oldest);
+        delete this.msgCache[oldest];
+      }
     }
 
-    this.msgCache[messageStatus.messageStatus.requestId] = messageStatus;
-    this.msgCacheOrder.push(messageStatus.messageStatus.requestId);
-    logger.info(
-      `Added message to cache. msgId: ${messageStatus.msgId}, requestId: ${messageStatus.messageStatus.requestId} `,
-    );
+    const requestId = messageStatus.messageStatus.requestId;
+    this.msgCache[requestId] = messageStatus;
+    // delete-then-add refreshes recency and avoids duplicate keys inflating the set.
+    this.msgCacheOrder.delete(requestId);
+    this.msgCacheOrder.add(requestId);
+    logger.info(`Added message to cache. msgId: ${messageStatus.msgId}, requestId: ${requestId} `);
   }
 
   async deleteMessageFromCache(requestId: string): Promise<void> {
     delete this.msgCache[requestId];
-    delete this.msgCacheOrder[requestId];
+    this.msgCacheOrder.delete(requestId);
     logger.info(`Removed message from cache. requestId: ${requestId}`);
   }
 
@@ -189,7 +247,7 @@ class MessageService implements IMessageService {
           );
           // broadcast always and ack only if we have a valid msgId
           broadcastPromises.push(
-            fbServerApi.broadcastResponse(messageStatus, request).then(() => {
+            broadcastViaTransport(messageStatus, request).then(() => {
               if (this.msgCache[messageStatus.requestId]) {
                 this.msgCache[messageStatus.requestId].messageStatus = messageStatus;
               }
@@ -197,7 +255,7 @@ class MessageService implements IMessageService {
           );
           if (finalMsgId) {
             ackPromises.push(
-              fbServerApi.ackMessage(finalMsgId).then(() => this.deleteMessageFromCache(messageStatus.requestId)),
+              ackViaTransport(finalMsgId).then(() => this.deleteMessageFromCache(messageStatus.requestId)),
             );
           }
         }
@@ -218,16 +276,18 @@ class MessageService implements IMessageService {
   }
 
   async ackMessages(messagesIds: number[]) {
-    try {
-      const promises = messagesIds.map((msgId) => fbServerApi.ackMessage(msgId));
-      await Promise.all(promises);
-    } catch (e) {
-      throw new Error(`Error acknowledging messages ${e.message}`);
+    // allSettled so one failed ack does not abort the rest of the batch. Failures are logged
+    // (an unacked message is simply redelivered by MAG -- at-least-once).
+    const results = await Promise.allSettled(messagesIds.map((msgId) => ackViaTransport(msgId)));
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    if (failed) {
+      logger.error(`Failed to ack ${failed}/${messagesIds.length} message(s)`);
     }
   }
 
   _clearCache() {
     this.msgCache = {};
+    this.msgCacheOrder.clear();
   }
 }
 

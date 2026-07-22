@@ -38,6 +38,8 @@
     "@types/figlet": "^1.5.8",
     "@types/jest": "^29.0.0",
     "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "20.10.0",
+    "@types/ws": "8.18.1",
     "axios-mock-adapter": "^1.22.0",
     "chance": "^1.1.11",
     "husky": "^8.0.0",
@@ -62,7 +64,8 @@
     "pm2": "^5.3.0",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "ws": "8.21.1"
   },
   "husky": {
     "hooks": {

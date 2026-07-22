@@ -14,16 +14,20 @@ import {
 import * as utils from './messages-utils';
 const c = new Chance();
 
+// The outer zService envelope is an RS256 JWT in production, so sign the test fixtures
+// with an RSA keypair (the public half goes into the cert map as `zs`).
+const ZS = aKeyPair();
+
 describe('Messages utils', () => {
   it('should verify proof of ownership message', () => {
     const { privateKey, publicKey } = aKeyPair();
     const certificates = {
-      zs: 'my-zs-secret',
+      zs: ZS.publicKey,
       cm: publicKey,
     };
     const requestId = c.guid();
     const fbMessage = aFbProofOfOwnershipMessage(privateKey, { requestId });
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, ZS.privateKey);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
     const expectedMessage: MessageEnvelop = {
@@ -39,17 +43,20 @@ describe('Messages utils', () => {
   it('should not verify a message with false zServiceCertificate', () => {
     const { privateKey, publicKey } = aKeyPair();
     const certificates = {
-      zs: 'my-zs-secret',
+      zs: ZS.publicKey,
       cm: publicKey,
     };
     const requestId = c.guid();
     const fbMessage = aFbProofOfOwnershipMessage(privateKey, { requestId: requestId });
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, 'false-certificate');
+    // Sign the envelope with a key that is NOT the zService key -> RS256 verify must fail.
+    const wrongKey = aKeyPair();
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, wrongKey.privateKey);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
+    // Error carries metadata only -- no raw message payload.
     expect(expectToThrow).toThrowErrorMatchingInlineSnapshot(
-      `"JWT Message signature is invalid. msgId: ${fbMessageEnvelope.msgId} type: ${fbMessage.type} requestId: ${requestId} Full message: ${fbMessageEnvelope.msg}"`,
+      `"JWT Message signature is invalid. msgId: ${fbMessageEnvelope.msgId} type: ${fbMessage.type} requestId: ${requestId}"`,
     );
   });
 
@@ -57,11 +64,11 @@ describe('Messages utils', () => {
     const pair1 = aKeyPair();
     const pair2 = aKeyPair();
     const certificates = {
-      zs: 'my-zs-secret',
+      zs: ZS.publicKey,
       vs: pair1.publicKey,
     };
     const fbMessage = aFbProofOfOwnershipMessage(pair2.privateKey);
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, ZS.privateKey);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
@@ -72,11 +79,11 @@ describe('Messages utils', () => {
     const pair1 = aKeyPair();
     const pair2 = aKeyPair();
     const certificates = {
-      zs: 'my-zs-secret',
+      zs: ZS.publicKey,
       cm: pair1.publicKey,
     };
     const fbMessage = aFbProofOfOwnershipMessage(pair2.privateKey);
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, ZS.privateKey);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
@@ -86,11 +93,11 @@ describe('Messages utils', () => {
   it('should not verify a proof of ownership message without version', () => {
     const { privateKey, publicKey } = aKeyPair();
     const certificates = {
-      zs: 'my-zs-secret',
+      zs: ZS.publicKey,
       cm: publicKey,
     };
     const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey);
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, ZS.privateKey);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
@@ -100,12 +107,12 @@ describe('Messages utils', () => {
   it('should not verify a proof of ownership message with unsupported version', () => {
     const { privateKey, publicKey } = aKeyPair();
     const certificates = {
-      zs: 'my-zs-secret',
+      zs: ZS.publicKey,
       cm: publicKey,
     };
     const invalid_version = '0.0.0';
     const fbMessage = aCustomFbProofOfOwnershipMessage(privateKey, { version: invalid_version });
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, ZS.privateKey);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
@@ -115,7 +122,7 @@ describe('Messages utils', () => {
   it('should verify unknown message', () => {
     const { privateKey, publicKey } = aKeyPair();
     const certificates = {
-      zs: 'my-zs-secret',
+      zs: ZS.publicKey,
       cm: publicKey,
     };
 
@@ -123,7 +130,7 @@ describe('Messages utils', () => {
     const type = 'EXTERNAL_KEY_PROOF_OF_OWNERSHIP_REQUEST' as RequestType;
     const fbMsgPayload = aFbMessagePayload(privateKey, type, 'CONFIGURATION_MANAGER');
     const fbMessage: FBMessage = { type, payload: fbMsgPayload };
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, ZS.privateKey);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
     const expectedMessage: MessageEnvelop = {
@@ -140,13 +147,13 @@ describe('Messages utils', () => {
     const { privateKey: PSprivateKey, publicKey: PSpublicKey } = aKeyPair();
     const { privateKey: SSprivateKey, publicKey: SSpublicKey } = aKeyPair();
     const certificates = {
-      zs: 'my-zs-secret',
+      zs: ZS.publicKey,
       ps: PSpublicKey,
       vs: SSpublicKey,
     };
     const txId = c.guid();
     const fbMessage = aFbTxSignRequestMessage(SSprivateKey, PSprivateKey, { txId });
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, ZS.privateKey);
     const messageEnvelope = utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
     const expectedMessage: MessageEnvelop = {
@@ -164,12 +171,12 @@ describe('Messages utils', () => {
     const { privateKey: PSprivateKey, publicKey: PSpublicKey } = aKeyPair();
     const { privateKey: SSprivateKey, publicKey: SSpublicKey } = aKeyPair();
     const certificates = {
-      zs: 'my-zs-secret',
+      zs: ZS.publicKey,
       ps: PSpublicKey,
       vs: SSpublicKey,
     };
     const fbMessage = aFbTxSignRequestMessage(privateKey, PSprivateKey);
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, ZS.privateKey);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
@@ -181,16 +188,43 @@ describe('Messages utils', () => {
     const { privateKey: PSprivateKey, publicKey: PSpublicKey } = aKeyPair();
     const { privateKey: SSprivateKey, publicKey: SSpublicKey } = aKeyPair();
     const certificates = {
-      zs: 'my-zs-secret',
+      zs: ZS.publicKey,
       ps: PSpublicKey,
       vs: SSpublicKey,
     };
     const fbMessage = aFbTxSignRequestMessage(SSprivateKey, privateKey);
-    const fbMessageEnvelope = buildASignedMessage(fbMessage, certificates.zs);
+    const fbMessageEnvelope = buildASignedMessage(fbMessage, ZS.privateKey);
 
     const expectToThrow = () => utils.decodeAndVerifyMessage(fbMessageEnvelope, certificates);
 
     expect(expectToThrow).toThrowErrorMatchingInlineSnapshot('"Invalid signature from policy_service"');
+  });
+
+  it('rejects a non-string (object) msg instead of bypassing verification', () => {
+    const certificates = { zs: ZS.publicKey, cm: ZS.publicKey };
+    // An attacker-supplied object payload previously skipped jwt.verify entirely.
+    const objectEnvelope = {
+      deviceId: 'some-device-id',
+      msgId: 7,
+      internalMessageId: 'internal-message-id',
+      msg: { type: 'KEY_LINK_TX_SIGN_REQUEST', payload: { payload: '{}' } },
+    } as unknown as FBMessageEnvelope;
+
+    expect(() => utils.decodeAndVerifyMessage(objectEnvelope, certificates)).toThrow('expected a signed JWT string');
+  });
+
+  it('rejects an HS256 token forged with the public zs cert (algorithm confusion)', () => {
+    const certificates = { zs: ZS.publicKey, cm: ZS.publicKey };
+    const fbMessage = aFbProofOfOwnershipMessage(aKeyPair().privateKey);
+    // Forge with HS256 using the *public* zs cert as the HMAC secret; the RS256 pin must reject it.
+    const forged: FBMessageEnvelope = {
+      deviceId: 'some-device-id',
+      msgId: 9,
+      internalMessageId: 'internal-message-id',
+      msg: jwt.sign(JSON.stringify(fbMessage), ZS.publicKey, { algorithm: 'HS256' }),
+    };
+
+    expect(() => utils.decodeAndVerifyMessage(forged, certificates)).toThrow('JWT Message signature is invalid');
   });
 });
 
@@ -279,8 +313,8 @@ function aTxMetadata(privateKey: string): TxMetadata {
   };
 }
 
-function buildASignedMessage(innerMessage: FBMessage, zsCertificate): FBMessageEnvelope {
-  const jwtMessage = jwt.sign(JSON.stringify(innerMessage), zsCertificate);
+function buildASignedMessage(innerMessage: FBMessage, zsSigningKey: string): FBMessageEnvelope {
+  const jwtMessage = jwt.sign(JSON.stringify(innerMessage), zsSigningKey, { algorithm: 'RS256' });
   return {
     deviceId: 'some-device-id',
     msgId: 1,

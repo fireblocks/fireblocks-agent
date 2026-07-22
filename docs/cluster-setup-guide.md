@@ -2,7 +2,7 @@
 
 **Audience:** Customers evaluating Fireblocks Key Link with the example (SoftHSM-based) customer server, running workloads that need higher signing throughput.
 
-**Applies to:** Fireblocks Agent v2.2.9+ / example customer server with `docker-compose.cluster.yml`.
+**Applies to:** Fireblocks Agent v2.4.0+ / example customer server with `docker-compose.cluster.yml`.
 
 > ⚠️ **Evaluation use only.** The example customer server uses SoftHSM (a software HSM emulator) and an unauthenticated MongoDB instance. It is intended for proof-of-concept and evaluation environments only — **do not use it to protect production key material**. For production, integrate your own customer server with a certified HSM.
 

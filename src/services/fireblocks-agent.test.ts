@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import Chance from 'chance';
 import jwt from 'jsonwebtoken';
 import { GUID, JWT } from '../types';
@@ -43,6 +43,57 @@ describe('HSM Agent', () => {
 
     const nonValidToken = 'InvalidPairingToken';
     expect(agent.isValidPairingToken(nonValidToken)).toBe(false);
+  });
+});
+
+describe('message delivery transport selection', () => {
+  const ORIGINAL_WEBSOCKET_ENABLED = process.env.WEBSOCKET_ENABLED;
+
+  afterEach(() => {
+    if (ORIGINAL_WEBSOCKET_ENABLED === undefined) {
+      delete process.env.WEBSOCKET_ENABLED;
+    } else {
+      process.env.WEBSOCKET_ENABLED = ORIGINAL_WEBSOCKET_ENABLED;
+    }
+    jest.restoreAllMocks();
+    jest.resetModules();
+  });
+
+  // Re-import the agent (and its co-wired ws client) with a fresh module graph so the
+  // module-level WEBSOCKET_ENABLED constant is re-evaluated against the desired env value.
+  const loadAgent = (websocketEnabled?: string) => {
+    jest.resetModules();
+    if (websocketEnabled === undefined) {
+      delete process.env.WEBSOCKET_ENABLED;
+    } else {
+      process.env.WEBSOCKET_ENABLED = websocketEnabled;
+    }
+    const wsApi = require('./fb-server-ws.api').default;
+    const freshAgent = require('./fireblocks-agent').default;
+    return { wsApi, freshAgent };
+  };
+
+  it('defaults to WebSocket push mode when WEBSOCKET_ENABLED is unset', async () => {
+    const { wsApi, freshAgent } = loadAgent(undefined);
+    const startSpy = jest.spyOn(wsApi, 'start').mockImplementation(() => undefined);
+
+    await freshAgent.runAgentMainLoop(new https.Agent());
+
+    expect(startSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses HTTP long-poll (not WebSocket) when WEBSOCKET_ENABLED=false', async () => {
+    const { wsApi, freshAgent } = loadAgent('false');
+    const startSpy = jest.spyOn(wsApi, 'start').mockImplementation(() => undefined);
+    // runAgentMainLoop's poll path is while(true); park it on a never-resolving step so
+    // the test observes exactly one iteration without hanging.
+    const stepSpy = jest.spyOn(freshAgent, '_runLoopStep').mockImplementation(() => new Promise<void>(() => undefined));
+
+    void freshAgent.runAgentMainLoop(new https.Agent());
+    await Promise.resolve();
+
+    expect(startSpy).not.toHaveBeenCalled();
+    expect(stepSpy).toHaveBeenCalledTimes(1);
   });
 });
 
