@@ -20,18 +20,35 @@ export const decodeAndVerifyMessage = (
 ): DecodedMessage => {
   certMap = certificates;
   let fbMessage = fbMsgEnvelope.msg;
-  if (typeof fbMessage === 'string') {
+  // Every inbound frame MUST carry a JWT-signed message string. A non-string `msg`
+  // (e.g. a JSON object) previously skipped jwt.verify entirely -- reject it so the
+  // zService signature is always checked regardless of how the frame is shaped.
+  if (typeof fbMessage !== 'string') {
+    throw new Error(
+      `JWT Message signature is invalid. msgId: ${
+        fbMsgEnvelope.msgId
+      } - expected a signed JWT string but got ${typeof fbMessage}`,
+    );
+  }
+  try {
+    const zsCertificate = certMap['zs'];
+    // Pin RS256: without an explicit algorithm list a token could be forged via
+    // algorithm confusion (e.g. HS256 using the public cert as the HMAC secret).
+    fbMessage = jwt.verify(fbMsgEnvelope.msg as JWT, zsCertificate, { algorithms: ['RS256'] }) as FBMessage;
+  } catch (e) {
+    // Never log the raw message (it is the signed payload). Decode without verifying
+    // only to surface metadata (type/requestId) for diagnostics.
+    const decoded = jwt.decode(fbMsgEnvelope.msg as JWT) as FBMessage | null;
+    const type = decoded ? decoded.type : undefined;
+    let requestId: string | undefined;
     try {
-      const zsCertificate = certMap['zs'];
-      fbMessage = jwt.verify(fbMsgEnvelope.msg as JWT, zsCertificate) as FBMessage;
-    } catch (e) {
-      fbMessage = jwt.decode(fbMsgEnvelope.msg as JWT) as FBMessage;
-      throw new Error(
-        `JWT Message signature is invalid. msgId: ${fbMsgEnvelope.msgId} type: ${
-          fbMessage.type
-        } requestId: ${extractMessageUniqueId(fbMessage)} Full message: ${fbMsgEnvelope.msg}`,
-      );
+      requestId = decoded ? extractMessageUniqueId(decoded) : undefined;
+    } catch {
+      requestId = undefined;
     }
+    throw new Error(
+      `JWT Message signature is invalid. msgId: ${fbMsgEnvelope.msgId} type: ${type} requestId: ${requestId}`,
+    );
   }
 
   verifyFbMessage(fbMessage);

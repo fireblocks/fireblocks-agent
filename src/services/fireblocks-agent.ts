@@ -1,9 +1,11 @@
 import https from 'https';
 import jwt from 'jsonwebtoken';
 import { JWT, PairingToken } from 'types';
+import { WEBSOCKET_ENABLED } from '../constants';
 import { AGENT_VERSION } from '../version';
 import deviceService, { DeviceData } from './device.service';
 import fbServerApi from './fb-server.api';
+import fbServerWsApi from './fb-server-ws.api';
 import logger from './logger';
 import messageService from './messages.service';
 export interface FireblocksAgent {
@@ -23,6 +25,16 @@ class FireblocksAgentImpl implements FireblocksAgent {
   }
 
   runAgentMainLoop = async (httpsAgent: https.Agent) => {
+    if (WEBSOCKET_ENABLED) {
+      logger.info(`Starting in WebSocket push mode (WEBSOCKET_ENABLED=true, version=${AGENT_VERSION})`);
+      fbServerWsApi.start((messages) => {
+        messageService.handleMessages(messages, httpsAgent).catch((e) => {
+          logger.error(`Error in agent handle messages ${e}`);
+        });
+      });
+      return;
+    }
+    logger.info(`Starting in HTTP long-poll mode (WEBSOCKET_ENABLED=false, version=${AGENT_VERSION})`);
     while (true) {
       try {
         await this._runLoopStep(httpsAgent);

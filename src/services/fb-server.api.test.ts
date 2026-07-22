@@ -27,6 +27,7 @@ const c = new Chance();
 describe('Server API', () => {
   beforeEach(() => {
     fbServerApiDriver.reset();
+    fbServerApi._resetTokenCache();
   });
 
   it('should pair device', async () => {
@@ -49,6 +50,71 @@ describe('Server API', () => {
     const accessTokenRes = await fbServerApi.getAccessToken(accessTokenReq);
 
     expect(accessTokenRes).toBe(accessToken);
+  });
+
+  it('reuses a cached JWT access token instead of POSTing per call', async () => {
+    const deviceData = deviceDriver.given.deviceData();
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
+    const jwtToken = jwt.sign({ userId: deviceData.userId }, 'secret', { expiresIn: '5m' });
+    let postCount = 0;
+    fbServerApiDriver
+      .axiosMock()
+      .onPost(`${MOBILE_GATEWAY_URL}/access_token`)
+      .reply(() => {
+        postCount++;
+        return [200, { accessToken: jwtToken }];
+      });
+
+    const first = await fbServerApi.getAccessToken(deviceData);
+    const second = await fbServerApi.getAccessToken(deviceData);
+
+    expect(first).toBe(jwtToken);
+    expect(second).toBe(jwtToken);
+    expect(postCount).toBe(1); // second call served from cache -- no extra token POST
+  });
+
+  it('does not cache an opaque (non-JWT) access token', async () => {
+    const deviceData = deviceDriver.given.deviceData();
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
+    let postCount = 0;
+    fbServerApiDriver
+      .axiosMock()
+      .onPost(`${MOBILE_GATEWAY_URL}/access_token`)
+      .reply(() => {
+        postCount++;
+        return [200, { accessToken: `opaque-token-${postCount}` }];
+      });
+
+    const first = await fbServerApi.getAccessToken(deviceData);
+    const second = await fbServerApi.getAccessToken(deviceData);
+
+    expect(first).toBe('opaque-token-1');
+    expect(second).toBe('opaque-token-2'); // not cacheable -> refetched
+    expect(postCount).toBe(2);
+  });
+
+  it('getTenantId returns the tenantId claim decoded from the access token', async () => {
+    const deviceData = deviceDriver.given.deviceData();
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
+    const tenantId = c.guid();
+    const jwtToken = jwt.sign({ userId: deviceData.userId, tenantId }, 'secret', { expiresIn: '5m' });
+    fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/access_token`).reply(200, { accessToken: jwtToken });
+
+    const resolvedTenantId = await fbServerApi.getTenantId();
+
+    expect(resolvedTenantId).toBe(tenantId);
+  });
+
+  it('getTenantId throws when the access token carries no tenantId claim', async () => {
+    const deviceData = deviceDriver.given.deviceData();
+    jest.spyOn(deviceService, 'getDeviceData').mockReturnValue(deviceData);
+    // A valid JWT (decodable exp, so it is cacheable) but WITHOUT a tenantId claim -> no routing_id.
+    const jwtToken = jwt.sign({ userId: deviceData.userId }, 'secret', { expiresIn: '5m' });
+    fbServerApiDriver.axiosMock().onPost(`${MOBILE_GATEWAY_URL}/access_token`).reply(200, { accessToken: jwtToken });
+
+    await expect(fbServerApi.getTenantId()).rejects.toThrow(
+      'Access token has no tenantId claim - cannot route WebSocket broadcast',
+    );
   });
 
   it('should pull messages', async () => {

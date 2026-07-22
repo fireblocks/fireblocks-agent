@@ -1,5 +1,15 @@
 image: registry.gitlab.com/fireblocks/shell/infra/images/node-infra-18:latest
 
+.script_common_expressions:
+  configure_jfrog_npmrc:
+    - |
+      cat > .npmrc <<EOF
+      registry=https://fbinfra555artifactory.jfrog.io/artifactory/api/npm/fireblocks-npm/
+      @fireblocks:registry=https://fbinfra555artifactory.jfrog.io/artifactory/api/npm/fireblocks-npm/
+      always-auth=true
+      //fbinfra555artifactory.jfrog.io/artifactory/api/npm/fireblocks-npm/:_authToken="${JFROG_NPM_READ_TOKEN}"
+      EOF
+
 stages:
   - check_version
   - lint
@@ -29,7 +39,9 @@ format:
   stage: lint
   allow_failure: false
   tags:
-    - build-shell
+    - kub-shell
+  before_script:
+    - !reference [.script_common_expressions, configure_jfrog_npmrc]
   script:
     - npm install
     - npm run format:check
@@ -44,8 +56,10 @@ test:
   image: registry.gitlab.com/fireblocks/shell/infra/images/node-infra-18:latest
   stage: test
   tags:
-    - build-shell
+    - kub-shell
   allow_failure: false
+  before_script:
+    - !reference [.script_common_expressions, configure_jfrog_npmrc]
   script:
     - npm install
     - npm run build
