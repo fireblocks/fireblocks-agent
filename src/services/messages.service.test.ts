@@ -4,10 +4,13 @@ import { ExtendedMessageStatusCache, MessageStatus, RequestType } from '../types
 import * as messagesUtils from '../utils/messages-utils';
 import customerServerApi from './customer-server.api';
 import fbServerApi from './fb-server.api';
+import fbServerWsApi from './fb-server-ws.api';
 import {
   aProofOfOwnershipFailedMessageStatus,
   aProofOfOwnershipRequest,
   aProofOfOwnershipSignedMessageStatus,
+  aTxSignRequest,
+  aTxSignSignedMessageStatus,
   messageBuilder,
 } from './fb-server.api.test';
 import service from './messages.service';
@@ -131,6 +134,79 @@ describe('messages service', () => {
     await service.updateStatus([extendedMessageStatusCache]);
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId);
     expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(failedMessageStatus, request);
+  });
+
+  it('routes a SIGNED tx-sign response over the WebSocket when connected (broadcast AND ack both on WS)', async () => {
+    const msgId = c.natural();
+    const request = aTxSignRequest();
+    const signedMessageStatus = aTxSignSignedMessageStatus();
+    const extendedMessageStatusCache: ExtendedMessageStatusCache = {
+      messageStatus: signedMessageStatus,
+      msgId,
+      request,
+    };
+
+    jest.spyOn(fbServerWsApi, 'isConnected').mockReturnValue(true);
+    jest.spyOn(fbServerWsApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerWsApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+
+    await service.updateStatus([extendedMessageStatusCache]);
+
+    // tx-sign broadcast rides the socket, not HTTP ...
+    expect(fbServerWsApi.broadcastResponse).toHaveBeenCalledWith(signedMessageStatus, request);
+    expect(fbServerApi.broadcastResponse).not.toHaveBeenCalled();
+    // ... and both a broadcast AND an ack are issued for a SIGNED status (behaviour unchanged; ack on WS too)
+    expect(fbServerWsApi.ackMessage).toHaveBeenCalledWith(msgId);
+    expect(fbServerApi.ackMessage).not.toHaveBeenCalled();
+  });
+
+  it('falls back to HTTP for a SIGNED tx-sign response when the WebSocket is not connected', async () => {
+    const msgId = c.natural();
+    const request = aTxSignRequest();
+    const signedMessageStatus = aTxSignSignedMessageStatus();
+    const extendedMessageStatusCache: ExtendedMessageStatusCache = {
+      messageStatus: signedMessageStatus,
+      msgId,
+      request,
+    };
+
+    jest.spyOn(fbServerWsApi, 'isConnected').mockReturnValue(false);
+    jest.spyOn(fbServerWsApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+
+    await service.updateStatus([extendedMessageStatusCache]);
+
+    // broadcast AND ack both fall back to HTTP when the socket is down
+    expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(signedMessageStatus, request);
+    expect(fbServerWsApi.broadcastResponse).not.toHaveBeenCalled();
+    expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId);
+  });
+
+  it('always broadcasts a proof-of-ownership response over HTTP even when the WebSocket is connected', async () => {
+    const msgId = c.natural();
+    const request = aProofOfOwnershipRequest();
+    const signedMessageStatus = aProofOfOwnershipSignedMessageStatus();
+    const extendedMessageStatusCache: ExtendedMessageStatusCache = {
+      messageStatus: signedMessageStatus,
+      msgId,
+      request,
+    };
+
+    jest.spyOn(fbServerWsApi, 'isConnected').mockReturnValue(true);
+    jest.spyOn(fbServerWsApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerWsApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'broadcastResponse').mockImplementation(jest.fn(() => Promise.resolve()));
+    jest.spyOn(fbServerApi, 'ackMessage').mockImplementation(jest.fn(() => Promise.resolve()));
+
+    await service.updateStatus([extendedMessageStatusCache]);
+
+    // proof-of-ownership MUST stay on HTTP: MAG's broadcastMsg-only WS branch can't reach its
+    // downstream (zServiceMessageSender), so it is never sent over the socket.
+    expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(signedMessageStatus, request);
+    expect(fbServerWsApi.broadcastResponse).not.toHaveBeenCalled();
   });
 
   it('should remove acked messages from the cache', async () => {
@@ -273,5 +349,43 @@ describe('messages service', () => {
     // Verify the agent ignores a message it didn't asked for
     expect(fbServerApi.ackMessage).toHaveBeenCalledWith(msgId);
     expect(fbServerApi.broadcastResponse).toHaveBeenCalledWith(msgStatus, msgEnvelop);
+  });
+
+  it('bounds the request cache via LRU eviction (msgCacheOrder no longer leaks)', async () => {
+    const ORIGINAL = process.env.AGENT_REQUESTS_CACHE_SIZE;
+    try {
+      // Fresh module graph with a tiny cache so the bound is observable.
+      jest.resetModules();
+      process.env.AGENT_REQUESTS_CACHE_SIZE = '3';
+      const freshService = require('./messages.service').default;
+
+      const makeEntry = (requestId: string): ExtendedMessageStatusCache => ({
+        msgId: c.natural(),
+        request: aProofOfOwnershipRequest(),
+        messageStatus: {
+          type: 'KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE',
+          status: 'PENDING_SIGN',
+          requestId,
+          response: {},
+        },
+      });
+
+      for (let i = 0; i < 10; i++) {
+        await freshService.addMessageToCache(makeEntry(`req-${i}`));
+      }
+
+      const pending = freshService.getPendingMessages();
+      // Bounded to the configured size; the old delete-by-uuid no-op would have grown unbounded.
+      expect(pending.length).toBe(3);
+      // LRU keeps the most-recent entries and evicts the oldest.
+      expect(pending.map((p) => p.messageStatus.requestId).sort()).toEqual(['req-7', 'req-8', 'req-9']);
+    } finally {
+      if (ORIGINAL === undefined) {
+        delete process.env.AGENT_REQUESTS_CACHE_SIZE;
+      } else {
+        process.env.AGENT_REQUESTS_CACHE_SIZE = ORIGINAL;
+      }
+      jest.resetModules();
+    }
   });
 });

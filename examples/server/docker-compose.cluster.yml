@@ -1,0 +1,109 @@
+# OPTIONAL "cluster mode" for the example customer server.
+#
+# The default, single-process setup (docker-compose.yml) signs serially: one
+# customer-server process, one PKCS#11 session, and synchronous pkcs11js calls
+# that block Node's single event loop. Under load, signing throughput is capped
+# at roughly one CPU core no matter how many cores the host has.
+#
+# This file is an OPT-IN alternative that scales SoftHSM signing across cores
+# on a single host. The default single-process behavior is unchanged — you
+# explicitly run this file instead of docker-compose.yml:
+#
+#   Fireblocks Agent
+#          |
+#          v
+#    nginx (host port 5000, the only published entry point)
+#          |
+#          |-- /api/hsm/*  -->  customer-server-primary  (1 process:  key generation)
+#          |
+#          '-- /api/*      -->  customer-server-signer   (N processes: signing pool)
+#                                       |
+#                    shared SoftHSM token volumes + shared MongoDB
+#
+# All customer-server containers share the same SoftHSM token volumes and the
+# same Mongo database as the single-process setup. SoftHSM's file-backed token
+# is safe for CONCURRENT SIGNING from multiple processes (signing only reads
+# the token). KEY GENERATION writes to the token, so it stays on the single
+# "primary" service — nginx routes /api/hsm/ (generateKeyPair) there only.
+#
+# HOW TO RUN (details in README.md, "Running in cluster mode"):
+#   npm run build:docker                       # build the softhsm2:2.6.1 image (once)
+#   npm run docker:volumes                     # create the shared volumes (once)
+#   docker compose -f docker-compose.cluster.yml up -d --scale customer-server-signer=4
+#
+# NOTE: this file and docker-compose.yml both publish host port 5000 — run one
+# or the other, never both at the same time.
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      # The only published port. The Agent's CUSTOMER_SERVER_URL stays the same
+      # as in single-process mode (e.g. http://localhost:5000/api).
+      - "5000:5000"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # Optional TLS termination: mount your self-signed key/cert (created as
+      # described in README.md) and enable the `listen 5000 ssl;` variant in
+      # nginx.conf. See README.md, "SSL / TLS in each mode".
+      # - ./env/priv-key.txt:/etc/nginx/certs/priv-key.txt:ro
+      # - ./env/self-signed-cert.txt:/etc/nginx/certs/self-signed-cert.txt:ro
+    depends_on:
+      - customer-server-primary
+      - customer-server-signer
+
+  # Single writer. Key generation (/api/hsm/*) is pinned here to avoid
+  # concurrent-keygen races on the shared SoftHSM token file. Not exposed on
+  # the host — reached only through nginx.
+  customer-server-primary:
+    image: softhsm2:2.6.1
+    depends_on:
+      - customer-database
+    environment:
+      NODE_ENV: production
+      # In cluster mode the backends always speak plain HTTP on the internal
+      # Docker network; TLS (if any) is terminated by nginx. Forcing these two
+      # to empty strings wins over any value in env/*.env, because dotenv never
+      # overrides pre-existing process environment variables.
+      SELF_SIGNED_SSL_PRIV_KEY_PATH: ''
+      SELF_SIGNED_SSL_CERT_PATH: ''
+    volumes:
+      - softhsm:/usr/local/lib/softhsm/
+      - tokens:/tokens/
+
+  # Signing pool. Scale with `--scale customer-server-signer=N` (N is roughly
+  # the number of CPU cores you want to dedicate to signing). Replicas only
+  # read the token and are load-balanced by nginx via Docker DNS. Not exposed
+  # on the host. Restart this service after generating new keys — running
+  # signers do not see keys generated after they started (see README.md).
+  customer-server-signer:
+    image: softhsm2:2.6.1
+    depends_on:
+      - customer-database
+    environment:
+      NODE_ENV: production
+      SELF_SIGNED_SSL_PRIV_KEY_PATH: ''
+      SELF_SIGNED_SSL_CERT_PATH: ''
+    volumes:
+      - softhsm:/usr/local/lib/softhsm/
+      - tokens:/tokens/
+    deploy:
+      replicas: 2 # default pool size; override with --scale customer-server-signer=N
+
+  # Internal-only in cluster mode: the customer-server containers reach it as
+  # mongodb://customer-database:27017 on the Docker network. Unlike the
+  # single-process docker-compose.yml, no host port is published (the unauthenticated
+  # example database should not be reachable from outside the compose network).
+  customer-database:
+    image: mongo:6
+    volumes:
+      - database:/data/db
+
+# Same external volumes as docker-compose.yml (created by `npm run docker:volumes`),
+# so keys and messages are shared with the single-process setup.
+volumes:
+  database:
+    external: true
+  softhsm:
+    external: true
+  tokens:
+    external: true
