@@ -2,7 +2,8 @@ dist
 node_modules
 coverage
 .fireblocks-refresh-token*
-.env.dev*
+.env*
+!.env.example
 messages*.json
 *.log
 .DS_Store
