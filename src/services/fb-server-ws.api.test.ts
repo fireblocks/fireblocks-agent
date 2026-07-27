@@ -150,8 +150,11 @@ describe('fb-server-ws.api', () => {
     expect(frame.type).toBe('KEY_LINK_TX_SIGN_RESPONSE');
     expect(frame.routing_id).toBe(tenantId);
 
-    // payload JSON-parses back to the SAME object the HTTP path posts (buildResponseObject)
-    expect(JSON.parse(frame.payload)).toEqual(buildResponseObject(msgStatus, request));
+    // payload includes everything buildResponseObject returns plus sessionContext
+    expect(JSON.parse(frame.payload)).toEqual({
+      ...buildResponseObject(msgStatus, request),
+      sessionContext: expect.any(String),
+    });
 
     // broadcastId is sha256hex(type|payload|routing_id)
     const expectedBroadcastId = crypto
@@ -159,6 +162,23 @@ describe('fb-server-ws.api', () => {
       .update(`${frame.type}|${frame.payload}|${frame.routing_id}`)
       .digest('hex');
     expect(frame.broadcastId).toBe(expectedBroadcastId);
+  });
+
+  it('includes sessionContext (access token) inside the broadcast payload', async () => {
+    const accessToken = 'test-access-token';
+    jest.spyOn(fbServerApi, 'getAccessToken').mockResolvedValue(accessToken);
+    jest.spyOn(fbServerApi, 'getTenantId').mockResolvedValue('tenant-abc');
+
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+    const socket = MockWebSocket.instances[0];
+    socket.emit('open');
+
+    await wsApi.broadcastResponse(aTxSignSignedStatus(), aTxSignRequestEnvelope());
+
+    const [sent] = socket.send.mock.calls[0];
+    const payload = JSON.parse(JSON.parse(sent).payload);
+    expect(payload.sessionContext).toBe(accessToken);
   });
 
   it('rejects a broadcast when the socket is not connected', async () => {
@@ -169,6 +189,47 @@ describe('fb-server-ws.api', () => {
     await expect(wsApi.broadcastResponse(aTxSignSignedStatus(), aTxSignRequestEnvelope())).rejects.toThrow(
       'WebSocket not connected',
     );
+  });
+
+  it('rejects a broadcast without sending a frame when the access token fetch fails', async () => {
+    jest.spyOn(fbServerApi, 'getTenantId').mockResolvedValue('tenant-abc');
+    // the first call is consumed by the connect handshake; the broadcast's own fetch then fails
+    jest
+      .spyOn(fbServerApi, 'getAccessToken')
+      .mockResolvedValueOnce('access-token')
+      .mockRejectedValue(new Error('Request failed with status code 401'));
+
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+    const socket = MockWebSocket.instances[0];
+    socket.emit('open');
+
+    await expect(wsApi.broadcastResponse(aTxSignSignedStatus(), aTxSignRequestEnvelope())).rejects.toThrow(
+      'Request failed with status code 401',
+    );
+
+    // no half-built frame goes out -- a payload without sessionContext must never reach MAG
+    expect(socket.send).not.toHaveBeenCalled();
+  });
+
+  it('rejects a broadcast without sending a frame or fetching a token when the token has no tenantId claim', async () => {
+    // getTenantId throws rather than emit a frame with a bogus routing_id
+    jest
+      .spyOn(fbServerApi, 'getTenantId')
+      .mockRejectedValue(new Error('Access token has no tenantId claim - cannot route WebSocket broadcast'));
+
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+    const socket = MockWebSocket.instances[0];
+    socket.emit('open');
+
+    await expect(wsApi.broadcastResponse(aTxSignSignedStatus(), aTxSignRequestEnvelope())).rejects.toThrow(
+      'no tenantId claim',
+    );
+
+    expect(socket.send).not.toHaveBeenCalled();
+    // routing_id is resolved first, so a broadcast that cannot be routed never fetches a token
+    expect(fbServerApi.getAccessToken).toHaveBeenCalledTimes(1); // the connect handshake only
   });
 
   it('reports isConnected only while the socket is open', async () => {

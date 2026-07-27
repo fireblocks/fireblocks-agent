@@ -1,3 +1,27 @@
+# 2.4.1 (2026-07-27)
+
+### Bug Fixes
+
+* **transport:** include `sessionContext` (access token) in the WebSocket broadcast payload to MAG
+  - Without it MAG rejects the frame, so sign responses never reach Fireblocks and transactions sit in `PENDING_SIGNATURE` indefinitely
+  - Affects every 2.4.0 deployment using WebSocket delivery — i.e. the default — so upgrading is required
+  - Added coverage for `broadcastResponse` access-token resolution failures
+
+### Features
+
+* **examples:** Thales Luna Network HSM support for the example customer server
+  - New `Dockerfile.luna` — Ubuntu 22.04 image bundling the Luna client
+    (`libCryptoki2_64.so`, `lunacm`, `vtl`). The proprietary vendor tarball is never committed;
+    supply it at build time in the gitignored `examples/server/luna/`. linux/amd64 only
+  - New `luna-entrypoint.sh` — idempotent client registration against the appliance plus
+    `vtl verify` at startup; skipped entirely when `LUNA_HOST` is unset, so the same image
+    still runs in SoftHSM mode
+  - PKCS#11 facade parameterized via `HSM_MODULE` / `HSM_PIN` / `HSM_SLOT_LABEL`, making HSM
+    provider selection runtime configuration rather than a code change
+  - Signing resilience for Luna sessions
+* **examples:** example customer server base image migrated Alpine → Ubuntu 22.04
+  (glibc, required by the Luna client)
+
 # 2.4.0 (2026-07-22)
 
 ### Features
