@@ -1,3 +1,13 @@
 .log
 dist
 node_modules
+
+# Thales Luna HSM client build context (Dockerfile.luna).
+# The Luna client tarball is ~59MB proprietary software and MUST NOT be committed.
+# Place 610-000397-019_SW_Linux_Luna_Client_V10.9.3_RevA.tar (or newer) here at build time.
+luna/
+
+# Local-only build variants of Dockerfile.luna (site-specific CA / registry).
+# Never commit: they are host/network specific.
+Dockerfile.luna.local
+Dockerfile.luna.local.*

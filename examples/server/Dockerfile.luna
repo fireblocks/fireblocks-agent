@@ -1,0 +1,129 @@
+# Customer server example — Ubuntu (glibc) base WITH the Thales Luna HSM client.
+#
+# This is the SoftHSM image (see ./Dockerfile) PLUS the Thales Luna Network HSM
+# client (libCryptoki2_64.so + lunacm/vtl). The customer-server build is identical;
+# only the HSM provider differs at runtime, selected via HSM_MODULE (see
+# src/services/hsm-facade.ts). Keeping SoftHSM installed means this image also works
+# in SoftHSM mode (its hsm-facade default) when no Luna credentials are supplied.
+#
+# ── Proprietary tarball (NOT committed) ────────────────────────────────────────
+# The Luna client is ~59MB of proprietary Thales software and must NOT live in git.
+# Before building, drop the tarball into the gitignored build-context dir:
+#     examples/server/luna/610-000397-019_SW_Linux_Luna_Client_V10.9.3_RevA.tar
+# (see examples/server/.gitignore). If examples/server/luna/ is absent the COPY
+# below fails by design — this image requires the vendor tarball at build time.
+#
+# ── Build (Apple Silicon → linux/amd64) ────────────────────────────────────────
+# The Luna client .so is linux/amd64 only; build with:
+#     docker build --platform linux/amd64 -f examples/server/Dockerfile.luna \
+#        -t customer-server-luna examples/server
+# On an x86_64 host --platform is unnecessary (native).
+#
+# ── Runtime (credentials supplied by the coordinator via --env-file) ───────────
+#   LUNA_HOST, LUNA_APPLIANCE_USER, LUNA_APPLIANCE_PASSWORD, LUNA_PARTITION,
+#   LUNA_CLIENT_NAME                     → luna-entrypoint.sh registers the client
+#   HSM_MODULE=/usr/safenet/lunaclient/lib/libCryptoki2_64.so
+#   HSM_PIN=<partition Crypto Officer password>
+#   HSM_SLOT_LABEL=<Luna partition label>
+FROM ubuntu:22.04
+
+LABEL org.label-schema.description="Fireblocks KeyLink customer server example (Thales Luna Network HSM client on Ubuntu)"
+LABEL org.label-schema.name="fireblocks-customer-server-luna"
+LABEL org.label-schema.schema-version="1.0"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# SoftHSM2 config location (kept identical to the SoftHSM image; harmless for Luna).
+ENV SOFTHSM2_CONF=/etc/softhsm/softhsm2.conf
+
+# Luna tools read this directory for Chrystoki.conf. A root install writes it to
+# /etc/Chrystoki.conf, so ChrystokiConfigurationPath points at /etc (the dir).
+ENV ChrystokiConfigurationPath=/etc
+
+# System dependencies. Same set as ./Dockerfile PLUS:
+#   alien  - converts the Luna client's .rpm packages to .deb on Debian/Ubuntu
+#            (install.sh uses `alien -k -i --scripts`); pulls in rpm/dpkg-dev/debhelper
+#   rpm    - provides rpmbuild, which install.sh hard-requires on Debian hosts
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+     softhsm2 \
+     opensc \
+     build-essential \
+     python3 \
+     curl \
+     ca-certificates \
+     gnupg \
+     alien \
+     rpm \
+  && rm -rf /var/lib/apt/lists/*
+
+# Node.js 18 via NodeSource (keyring-based apt repo; no piping a remote script to a shell).
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+      | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg \
+  && echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" \
+      > /etc/apt/sources.list.d/nodesource.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends nodejs \
+  && rm -rf /var/lib/apt/lists/*
+
+# ── Thales Luna HSM client ─────────────────────────────────────────────────────
+# Copy the vendor tarball from the gitignored build-context dir, extract it, and run
+# the vendor installer UNATTENDED for the Network HSM (Luna SA) product only:
+#   install.sh -p network    → base client + vtl (NO SDK/JSP/JCPROV/SNMP/PED drivers)
+# The single interactive prompt is the EULA; `yes` auto-accepts it. `-p network` (vs
+# `all`) avoids the second confirmation prompt and skips packages we do not need.
+# Installs into /usr/safenet/lunaclient; PKCS#11 module at
+# /usr/safenet/lunaclient/lib/libCryptoki2_64.so; tools at .../bin/{lunacm,vtl}.
+COPY luna/ /tmp/luna/
+RUN set -eux; \
+    command -v alien; command -v rpmbuild; \
+    cd /tmp/luna; \
+    tar -xf *_Linux_Luna_Client_*.tar; \
+    cd LunaClient_*/64; \
+    yes | ./install.sh -p network; \
+    test -f /usr/safenet/lunaclient/lib/libCryptoki2_64.so; \
+    test -x /usr/safenet/lunaclient/bin/lunacm; \
+    test -x /usr/safenet/lunaclient/bin/vtl; \
+    # Defensive, idempotent: ensure Chrystoki.conf's PKCS#11 lib path points at the
+    # installed location (the packaged template uses /usr/lib; a no-op if already fixed).
+    if [ -f /etc/Chrystoki.conf ]; then \
+      sed -i \
+        -e 's#/usr/lib/libCryptoki2_64.so#/usr/safenet/lunaclient/lib/libCryptoki2_64.so#g' \
+        -e 's#/usr/lib/libCryptoki2.so#/usr/safenet/lunaclient/lib/libCryptoki2.so#g' \
+        /etc/Chrystoki.conf; \
+    fi; \
+    cd /; rm -rf /tmp/luna
+
+# Put the Luna tools on PATH for the entrypoint (and interactive debugging).
+ENV PATH="/usr/safenet/lunaclient/bin:${PATH}"
+
+# Fail fast if the SoftHSM PKCS#11 module is not where hsm-facade.ts expects it
+# (keeps SoftHSM mode of this image working; matches HSM_MODULE default).
+RUN test -f /usr/lib/softhsm/libsofthsm2.so
+
+WORKDIR /app
+
+# SoftHSM config + token store (identical to ./Dockerfile).
+COPY softhsm2.conf /etc/softhsm/softhsm2.conf
+RUN mkdir -p /tokens
+
+COPY ./src ./src
+COPY ./env ./env
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Initialize the SoftHSM token (writes into /tokens per SOFTHSM2_CONF).
+RUN npm run initToken
+
+# Install dependencies (compiles the pkcs11js native addon) and build TypeScript.
+RUN npm install \
+  && npm run build
+
+# Luna registration + verification wrapper. It (idempotently) registers the client
+# with the appliance from LUNA_* env, runs `vtl verify`, then execs the CMD below.
+COPY luna-entrypoint.sh /usr/local/bin/luna-entrypoint.sh
+RUN chmod +x /usr/local/bin/luna-entrypoint.sh
+
+EXPOSE 5000
+ENTRYPOINT ["/usr/local/bin/luna-entrypoint.sh"]
+CMD ["npm", "run", "start:dev"]

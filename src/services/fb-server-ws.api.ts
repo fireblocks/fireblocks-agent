@@ -85,19 +85,21 @@ class FbServerWsApi {
   }
 
   /**
-   * Broadcast a signed/failed response back to MAG over the socket. The frame mirrors the proven
-   * customer-cosigner client: { type, payload, routing_id, broadcastId }. `payload` is the SAME
-   * response object the HTTP broadcast posts (byte-for-byte), `routing_id` is the agent's tenantId
-   * (MAG forwards it verbatim to broadcastMsg), and `broadcastId` is a content hash MAG echoes back
-   * as a broadcastAck -- which the agent ignores (no retransmit correlation; reliability deferred).
+   * Broadcast a signed/failed response back to MAG over the socket. Frame: { type, payload,
+   * routing_id, broadcastId }. `payload` is the same object the HTTP handler publishes downstream —
+   * { type, status, request, response, sessionContext } — where sessionContext is the agent's access
+   * token (mirrors keylink_tx_sign_response.ts injecting req.accessToken before broadcastMsg).
+   * `routing_id` is the agent's tenantId (MAG forwards it verbatim to broadcastMsg). `broadcastId`
+   * is a content hash MAG echoes back as a broadcastAck (agent ignores it; no retransmit).
    *
    * tenantId is resolved BEFORE the connection is re-checked so the send happens synchronously on a
    * still-open socket (no stale-socket race across the await).
    */
   async broadcastResponse(msgStatus: MessageStatus, request: MessageEnvelop): Promise<void> {
     const { type } = msgStatus;
-    const payload = JSON.stringify(buildResponseObject(msgStatus, request));
     const routing_id = await fbServerApi.getTenantId();
+    const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
+    const payload = JSON.stringify({ ...buildResponseObject(msgStatus, request), sessionContext: accessToken });
     const broadcastId = crypto.createHash('sha256').update(`${type}|${payload}|${routing_id}`).digest('hex');
     return new Promise((resolve, reject) => {
       const ws = this.ws;

@@ -24,7 +24,13 @@ const EcdsaSecp256k1Info: PKCSAlgorithmInfo = {
 };
 
 const EddsaInfo: PKCSAlgorithmInfo = {
-    oid: Buffer.from("06032b6570", "hex"),
+    // CKA_EC_PARAMS for ed25519. Thales Luna's CKM_EC_EDWARDS_KEY_PAIR_GEN expects the
+    // PKCS#11 v3.0 "CurveName" as a DER PrintableString "edwards25519"
+    // (13 0c 65 64 77 61 72 64 73 32 35 35 31 39), NOT the RFC 8410 OID 1.3.101.112
+    // (06 03 2b 65 70). Passing the OID makes Luna fail C_GenerateKeyPair with
+    // CKR_VENDOR_DEFINED. This matches the template OpenSC (pkcs11-tool
+    // --key-type EC:edwards25519) sends, captured via pkcs11-spy on the Luna partition.
+    oid: Buffer.from("130c656477617264733235353139", "hex"),
     type: CKK_EC_EDWARDS,
     generateKeyMechanism: CKM_EC_EDWARDS_KEY_PAIR_GEN,
     signMechanism: CKM_EDDSA,

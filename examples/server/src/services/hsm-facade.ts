@@ -21,8 +21,18 @@ export interface HSMFacade {
     sign(keyId: string, payload: string, algorithm: Algorithm): Promise<string>;
     verify(keyId: string, signature: string, payload: string, algorithm: Algorithm): Promise<boolean>;
 }
-const LIBRARY = '/usr/local/lib/softhsm/libsofthsm2.so';
-const PIN = '1234';
+// PKCS#11 configuration. Defaults target SoftHSM as installed on the Ubuntu base
+// image; override via environment variables to point at another HSM.
+//
+// Thales Luna example values:
+//   HSM_MODULE=/usr/safenet/lunaclient/lib/libCryptoki2_64.so
+//   HSM_PIN=<Crypto Officer password of the partition>
+//   HSM_SLOT_LABEL=<label of the assigned Luna partition>
+const LIBRARY = process.env.HSM_MODULE || '/usr/lib/softhsm/libsofthsm2.so';
+const PIN = process.env.HSM_PIN || '1234';
+// Optional: when set, the slot whose token label matches is selected (e.g. a specific
+// Luna partition). When unset, the first token-present slot is used (SoftHSM default).
+const SLOT_LABEL = process.env.HSM_SLOT_LABEL;
 
 // Define an ASN.1 structure using asn1.js that can handle both bit string and octet string
 const GenericASN1Data = asn1.define('GenericASN1Data', function () {
@@ -41,8 +51,10 @@ class HSM implements HSMFacade {
     constructor() {
         this.pkcs11 = new pkcs11js.PKCS11();
         this.pkcs11.load(LIBRARY);
-        this.pkcs11.C_Initialize();
-        this.slot = this.pkcs11.C_GetSlotList(true)[0];
+        // CKF_OS_LOCKING_OK lets the module use OS-native locking - required for
+        // multi-process / multi-threaded access (e.g. Luna) and harmless for SoftHSM.
+        this.pkcs11.C_Initialize({ flags: pkcs11js.CKF_OS_LOCKING_OK });
+        this.slot = this.selectSlot();
         this.session = this.pkcs11.C_OpenSession(this.slot, pkcs11js.CKF_RW_SESSION | pkcs11js.CKF_SERIAL_SESSION);
 
         const genInfo: pkcs11js.ModuleInfo = this.pkcs11.C_GetInfo();
@@ -59,6 +71,29 @@ class HSM implements HSMFacade {
 
     }
 
+    // Picks the PKCS#11 slot to use. When HSM_SLOT_LABEL is set, selects the slot whose
+    // token label matches (used to target a specific Luna partition); otherwise falls
+    // back to the first token-present slot (the SoftHSM default behavior).
+    private selectSlot(): pkcs11js.Handle {
+        const slots = this.pkcs11.C_GetSlotList(true);
+        if (!SLOT_LABEL) {
+            return slots[0];
+        }
+        for (const slot of slots) {
+            try {
+                const tokenInfo: pkcs11js.TokenInfo = this.pkcs11.C_GetTokenInfo(slot);
+                // PKCS#11 pads the label to 32 chars, so compare trimmed values.
+                if (tokenInfo.label.trim() === SLOT_LABEL.trim()) {
+                    logger.info(`Selected PKCS#11 slot by token label '${SLOT_LABEL}'`);
+                    return slot;
+                }
+            } catch (e) {
+                // slot without a readable token - skip it
+            }
+        }
+        throw new Error(`No PKCS#11 slot found with token label '${SLOT_LABEL}'`);
+    }
+
     // can be called to cleanup pkcs11 library resources
     public dispose() {
 
@@ -66,6 +101,40 @@ class HSM implements HSMFacade {
         this.pkcs11.C_CloseSession(this.session);
         this.session = null;
         this.pkcs11.C_Finalize();
+    }
+
+    // PKCS#11 return codes that indicate the session/token link is broken and a single
+    // re-open + re-login is worth trying. A network HSM such as Luna idle-drops its NTLS
+    // session, after which the next operation fails with CKR_DEVICE_ERROR (0x30); the
+    // others cover an explicitly invalid/closed session or a dropped device.
+    private static readonly RECOVERABLE_PKCS11_CODES: ReadonlySet<number> = new Set<number>([
+        0x30, // CKR_DEVICE_ERROR
+        0xB3, // CKR_SESSION_HANDLE_INVALID
+        0xB4, // CKR_SESSION_CLOSED
+        0xE0, // CKR_TOKEN_NOT_PRESENT
+        0xE2, // CKR_DEVICE_REMOVED
+    ]);
+    // Total sign attempts (1 initial + retries). BOUNDED on purpose: a persistent failure
+    // is reported to the caller instead of retrying forever.
+    private static readonly MAX_SIGN_ATTEMPTS = 2;
+
+    private isRecoverableSessionError(e: any): boolean {
+        return !!e && typeof e.code === 'number' && HSM.RECOVERABLE_PKCS11_CODES.has(e.code);
+    }
+
+    // Re-establish the PKCS#11 session and re-login, to recover from a stale/dropped
+    // session (see RECOVERABLE_PKCS11_CODES). Best-effort closes the old session first.
+    private reopenSession(): void {
+        logger.warn('Re-opening PKCS#11 session (previous session appears stale/broken)');
+        try {
+            this.pkcs11.C_CloseSession(this.session);
+        } catch (e) {
+            // old session is already gone / unusable - ignore and open a fresh one
+        }
+        this.slot = this.selectSlot();
+        this.session = this.pkcs11.C_OpenSession(this.slot, pkcs11js.CKF_RW_SESSION | pkcs11js.CKF_SERIAL_SESSION);
+        this.pkcs11.C_Login(this.session, pkcs11js.CKU_USER, PIN);
+        logger.info('PKCS#11 session re-opened and re-logged in');
     }
 
     private decodeASN1Data(buffer: Buffer): Buffer {
@@ -281,18 +350,47 @@ class HSM implements HSMFacade {
 
         const { signMechanism: mechanism } = algoInfo;
 
-        // Find the private key by ID
-        let provKeyObj = this.getPrivateKeyObject(keyId);
+        // Sign with a BOUNDED retry. A stale/dropped session (e.g. Luna idle-dropping its
+        // NTLS link) surfaces as CKR_DEVICE_ERROR / CKR_SESSION_* on the first PKCS#11 call
+        // here. On such a recoverable error we re-open the session once and retry; any other
+        // error, or exhausting MAX_SIGN_ATTEMPTS, is logged and re-thrown so the caller gets
+        // a real failure. It never retries forever.
+        let lastError: any;
+        for (let attempt = 1; attempt <= HSM.MAX_SIGN_ATTEMPTS; attempt++) {
+            try {
+                // Find the private key by ID
+                const provKeyObj = this.getPrivateKeyObject(keyId);
 
-        // Sign the payload. Algorithm is provided here and curve is defined on the private key attributes
-        this.pkcs11.C_SignInit(this.session, { mechanism }, provKeyObj);
-        //EC signatures are represented as a 32-bit R followed by a 32-bit S value, and not ASN.1 encoded.
-        const signature: Buffer = this.pkcs11.C_Sign(this.session, Buffer.from(payload, 'hex'), Buffer.alloc(64));
-        const signatureInHex: string = signature.toString('hex');
+                // Sign the payload. Algorithm is provided here and curve is defined on the private key attributes
+                this.pkcs11.C_SignInit(this.session, { mechanism }, provKeyObj);
+                //EC signatures are represented as a 32-bit R followed by a 32-bit S value, and not ASN.1 encoded.
+                const signature: Buffer = this.pkcs11.C_Sign(this.session, Buffer.from(payload, 'hex'), Buffer.alloc(64));
+                const signatureInHex: string = signature.toString('hex');
 
-        logger.info(`Signed with key id ${keyId} signature hex: ${signatureInHex}`);
-
-        return signatureInHex;
+                logger.info(`Signed with key id ${keyId} signature hex: ${signatureInHex}`);
+                return signatureInHex;
+            } catch (e: any) {
+                lastError = e;
+                const code = (e && typeof e.code === 'number') ? e.code : 'n/a';
+                if (this.isRecoverableSessionError(e) && attempt < HSM.MAX_SIGN_ATTEMPTS) {
+                    logger.warn(`Sign attempt ${attempt}/${HSM.MAX_SIGN_ATTEMPTS} for key ${keyId} failed with recoverable PKCS#11 error (code=${code}): ${e?.message ?? e}. Re-opening session and retrying.`);
+                    try {
+                        this.reopenSession();
+                    } catch (reopenErr: any) {
+                        logger.error(`Failed to re-open PKCS#11 session while recovering sign for key ${keyId}: ${reopenErr?.message ?? reopenErr}`);
+                        throw reopenErr;
+                    }
+                    continue;
+                }
+                // Non-recoverable error, or retries exhausted: report and stop (no infinite retry).
+                logger.error(`Sign failed for key ${keyId} after ${attempt} attempt(s) (PKCS#11 code=${code}): ${e?.message ?? e}`);
+                throw e;
+            }
+        }
+        // Unreachable in practice (the loop returns or throws), but keeps types happy and
+        // guarantees a thrown error rather than an undefined return.
+        logger.error(`Sign failed for key ${keyId}: exhausted ${HSM.MAX_SIGN_ATTEMPTS} attempts`);
+        throw lastError;
     }
 
     //implemented only for ECDSA
