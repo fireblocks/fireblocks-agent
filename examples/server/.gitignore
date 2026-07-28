@@ -7,7 +7,7 @@ node_modules
 # Place 610-000397-019_SW_Linux_Luna_Client_V10.9.3_RevA.tar (or newer) here at build time.
 luna/
 
-# Local-only build variants of Dockerfile.luna (site-specific CA / registry).
-# Never commit: they are host/network specific.
+# Local-only, corporate-network build of Dockerfile.luna (Zscaler CA + internal JFrog
+# registry). Never commit: it and its per-Dockerfile ignore are host/network specific.
 Dockerfile.luna.local
 Dockerfile.luna.local.*

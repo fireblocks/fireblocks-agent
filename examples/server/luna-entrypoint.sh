@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Luna HSM client entrypoint for the KeyLink customer-server example (Thales Luna).
+# Luna HSM client entrypoint for the KeyLink customer-server example (Thales, Phase 3).
 #
 # On container start: if the Luna client is installed AND Luna credentials are present
 # in the environment, register this client with the Luna Network HSM appliance
@@ -57,7 +57,7 @@ register_luna() {
     fi
 
     log "Registering Luna client '${LUNA_CLIENT_NAME}' with appliance '${LUNA_HOST}' (partition '${LUNA_PARTITION}', user '${LUNA_APPLIANCE_USER}')..."
-    # Invocation matches the proven working form:
+    # Invocation matches the proven working form from keylink-flow MR !35:
     #   lunacm -q clientconfig deploy -server … -user … -password … -client … -partition … -force
     # Notes (verified against Luna Client v10.9.3-43):
     #   * You MUST run the command as `lunacm -q <command>` (or -c). Bare positional args are

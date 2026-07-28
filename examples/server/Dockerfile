@@ -2,7 +2,7 @@
 #
 # Migrated from alpine:3.15 (musl) to ubuntu:22.04 (glibc). Thales Luna's client
 # ships a glibc-linked PKCS#11 module (libCryptoki2_64.so) that will not load under
-# musl, so a glibc base is required for the Luna client. glibc is also fine — and
+# musl, so a glibc base is required for Phase 2 (Luna). glibc is also fine — and
 # quicker to provision (prebuilt apt package vs. source build) — for SoftHSM.
 #
 # NOTE: on Ubuntu/apt the SoftHSM PKCS#11 module lives at
@@ -73,9 +73,4 @@ RUN npm install \
 
 EXPOSE 5000
 # CMD npm run start
-# Accepted risk: this is the local example/reference customer server (not the shipped
-# agent). It runs as root by design — the SoftHSM/Luna HSM setup writes to system paths
-# (/tokens, /usr/safenet, /etc) that require root, and this image is only used for local
-# demos. Same posture as prior releases. Not hardened to non-root deliberately.
-# nosemgrep: dockerfile.security.missing-user.missing-user
 CMD ["npm", "run", "start:dev"]
