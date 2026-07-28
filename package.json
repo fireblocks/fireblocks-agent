@@ -37,7 +37,7 @@
     "@types/figlet": "^1.5.8",
     "@types/jest": "^29.0.0",
     "@types/jsonwebtoken": "^9.0.5",
-    "@types/node": "20.10.0",
+    "@types/node": "^22.20.0",
     "@types/ws": "8.18.1",
     "axios-mock-adapter": "^1.22.0",
     "chance": "^1.1.11",
@@ -54,17 +54,19 @@
   },
   "dependencies": {
     "@inquirer/password": "^1.1.14",
-    "axios": "^1.6.2",
+    "axios": "^1.18.1",
     "chalk": "^4.0.0",
     "dotenv": "^16.3.1",
     "figlet": "^1.7.0",
     "jsonwebtoken": "^9.0.2",
     "ora": "^5.0.0",
-    "pm2": "^5.3.0",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^5.0.0",
     "ws": "8.21.1"
+  },
+  "overrides": {
+    "jws": "^3.2.3"
   },
   "husky": {
     "hooks": {

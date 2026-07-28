@@ -24,7 +24,7 @@ export interface HSMFacade {
 // PKCS#11 configuration. Defaults target SoftHSM as installed on the Ubuntu base
 // image; override via environment variables to point at another HSM.
 //
-// Thales Luna example values:
+// Thales Luna (Phase 2) example values:
 //   HSM_MODULE=/usr/safenet/lunaclient/lib/libCryptoki2_64.so
 //   HSM_PIN=<Crypto Officer password of the partition>
 //   HSM_SLOT_LABEL=<label of the assigned Luna partition>
