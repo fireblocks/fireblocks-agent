@@ -33,9 +33,10 @@ import fbServerApi, { buildResponseObject } from './fb-server.api';
 import wsApi from './fb-server-ws.api';
 import logger from './logger';
 import { FBMessageEnvelope, MessageEnvelop, MessageStatus } from '../types';
-import { WS_MAX_PAYLOAD_BYTES, WS_OPEN_TIMEOUT_MS, WS_PING_INTERVAL_MS } from '../constants';
+import { WS_CONNECT_TIMEOUT_MS, WS_MAX_PAYLOAD_BYTES, WS_OPEN_TIMEOUT_MS, WS_PING_INTERVAL_MS } from '../constants';
 
 const RECONNECT_BASE_MS = 1_000;
+const RECONNECT_MAX_MS = 30_000;
 
 const MockWebSocket: any = require('ws');
 
@@ -428,6 +429,259 @@ describe('fb-server-ws.api', () => {
     jest.advanceTimersByTime(RECONNECT_BASE_MS);
     await flushMicrotasks();
     expect(MockWebSocket).toHaveBeenCalledTimes(2);
+  });
+
+  // Drive the fake clock forward in small steps until `predicate` holds, capped so a wedged
+  // agent fails the assertion that follows instead of hanging the test run. Deliberately does
+  // NOT reference the watchdog constant: the requirement is "recovers within a bounded time",
+  // not "recovers after exactly N ms".
+  const advanceUntil = async (predicate: () => boolean, capMs = 10 * 60 * 1000) => {
+    const step = 500;
+    for (let elapsed = 0; elapsed < capMs && !predicate(); elapsed += step) {
+      jest.advanceTimersByTime(step);
+      await flushMicrotasks();
+    }
+  };
+
+  it('reconnects when the access-token fetch on a retry never settles', async () => {
+    jest.useFakeTimers();
+    // The second fetch hangs forever: MAG accepted the TCP connection and never replied, so the
+    // promise neither resolves nor rejects. connect() is parked before it builds a socket, and
+    // the reconnect timer that got it here has already been cleared -- nothing is armed.
+    jest
+      .spyOn(fbServerApi, 'getAccessToken')
+      .mockResolvedValueOnce('access-token')
+      .mockReturnValueOnce(new Promise<string>(() => undefined) as any)
+      .mockResolvedValue('access-token');
+
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+    const first = MockWebSocket.instances[0];
+    first.emit('open');
+
+    first.emit('close', 1006, Buffer.from('dropped'));
+    jest.advanceTimersByTime(RECONNECT_BASE_MS);
+    await flushMicrotasks();
+
+    // the retry is parked on the hung fetch, so no second socket exists yet
+    expect(MockWebSocket).toHaveBeenCalledTimes(1);
+
+    await advanceUntil(() => MockWebSocket.mock.calls.length > 1);
+
+    // a hang must not be terminal: the attempt is abandoned and a fresh one takes its place
+    expect(MockWebSocket).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not build a second socket when an abandoned token fetch resolves late', async () => {
+    jest.useFakeTimers();
+    let resolveStalled: (token: string) => void = () => undefined;
+    jest
+      .spyOn(fbServerApi, 'getAccessToken')
+      .mockResolvedValueOnce('access-token')
+      .mockReturnValueOnce(new Promise<string>((resolve) => (resolveStalled = resolve)) as any)
+      .mockResolvedValue('access-token');
+
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+    const first = MockWebSocket.instances[0];
+    first.emit('open');
+    first.emit('close', 1006, Buffer.from('dropped'));
+
+    // let the watchdog abandon the stalled attempt and a later one succeed
+    await advanceUntil(() => MockWebSocket.mock.calls.length > 1);
+    expect(MockWebSocket).toHaveBeenCalledTimes(2);
+    MockWebSocket.instances[1].emit('open');
+
+    // the gateway finally answers the request we gave up on. That continuation must not resume:
+    // it would construct a socket alongside the healthy one, and whichever lost the race would
+    // keep its handlers pointed at a client that no longer tracks it.
+    resolveStalled('access-token');
+    await flushMicrotasks();
+
+    expect(MockWebSocket).toHaveBeenCalledTimes(2);
+  });
+
+  it('fences an abandoned attempt when the watchdog fires, not when the next connect() runs', async () => {
+    jest.useFakeTimers();
+    let resolveStalled: (token: string) => void = () => undefined;
+    jest
+      .spyOn(fbServerApi, 'getAccessToken')
+      .mockResolvedValueOnce('access-token')
+      .mockReturnValueOnce(new Promise<string>((resolve) => (resolveStalled = resolve)) as any)
+      .mockResolvedValue('access-token');
+
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+    const first = MockWebSocket.instances[0];
+    first.emit('open');
+    first.emit('close', 1006, Buffer.from('dropped'));
+
+    // the retry parks on the hung fetch
+    jest.advanceTimersByTime(RECONNECT_BASE_MS);
+    await flushMicrotasks();
+    expect(MockWebSocket).toHaveBeenCalledTimes(1);
+
+    // the connect watchdog gives up on that attempt and schedules a replacement, but the
+    // backoff timer has not fired yet -- this is the gap between abandonment and retry.
+    jest.advanceTimersByTime(WS_CONNECT_TIMEOUT_MS);
+    await flushMicrotasks();
+    expect(MockWebSocket).toHaveBeenCalledTimes(1);
+
+    // The gateway answers inside that gap. The abandoned continuation must already be fenced:
+    // if it is only fenced when the next connect() bumps the generation, it resumes here, builds
+    // a socket, and the scheduled reconnect then overwrites it -- leaving the first one open,
+    // untracked, and still mutating shared state.
+    resolveStalled('access-token');
+    await flushMicrotasks();
+    expect(MockWebSocket).toHaveBeenCalledTimes(1);
+
+    // the replacement attempt is the only one that gets to build a socket
+    await advanceUntil(() => MockWebSocket.mock.calls.length > 1);
+    expect(MockWebSocket).toHaveBeenCalledTimes(2);
+    MockWebSocket.instances[1].emit('open');
+    expect(wsApi.isConnected()).toBe(true);
+  });
+
+  it('ignores a late open from a socket the open watchdog already terminated', async () => {
+    jest.useFakeTimers();
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+
+    const stalled = MockWebSocket.instances[0];
+    // never emit 'open': the open watchdog terminates it and schedules a reconnect
+    jest.advanceTimersByTime(WS_OPEN_TIMEOUT_MS);
+    expect(stalled.terminate).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(RECONNECT_BASE_MS);
+    await flushMicrotasks();
+    const healthy = MockWebSocket.instances[1];
+    healthy.emit('open');
+    expect(wsApi.isConnected()).toBe(true);
+
+    // terminate() tears down the transport but does not retract an 'open' already queued on the
+    // event loop (the 101 can land just as the watchdog fires). That handler must not run against
+    // the replacement's state: unguarded it disarms the current connect timer, resets backoff, and
+    // rebinds the keep-alive interval to the dead socket -- whose first tick stops it, leaving the
+    // live connection with no keep-alive at all for the rest of its life.
+    stalled.emit('open');
+
+    jest.advanceTimersByTime(WS_PING_INTERVAL_MS);
+    expect(healthy.ping).toHaveBeenCalledTimes(1);
+    healthy.emit('pong');
+    jest.advanceTimersByTime(WS_PING_INTERVAL_MS);
+
+    expect(healthy.ping).toHaveBeenCalledTimes(2);
+    expect(healthy.terminate).not.toHaveBeenCalled();
+  });
+
+  it('ignores a pong from a superseded socket so it cannot mask a half-dead connection', async () => {
+    jest.useFakeTimers();
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+
+    const first = MockWebSocket.instances[0];
+    first.emit('open');
+    first.emit('close', 1006, Buffer.from('dropped'));
+    jest.advanceTimersByTime(RECONNECT_BASE_MS);
+    await flushMicrotasks();
+
+    const healthy = MockWebSocket.instances[1];
+    healthy.emit('open');
+
+    // first interval: the connection looked alive -> ping and clear the liveness flag
+    jest.advanceTimersByTime(WS_PING_INTERVAL_MS);
+    expect(healthy.ping).toHaveBeenCalledTimes(1);
+
+    // A pong from the socket we already replaced. `isAlive` is a single field shared across
+    // generations, so unguarded this marks the CURRENT connection alive on evidence from a dead
+    // one and suppresses a round of half-dead detection.
+    first.emit('pong');
+
+    jest.advanceTimersByTime(WS_PING_INTERVAL_MS);
+    expect(healthy.terminate).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not deliver a message that arrives on a superseded socket', async () => {
+    jest.useFakeTimers();
+    const onMessages = jest.fn();
+    wsApi.start(onMessages);
+    await flushMicrotasks();
+
+    const first = MockWebSocket.instances[0];
+    first.emit('open');
+    first.emit('close', 1006, Buffer.from('dropped'));
+    jest.advanceTimersByTime(RECONNECT_BASE_MS);
+    await flushMicrotasks();
+    MockWebSocket.instances[1].emit('open');
+
+    // An envelope buffered on the replaced socket cannot be acked -- acks ride `this.ws`, which is
+    // now the new connection, and MAG maps msgId -> deliveryTag per-connection. Handling it would
+    // sign a message whose ack silently no-ops. MAG redelivers it on the live connection instead.
+    first.emit('message', Buffer.from(JSON.stringify({ msg: 'signed.jwt.token', msgId: 42, deviceId: 'device-id' })));
+
+    expect(onMessages).not.toHaveBeenCalled();
+  });
+
+  it('leaves an established connection alone once the connect budget elapses', async () => {
+    jest.useFakeTimers();
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+
+    const socket = MockWebSocket.instances[0];
+    socket.emit('open');
+
+    // Stay connected and healthy well past WS_CONNECT_TIMEOUT_MS. The connect watchdog covers the
+    // attempt only; if it survived into the open connection it would terminate a working socket
+    // on a fixed timer. armOpenWatchdog() taking over `connectTimer` is what prevents that.
+    const intervals = Math.ceil(WS_CONNECT_TIMEOUT_MS / WS_PING_INTERVAL_MS) + 2;
+    for (let i = 0; i < intervals; i++) {
+      jest.advanceTimersByTime(WS_PING_INTERVAL_MS);
+      socket.emit('pong');
+    }
+    await flushMicrotasks();
+
+    expect(socket.terminate).not.toHaveBeenCalled();
+    expect(MockWebSocket).toHaveBeenCalledTimes(1);
+    expect(wsApi.isConnected()).toBe(true);
+  });
+
+  it('does not disturb a healthy connection when an abandoned token fetch later fails', async () => {
+    jest.useFakeTimers();
+    let rejectStalled: (e: Error) => void = () => undefined;
+    jest
+      .spyOn(fbServerApi, 'getAccessToken')
+      .mockResolvedValueOnce('access-token')
+      .mockReturnValueOnce(new Promise<string>((_, reject) => (rejectStalled = reject)) as any)
+      .mockResolvedValue('access-token');
+
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+    MockWebSocket.instances[0].emit('open');
+    MockWebSocket.instances[0].emit('close', 1006, Buffer.from('dropped'));
+
+    await advanceUntil(() => MockWebSocket.mock.calls.length > 1);
+    const healthy = MockWebSocket.instances[1];
+    healthy.emit('open');
+    expect(wsApi.isConnected()).toBe(true);
+
+    // The request we gave up on eventually errors -- typically when the gateway that was holding
+    // it open resets the connection, which can be minutes later and long after a good connection
+    // has been established. Its catch must not schedule a reconnect: that would replace a working
+    // socket with a new one and leave the old one open but untracked.
+    rejectStalled(new Error('socket hang up'));
+    await flushMicrotasks();
+    // Well past the maximum backoff, so any reconnect this scheduled would have fired. Pongs keep
+    // the socket healthy meanwhile, otherwise the keep-alive would terminate it for its own
+    // reasons and mask what is being tested here.
+    for (let elapsed = 0; elapsed < RECONNECT_MAX_MS * 2; elapsed += WS_PING_INTERVAL_MS) {
+      jest.advanceTimersByTime(WS_PING_INTERVAL_MS);
+      healthy.emit('pong');
+    }
+    await flushMicrotasks();
+
+    expect(MockWebSocket).toHaveBeenCalledTimes(2);
+    expect(healthy.terminate).not.toHaveBeenCalled();
+    expect(wsApi.isConnected()).toBe(true);
   });
 
   it('keeps pinging (no terminate) while pongs keep the connection alive', async () => {

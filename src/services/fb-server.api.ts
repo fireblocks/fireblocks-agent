@@ -11,7 +11,7 @@ import {
   PairDeviceRequest,
   PairDeviceResponse,
 } from 'types';
-import { MOBILE_GATEWAY_URL } from '../constants';
+import { FB_HTTP_TIMEOUT_MS, FB_LONG_POLL_TIMEOUT_MS, MOBILE_GATEWAY_URL } from '../constants';
 import { AGENT_VERSION } from '../version';
 import deviceService from './device.service';
 import logger from './logger';
@@ -73,7 +73,9 @@ const fbServerApi = {
   pairDevice: async (pairDevice: PairDeviceRequest): Promise<PairDeviceResponse> => {
     try {
       logger.info(`Pairing using ${MOBILE_GATEWAY_URL}/pair_device`);
-      const res = await axios.post(`${MOBILE_GATEWAY_URL}/pair_device`, pairDevice);
+      const res = await axios.post(`${MOBILE_GATEWAY_URL}/pair_device`, pairDevice, {
+        timeout: FB_HTTP_TIMEOUT_MS,
+      });
       return res.data;
     } catch (e) {
       logger.error(`Error on pairDevice request ${e.message}`);
@@ -87,7 +89,9 @@ const fbServerApi = {
       return cachedAccessToken;
     }
     try {
-      const res = await axios.post(`${MOBILE_GATEWAY_URL}/access_token`, accessTokenReq);
+      const res = await axios.post(`${MOBILE_GATEWAY_URL}/access_token`, accessTokenReq, {
+        timeout: FB_HTTP_TIMEOUT_MS,
+      });
       const token: AccessToken = res.data.accessToken;
       rememberAccessToken(token, now);
       return token;
@@ -143,7 +147,13 @@ const fbServerApi = {
   getMessages: async (): Promise<FBMessageEnvelope[]> => {
     try {
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
-      const res = await axios.get(`${MOBILE_GATEWAY_URL}/msg?useBatch=true`, buildHeaders(accessToken));
+      // Long poll: MAG holds this open until a message arrives, so it gets the long-poll deadline
+      // rather than the short one. Still bounded -- an unsettled poll would wedge the HTTP-mode
+      // loop in fireblocks-agent.ts permanently.
+      const res = await axios.get(
+        `${MOBILE_GATEWAY_URL}/msg?useBatch=true`,
+        buildHeaders(accessToken, FB_LONG_POLL_TIMEOUT_MS),
+      );
       const messages = res.data;
       if (messages) {
         return Array.isArray(messages) ? messages : [messages];
@@ -183,12 +193,14 @@ const fbServerApi = {
   },
 };
 
-function buildHeaders(accessToken: AccessToken) {
+// Every authenticated call goes through here, so the deadline defaults ON: a new endpoint added
+// later is bounded unless it deliberately opts out. Only the long poll passes its own value.
+function buildHeaders(accessToken: AccessToken, timeout: number = FB_HTTP_TIMEOUT_MS) {
   const headers = {
     'x-access-token': accessToken,
     'User-Agent': `FireblocksAgent/${AGENT_VERSION}`,
   };
-  return { headers };
+  return { headers, timeout };
 }
 
 export default fbServerApi;

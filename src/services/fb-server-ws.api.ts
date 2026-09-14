@@ -1,7 +1,13 @@
 import crypto from 'crypto';
 import WebSocket from 'ws';
 import { FBMessageEnvelope, MessageEnvelop, MessageStatus } from 'types';
-import { MOBILE_GATEWAY_URL, WS_MAX_PAYLOAD_BYTES, WS_OPEN_TIMEOUT_MS, WS_PING_INTERVAL_MS } from '../constants';
+import {
+  MOBILE_GATEWAY_URL,
+  WS_CONNECT_TIMEOUT_MS,
+  WS_MAX_PAYLOAD_BYTES,
+  WS_OPEN_TIMEOUT_MS,
+  WS_PING_INTERVAL_MS,
+} from '../constants';
 import deviceService from './device.service';
 import fbServerApi, { buildResponseObject } from './fb-server.api';
 import logger from './logger';
@@ -21,7 +27,14 @@ export type MessagesHandler = (messages: FBMessageEnvelope[]) => void;
  * over the same socket ({ msgId, nack: false }) — MAG maps msgId -> deliveryTag
  * per-connection. Sign responses still go over the existing HTTP endpoints.
  *
- * Liveness has THREE layers so a stalled connection can never wedge delivery:
+ * Liveness has FOUR layers so a stalled connection can never wedge delivery. Between them
+ * they leave no phase of the connection lifecycle without an armed timer — which matters
+ * because the reconnect chain is the ONLY delivery mechanism in push mode (there is no
+ * concurrent long-poll to fall back on), so a single unarmed gap ends delivery for good:
+ *   0. a connect watchdog covering the whole ATTEMPT, armed before the access-token fetch
+ *      that connect() begins with. That fetch happens with no socket yet and with the
+ *      reconnect timer already cleared, so if it hangs rather than fails there is nothing
+ *      left to fire and the chain dies silently.
  *   1. handshakeTimeout on the socket + an explicit open-watchdog timer covering the
  *      CONNECTING phase — if the upgrade never completes (TCP connected but no 101)
  *      we terminate and reconnect instead of sitting forever with no timer armed.
@@ -30,6 +43,11 @@ export type MessagesHandler = (messages: FBMessageEnvelope[]) => void;
  *      treated as half-dead, terminated, and reconnected (exponential backoff with
  *      jitter, fresh access token per attempt).
  *   3. TCP SO_KEEPALIVE on the underlying socket as belt-and-suspenders.
+ *
+ * Every socket event handler opens with `if (this.ws !== ws) return;`, and every continuation that
+ * resumes after an await re-checks `attemptId`. Neither is decoration: a superseded generation that
+ * still mutates shared state (`this.ws`, `pingTimer`, `isAlive`, the backoff) is how a layer above
+ * ends up disarmed on the connection that is actually live.
  *
  * Ack delivery is AT-LEAST-ONCE BY DESIGN: acks ride the currently-connected
  * transport, and MAG maps msgId -> deliveryTag PER-CONNECTION. If the socket
@@ -48,6 +66,9 @@ class FbServerWsApi {
   private connectTimer: NodeJS.Timeout | null = null;
   private isAlive = false;
   private stopped = false;
+  // Monotonic id of the current connection attempt. Bumped on entry to connect(), so a
+  // continuation that resumes after its attempt was abandoned can tell it is stale.
+  private attemptId = 0;
 
   start(onMessages: MessagesHandler): void {
     this.stopped = false;
@@ -120,10 +141,16 @@ class FbServerWsApi {
     // Reset liveness for this fresh attempt so a stale `true` from a previous
     // generation can never suppress the first keep-alive check.
     this.isAlive = false;
+    // Cover this attempt BEFORE the token fetch. scheduleReconnect() cleared reconnectTimer to
+    // get here and no socket exists yet, so without this the client has nothing armed at all --
+    // a token fetch that hangs rather than fails would end the reconnect chain silently.
+    const attempt = ++this.attemptId;
+    this.armConnectWatchdog(attempt);
     try {
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
-      if (this.stopped) {
-        // stop() was called while we awaited the access token — don't create an orphan socket
+      if (this.stopped || this.attemptId !== attempt) {
+        // stop() was called, or the connect watchdog gave up on this fetch and a newer attempt
+        // has taken over, while we awaited the access token — don't create an orphan socket.
         return;
       }
       const wsUrl = MOBILE_GATEWAY_URL.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:') + WS_PATH;
@@ -141,6 +168,15 @@ class FbServerWsApi {
       this.armOpenWatchdog(ws);
 
       ws.on('open', () => {
+        if (this.ws !== ws) {
+          // Superseded socket. terminate() tears down the transport but does not retract an
+          // 'open' already queued on the event loop, so this can still fire after the open
+          // watchdog gave up on it. Running it against the replacement's state would disarm the
+          // current connect timer, reset backoff that had not earned it, and rebind pingTimer to
+          // a dead socket -- whose first tick calls stopKeepAlive(), leaving the LIVE connection
+          // with no keep-alive at all (stopKeepAlive only clears, it never re-arms).
+          return;
+        }
         this.clearConnectTimer();
         this.reconnectDelayMs = RECONNECT_BASE_MS;
         this.isAlive = true;
@@ -151,10 +187,22 @@ class FbServerWsApi {
 
       // any inbound traffic proves the connection is alive
       ws.on('pong', () => {
+        if (this.ws !== ws) {
+          // isAlive is one field shared across generations: a pong from a socket we already
+          // replaced would mark the CURRENT connection alive on evidence from a dead one and
+          // suppress a round of half-dead detection.
+          return;
+        }
         this.isAlive = true;
       });
 
       ws.on('message', (data: WebSocket.RawData) => {
+        if (this.ws !== ws) {
+          // An envelope buffered on a superseded socket cannot be acked: acks ride `this.ws` and
+          // MAG maps msgId -> deliveryTag per-connection, so the ack would silently no-op and the
+          // signature be wasted. Dropping it is safe -- MAG redelivers on the live connection.
+          return;
+        }
         this.isAlive = true;
         const text = data.toString();
         try {
@@ -202,9 +250,41 @@ class FbServerWsApi {
         this.scheduleReconnect();
       });
     } catch (e) {
+      if (this.attemptId !== attempt) {
+        // A fetch the connect watchdog already gave up on, failing late — typically when the
+        // gateway holding it open finally resets the connection, which can be long after a good
+        // connection has been established. Reconnecting here would replace a working socket.
+        logger.info(`WS: abandoned connect attempt failed late (${e.message}) - ignoring`);
+        return;
+      }
       logger.error(`WS: connect failed: ${e.message} - retrying in ~${this.reconnectDelayMs}ms`);
       this.scheduleReconnect();
     }
+  }
+
+  /**
+   * Watchdog for the pre-socket phase of a connection attempt: fetching the access token and
+   * constructing the socket. Shares `connectTimer` with the open watchdog, so armOpenWatchdog()
+   * hands over automatically the moment a socket exists and this can never outlive its attempt.
+   */
+  private armConnectWatchdog(attempt: number): void {
+    this.clearConnectTimer();
+    this.connectTimer = setTimeout(() => {
+      this.connectTimer = null;
+      if (this.stopped || this.attemptId !== attempt) {
+        return;
+      }
+      logger.error(
+        `WS: connect watchdog fired - no socket within ${WS_CONNECT_TIMEOUT_MS}ms ` +
+          '(access-token fetch stalled); abandoning this attempt and reconnecting',
+      );
+      // Fence the abandoned continuation NOW rather than leaving it to the next connect().
+      // scheduleReconnect() arms a jittered timer, and until it fires the abandoned attempt is
+      // still the current generation -- so a token resolving inside that gap would pass the guard
+      // after the await, build a socket, and then be overwritten (never closed) by the retry.
+      this.attemptId++;
+      this.scheduleReconnect();
+    }, WS_CONNECT_TIMEOUT_MS);
   }
 
   private armOpenWatchdog(ws: WebSocket): void {
