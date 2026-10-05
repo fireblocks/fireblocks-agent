@@ -1,3 +1,41 @@
+# 2.4.3 (2026-09-01)
+
+### Bug Fixes
+
+* **transport:** bound the WebSocket connection attempt so a stalled access-token fetch cannot deadlock the reconnect chain (WLT-12632)
+  - `connect()` began with an un-timeboxed `await getAccessToken()`, entered from a reconnect timer that had already cleared itself. During that await the client held no socket and no armed timer, so a gateway that accepted the TCP connection and then never responded — no RST, no FIN — left nothing that could ever run again. The `catch` that would have rescheduled needs a rejection, and a hang is the absence of an event
+  - Push mode has no concurrent long-poll, so the reconnect chain is the only delivery mechanism. One occurrence left an agent deaf to Fireblocks for 39 hours while presenting as fully healthy; recovery required a manual restart
+  - New `WS_CONNECT_TIMEOUT_MS` (default `60000`) covers the whole attempt including the token fetch, handing over to the existing open watchdog once a socket exists. An attempt counter prevents an abandoned fetch that settles late — whether it resolves or fails — from disturbing the connection that replaced it. The counter advances the moment the watchdog gives up, so a fetch that lands during the backoff gap is fenced too
+
+* **transport:** ignore socket events from a superseded WebSocket generation
+  - `open`, `pong`, and `message` ran unconditionally, unlike `close` and `error`. `terminate()` does not retract an `open` already queued on the event loop, so a socket the open watchdog had just torn down could still rebind the keep-alive interval to itself — and that interval stops on its first tick, leaving the live connection with no keep-alive for the rest of its life
+  - A `pong` from a replaced socket likewise marked the current connection alive, suppressing a round of half-dead detection, and a `message` on one would have been signed against an ack that silently no-ops
+
+* **customer-server:** deadlines on the customer-server calls
+  - `messagesStatus` and `messagesToSign` were unbounded in exactly the way `access_token` was. A hung `messagesStatus` is a permanent wedge, not a slow call: the status-poll loop schedules its next run only after the current one settles, so a customer server that accepts the connection and goes silent stops status updates for the life of the process
+  - `CUSTOMER_SERVER_TIMEOUT_MS` (default `30000`) and `CUSTOMER_SERVER_SIGN_TIMEOUT_MS` (default `120000`), split because `messagesToSign` waits on the customer's HSM rather than a lookup
+
+### Features
+
+* **pairing:** start already paired from `FB_DEVICE_DATA`
+  - Supplies an already-paired `{userId, deviceId, refreshToken}`, so a container pairs without a TTY and survives a restart with no persistent storage. Pair once elsewhere and copy the file
+  - Bearer credential: supply from a secret manager, never a committed `.env`. Only its use is logged, never its value
+  - Exits instead of hanging when unpaired with no TTY. The prompt never settles without a terminal, so the container would stay Ready while the agent silently did nothing
+
+* **transport:** deadlines on the Mobile API Gateway HTTP calls
+  - `FB_HTTP_TIMEOUT_MS` (default `30000`) applies to `access_token`, `pair_device`, `get_service_certificates`, the `msg` ack, and the HTTP broadcast. Node's HTTP client applies no deadline of its own, and no timeout was configured anywhere in the repo
+  - `FB_LONG_POLL_TIMEOUT_MS` (default `90000`) applies to `getMessages` only, which the gateway deliberately holds open. Bounded rather than exempt: in HTTP mode the poll loop has no other liveness check, so one unsettled request stops delivery for the life of the process. Sized from production APM — the gateway's poll window is ~20s (p99 20.24s) under a 60s infrastructure ceiling, so 90s clears both while keeping detection latency low
+  - The agent warns at startup if `FB_HTTP_TIMEOUT_MS` is configured at or above `WS_CONNECT_TIMEOUT_MS`. That ordering is load-bearing — the connect watchdog is the backstop and must fire second — but both are independently tunable, so it is checked rather than assumed
+
+### Chores
+
+* **config:** load the logger after `dotenv.config()` rather than through a hoisted static import — winston pulls in modules that read `process.env` at module scope (`@dabh/diagnostics`). No `.env*` in this repo sets the vars in question, so nothing was misconfigured; this removes the hazard and drops `constants.ts`'s static dependency on `services/`
+* **tests:** restore `process.env` in the two request-deadline suites, which pointed a gateway URL at an ephemeral port they then closed — `npm test` runs `--runInBand`, so every test file shares one process
+
+### Docs
+
+* **licence:** add `LICENSE.md` — the Fireblocks Key Link Agent Licence. The repository previously shipped with no licence file at all, and the README described the agent as "open-source", which it is not: the source is published so customers can install, run and audit it, but it remains Fireblocks' proprietary software and the licence expressly is not an open source licence. The README now states this and carries a Licence section, and the example server's `package.json` no longer claims `ISC`
+
 # 2.4.2 (2026-07-28)
 
 ### Security
@@ -47,71 +85,71 @@
 * **examples:** cluster mode for the example customer server — nginx load balancer in front of a
   pool of signer replicas; see `docs/cluster-setup-guide.md`
 
-# [1.7.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.6.0...v1.7.0) (2023-12-21)
+# 1.7.0 (2023-12-21)
 
 
 ### Features
 
-* **docker:** wip- prepare installation ([e4ab3a8](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/e4ab3a8f72e876b41b60884b759c7c4ce3c09ac8))
-* **installation:** wip ([4a2865b](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/4a2865bb36af82c56388e257704a8751676f740d))
+* **docker:** wip- prepare installation
+* **installation:** wip
 
-# [1.6.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.5.0...v1.6.0) (2023-12-20)
-
-
-### Features
-
-* **verify:** verify metadata and encodedMessage with zService and policy service ([075a715](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/075a7157bfc281eb637aa1eb1c9561b6cabf2672))
-* **verify:** verify metadata and zService jwt ([d0d036e](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/d0d036e8d81a8a0dc5de85086e93dadeb28de502))
-
-# [1.5.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.4.0...v1.5.0) (2023-12-18)
+# 1.6.0 (2023-12-20)
 
 
 ### Features
 
-* **integration:** wip starting to connect the dots ([1455e81](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/1455e816fbfe9592cf68f2d82dc7d4d334c3a317))
+* **verify:** verify metadata and encodedMessage with zService and policy service
+* **verify:** verify metadata and zService jwt
 
-# [1.4.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.3.0...v1.4.0) (2023-12-18)
-
-
-### Features
-
-* **example server:** support multi algorithms ([45a1fb7](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/45a1fb7a7529dac04ad71de11070be9aed61bcc3))
-
-# [1.3.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.2.0...v1.3.0) (2023-12-17)
+# 1.5.0 (2023-12-18)
 
 
 ### Features
 
-* **customer server:** randomly sign or reject transactions ([bd76297](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/bd76297e8496d74e37ae1843fbe8d6a3d4e10108))
+* **integration:** wip starting to connect the dots
 
-# [1.2.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.1.0...v1.2.0) (2023-12-12)
-
-
-### Features
-
-* **example server:** add pem public key to generateKeyPair ([a07c402](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/a07c402240ffa80da0ef421052f20ccbe34090e6))
-
-# [1.1.0](https://gitlab.com/fireblocks/shell/common/hsm-agent/compare/v1.0.0...v1.1.0) (2023-12-11)
+# 1.4.0 (2023-12-18)
 
 
 ### Features
 
-* **customer server:** add softHsm ([cf0b386](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/cf0b3862ff8472a446de463b70d5e25e564387a5))
+* **example server:** support multi algorithms
+
+# 1.3.0 (2023-12-17)
+
+
+### Features
+
+* **customer server:** randomly sign or reject transactions
+
+# 1.2.0 (2023-12-12)
+
+
+### Features
+
+* **example server:** add pem public key to generateKeyPair
+
+# 1.1.0 (2023-12-11)
+
+
+### Features
+
+* **customer server:** add softHsm
 
 # 1.0.0 (2023-12-07)
 
 
 ### Features
 
-* **accessToken:** get access token in loop ([b3398b2](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/b3398b282fb2471d7f81ea6e87eebbb50187ced6))
-* **agent:** pair flow ([98ab453](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/98ab4531217d99944ce7738f7d3f56280891c5f1))
-* **build:** try to add to CI ([eba0c49](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/eba0c493993e46ec1673cc7b9443ff18f0d361ce))
-* **ci:** fix build ([25ef0c1](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/25ef0c120cb910b5f2ca82a437cab58c7aa84472))
-* **CI:** integrating w/ CI ([2807319](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/2807319beb0411a70721f0e4502795c5bdd42db5))
-* **customer server client:** add customer server client + example server imple ([5b0f380](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/5b0f38045b247acd3d2530956be4c4c086a8b450))
-* **customerServer:** hsm <> customer server communication ([9cacf92](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/9cacf929fb985c1092381e2bc65c03356c6f1a15))
-* **env:** add support for dev env ([8038819](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/803881944f30120ca7f9107342feda8f7c0e41bb))
-* **loop:** wip add handle message logic ([cdd3813](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/cdd38130682f9f6aea46587960d21e9ce06f7d52))
-* **main loop:** pull messages ([c8b5683](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/c8b56838241bb5ab9acb41296b31150e355af940))
-* **messageService:** closed the loop from getting a message through sending it to customer server ([37aa62b](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/37aa62b3140179a373ecbb1bd0621792dd74b62d))
-* **pair:** working pair flow ([c10ccee](https://gitlab.com/fireblocks/shell/common/hsm-agent/commit/c10ccee2184d5611e021c3527be9ff13f2fe971a))
+* **accessToken:** get access token in loop
+* **agent:** pair flow
+* **build:** try to add to CI
+* **ci:** fix build
+* **CI:** integrating w/ CI
+* **customer server client:** add customer server client + example server imple
+* **customerServer:** hsm <> customer server communication
+* **env:** add support for dev env
+* **loop:** wip add handle message logic
+* **main loop:** pull messages
+* **messageService:** closed the loop from getting a message through sending it to customer server
+* **pair:** working pair flow

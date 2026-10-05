@@ -4,6 +4,7 @@
   "name": "@fireblocks/hsm-agent",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",
     "url": "https://github.com/fireblocks/fireblocks-agent.git"
