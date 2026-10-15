@@ -2,7 +2,7 @@
 
 ### Bug Fixes
 
-* **transport:** bound the WebSocket connection attempt so a stalled access-token fetch cannot deadlock the reconnect chain (WLT-12632)
+* **transport:** bound the WebSocket connection attempt so a stalled access-token fetch cannot deadlock the reconnect chain
   - `connect()` began with an un-timeboxed `await getAccessToken()`, entered from a reconnect timer that had already cleared itself. During that await the client held no socket and no armed timer, so a gateway that accepted the TCP connection and then never responded — no RST, no FIN — left nothing that could ever run again. The `catch` that would have rescheduled needs a rejection, and a hang is the absence of an event
   - Push mode has no concurrent long-poll, so the reconnect chain is the only delivery mechanism. One occurrence left an agent deaf to Fireblocks for 39 hours while presenting as fully healthy; recovery required a manual restart
   - New `WS_CONNECT_TIMEOUT_MS` (default `60000`) covers the whole attempt including the token fetch, handing over to the existing open watchdog once a socket exists. An attempt counter prevents an abandoned fetch that settles late — whether it resolves or fails — from disturbing the connection that replaced it. The counter advances the moment the watchdog gives up, so a fetch that lands during the backoff gap is fenced too

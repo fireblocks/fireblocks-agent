@@ -17,8 +17,8 @@ export const CUSTOMER_SERVER_AUTHORIZATION = process.env.CUSTOMER_SERVER_AUTHORI
 // Caveat when tuning: in KeyLink Flow this call lands on getMessagesStatus, which opens with an
 // unfiltered $group over the whole `messages` collection (no $match, no index beyond _id, nothing
 // ever deleted -- archiving is a flag). Its cost grows with the deployment's lifetime message
-// count, so this deadline sits on top of a scan that gets slower forever. Removing that scan is
-// WLT-12843; raising this value is not the fix for it.
+// count, so this deadline sits on top of a scan that gets slower forever. Raising this value is not the fix
+// for a slow scan; the scan itself has to get cheaper.
 const customerServerTimeoutMs = Number(process.env.CUSTOMER_SERVER_TIMEOUT_MS);
 export const CUSTOMER_SERVER_TIMEOUT_MS =
   Number.isFinite(customerServerTimeoutMs) && customerServerTimeoutMs > 0 ? customerServerTimeoutMs : 30000;
