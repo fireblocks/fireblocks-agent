@@ -1,4 +1,4 @@
-# 2.4.3 (2026-09-01)
+# 2.4.3 (2026-10-05)
 
 ### Bug Fixes
 
@@ -84,6 +84,85 @@
 * **resilience:** process-level `unhandledRejection` and `uncaughtException` handlers
 * **examples:** cluster mode for the example customer server — nginx load balancer in front of a
   pool of signer replicas; see `docs/cluster-setup-guide.md`
+
+# 2.2.8 (2025-01-15)
+
+### Performance
+
+* **agent:** the agent polls for the next batch of messages without waiting for the current batch to be signed and acknowledged; handling runs in the background and its errors are logged
+
+# 2.2.7 (2024-12-23)
+
+### Security
+
+* **transport:** stop writing the Fireblocks access token to `accessToken.log` in the working directory on every token refresh
+
+# 2.2.6 (2024-12-04)
+
+### Features
+
+* **examples:** `POST /signRequest/:requestId` on the example customer server signs a single pending request, for Cold mode; the example's default `HSM_MODE` is now `HOT`
+
+# 2.2.5 (2024-12-03)
+
+### Bug Fixes
+
+* **messages:** a message from Fireblocks that fails signature verification is acknowledged and discarded instead of being delivered again; the error log names its `msgId`, type and `requestId`
+
+# 2.2.4 (2024-10-10)
+
+### Bug Fixes
+
+* **examples:** the example customer server called `logger.warning`, which doesn't exist, when it couldn't read its database statistics; it now calls `logger.warn`
+
+# 2.2.3 (2024-09-30)
+
+### Features
+
+* **pairing:** support re-enrolling a device: Fireblocks now assigns the device ID at pairing, instead of the agent generating one
+* **messages:** a message leaves the agent's cache once its response is acknowledged
+* **logging:** the agent version appears in the startup output and the "waiting for messages" log, with more logging of cache and batch sizes
+* **examples:** the example customer server stores only messages it hasn't seen, leaving existing ones untouched, and logs signing statistics
+
+# 2.1.2 (2024-08-12)
+
+### Features
+
+* **transport:** signed responses are broadcast in batches of `BROADCAST_BATCH_SIZE` (default `30`)
+
+# 2.1.1 (2024-08-08)
+
+### Features
+
+* **messages:** better handling of large message volumes
+  - Broadcasts and acks for a batch run concurrently instead of one at a time
+  - A response is broadcast even when its message has no current `msgId`, and acknowledged only when it has one; a change in Fireblocks' `msgId` prefix invalidates the cached IDs
+  - `AGENT_REQUESTS_CACHE_SIZE` default raised from `1024` to `2048`
+* **examples:** the example customer server signs on receipt only when `HSM_MODE` is `HOT`; in `COLD` it stores messages until `POST /signAllPendingMessages` (optionally in random order with `SIGNING_ORDER=RANDOM`)
+
+# 2.0.1 (2024-07-21)
+
+### Bug Fixes
+
+* **messages:** a message that can't be decoded or verified is logged and skipped instead of failing the rest of its batch
+* **tls:** an `SSL_CERT_PATH` that points at a missing file no longer stops the agent from starting
+
+# 2.0.0 (2024-07-18)
+
+Agent V2: new message format and signing flow.
+
+### Features
+
+* **messages:** new message structure, including proof-of-ownership messages for external keys; signed responses are broadcast to Fireblocks with the original message payload
+* **transport:** requests to Fireblocks carry `User-Agent: FireblocksAgent/<version>`
+* **tls:** customer servers with a self-signed certificate, via `SSL_CERT_PATH`; keep-alive connections to the customer server
+* **config:** `CUSTOMER_SERVER_AUTHORIZATION`, `CUSTOMER_SERVER_PULL_CADENCE_MS` and `AGENT_REQUESTS_CACHE_SIZE`; production is the default environment
+* **logging:** daily rotating log files, with timestamps
+* **examples:** the example customer server's HSM layer was rewritten without external dependencies, adds EdDSA and checks for supported algorithms, and can serve HTTPS with a self-signed certificate
+
+### Bug Fixes
+
+* **agent:** network errors and exceptions while handling messages no longer crash the agent; unexpected responses from the customer server are ignored
 
 # 1.7.0 (2023-12-21)
 

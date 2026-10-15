@@ -1,5 +1,5 @@
 {
-  "version": "1.7.0",
+  "version": "2.4.3",
   "description": "HSM Agent",
   "name": "@fireblocks/hsm-agent",
   "main": "dist/index.js",
