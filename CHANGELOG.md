@@ -1,3 +1,10 @@
+# 2.4.4 (2026-10-21)
+
+### Security
+
+* **runtime:** move the agent image and source runtime to Node.js 24.22.1, and the example server to the Node.js 24 release line, to pick up the October 2026 eMudhra CA distrust update. Refresh the agent image's Alpine CA certificates so its system trust store also removes the distrusted eMudhra certificates, roots, and cross-signs.
+* **example server:** the SoftHSM and Luna example images now fail the build if NodeSource installs a Node.js older than 24.22.1 (the repository can lag a security release by hours), or if Ubuntu's `ca-certificates` is older than `20260816ubuntu0.22.04.1`, so they cannot silently ship the old trust stores.
+
 # 2.4.3 (2026-10-05)
 
 ### Bug Fixes

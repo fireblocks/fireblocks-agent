@@ -57,14 +57,26 @@ RUN apt-get update \
      rpm \
   && rm -rf /var/lib/apt/lists/*
 
-# Node.js 18 via NodeSource (keyring-based apt repo; no piping a remote script to a shell).
+# Node.js 24 via NodeSource (keyring-based apt repo; no piping a remote script to a shell).
+# node_24.x picks up the October 2026 Node security releases that remove the compromised
+# eMudhra intermediates from the bundled root list
+# (https://nodejs.org/en/blog/vulnerability/october-2026-security-releases). Node 18 is EOL
+# and Node 20 is not receiving the fix, so this image moves to the 24.x line to stay on a
+# supported, fixed train. The NodeSource repo can lag a security release (it served 24.22.0 for
+# hours after 24.22.1 shipped), so the next step fails the build instead of shipping an older Node.
 RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
       | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg \
-  && echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" \
+  && echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" \
       > /etc/apt/sources.list.d/nodesource.list \
   && apt-get update \
   && apt-get install -y --no-install-recommends nodejs \
   && rm -rf /var/lib/apt/lists/*
+
+RUN node -e 'const [major, minor, patch] = process.versions.node.split(".").map(Number); if (major !== 24 || minor < 22 || (minor === 22 && patch < 1)) throw new Error("Node.js 24.22.1 or newer is required, found " + process.version)'
+
+# ca-certificates 20260816ubuntu0.22.04.1 is the first Ubuntu 22.04 build without the compromised
+# eMudhra intermediates' roots; fail the build rather than ship an older system trust store.
+RUN dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ca-certificates)" ge 20260816ubuntu0.22.04.1
 
 # ── Thales Luna HSM client ─────────────────────────────────────────────────────
 # Copy the vendor tarball from the gitignored build-context dir, extract it, and run
