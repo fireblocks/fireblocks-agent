@@ -78,8 +78,8 @@ KeyLink Flow is available to Fireblocks Key Link customers. To get access, conta
 
 | Requirement | Detail |
 | --- | --- |
-| Container runtime | Docker or any runtime that runs a standard image. The [Dockerfile](Dockerfile) builds on `node:18-alpine`. |
-| Node.js (source runs only) | Node.js 20, as pinned in [.nvmrc](.nvmrc). Needed only if you run the Agent outside the container. |
+| Container runtime | Docker or any runtime that runs a standard image. The [Dockerfile](Dockerfile) builds on `node:24.22.1-alpine`. |
+| Node.js (source runs only) | Node.js 24.22.1, as pinned in [.nvmrc](.nvmrc). Needed only if you run the Agent outside the container. |
 | Outbound to Fireblocks | HTTPS and WebSocket Secure (WSS) on port 443 to `MOBILE_GATEWAY_URL`. In production this is `https://mobile-api.fireblocks.io`. |
 | Outbound to your Customer Server | HTTP or HTTPS to `CUSTOMER_SERVER_URL`. |
 | Inbound | None. Open no inbound ports for the Agent. |
@@ -100,7 +100,7 @@ docker build -t fireblocks-agent:<release-tag> .
 
 What the image does, as defined in the [Dockerfile](Dockerfile):
 
-- Starts from `node:18-alpine` and works in `/app`.
+- Starts from `node:24.22.1-alpine` and works in `/app`.
 - Copies `.env.prod`, `src` and `api`, runs `npm install` and `npm run build`.
 - Installs `pm2` globally and starts the Agent with `pm2 start dist/index.js && pm2 attach 0`. `pm2` restarts the Agent process if it exits.
 - Sets no `USER`, so the container runs as root unless you override it.
