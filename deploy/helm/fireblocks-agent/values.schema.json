@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Fireblocks Agent chart values",
+  "description": "Types of the chart's values. The chart's own checks (in templates/_helpers.tpl) cover the combinations of values; see values.yaml for what each value does.",
+  "type": "object",
+  "additionalProperties": false,
+  "definitions": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string" },
+        "tag": { "type": ["string", "number"] },
+        "digest": { "type": "string" },
+        "pullPolicy": { "$ref": "#/definitions/pullPolicy" }
+      }
+    },
+    "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] },
+    "port": { "type": ["integer", "string"] },
+    "cidrs": { "type": "array", "items": { "type": "string" } },
+    "configMapOrSecretKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "configMap": { "type": "string" },
+        "secret": { "type": "string" },
+        "key": { "type": "string" }
+      }
+    },
+    "freeObject": { "type": "object" },
+    "freeObjectList": { "type": "array", "items": { "type": "object" } }
+  },
+  "properties": {
+    "global": { "type": "object" },
+    "platform": { "type": "string", "enum": ["openshift", "kubernetes"] },
+    "kubernetes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "podSecurityContext": { "$ref": "#/definitions/freeObject" }
+      }
+    },
+    "image": { "$ref": "#/definitions/image" },
+    "imagePullSecrets": { "$ref": "#/definitions/freeObjectList" },
+    "nameOverride": { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "mobileGatewayUrl": { "type": "string" },
+    "customerServer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string" },
+        "allowInsecureHttp": { "type": "boolean" },
+        "trustServiceCa": { "type": "boolean" },
+        "authorization": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "key": { "type": "string" }
+          }
+        },
+        "ca": { "$ref": "#/definitions/configMapOrSecretKey" }
+      }
+    },
+    "deviceData": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "secretName": { "type": "string" },
+        "key": { "type": "string" }
+      }
+    },
+    "pairing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "tokenSecret": { "type": "string" },
+        "tokenKey": { "type": "string" },
+        "deleteTokenSecret": { "type": "boolean" },
+        "apiServerCidrs": { "$ref": "#/definitions/cidrs" },
+        "cli": { "type": "string", "enum": ["", "oc", "kubectl"] },
+        "cliImage": { "$ref": "#/definitions/image" },
+        "kubectlImage": { "$ref": "#/definitions/image" }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "customerServerPeers": { "$ref": "#/definitions/freeObjectList" },
+        "customerServerPort": { "$ref": "#/definitions/port" },
+        "fireblocksCidrs": { "$ref": "#/definitions/cidrs" }
+      }
+    },
+    "proxy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string" },
+        "existingSecret": { "type": "string" },
+        "secretKey": { "type": "string" },
+        "cidrs": { "$ref": "#/definitions/cidrs" },
+        "port": { "$ref": "#/definitions/port" },
+        "noProxy": { "type": "string" }
+      }
+    },
+    "caBundle": { "$ref": "#/definitions/configMapOrSecretKey" },
+    "extraEnv": { "$ref": "#/definitions/freeObjectList" },
+    "livenessProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maxAgeSeconds": { "type": "integer", "minimum": 60 },
+        "initialDelaySeconds": { "type": "integer", "minimum": 0 },
+        "periodSeconds": { "type": "integer", "minimum": 1 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+        "failureThreshold": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "resources": { "$ref": "#/definitions/freeObject" },
+    "helperResources": { "$ref": "#/definitions/freeObject" },
+    "podSecurityContext": { "$ref": "#/definitions/freeObject" },
+    "containerSecurityContext": { "$ref": "#/definitions/freeObject" },
+    "nodeSelector": { "type": "object", "additionalProperties": { "type": "string" } },
+    "tolerations": { "$ref": "#/definitions/freeObjectList" },
+    "affinity": { "$ref": "#/definitions/freeObject" }
+  }
+}

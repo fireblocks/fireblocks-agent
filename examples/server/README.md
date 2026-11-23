@@ -11,7 +11,7 @@ It runs ONE customer-server container (plus MongoDB), defined in `docker-compose
 npm run build:docker    # generate the API types and build the softhsm2:2.6.1 image
 npm run start:docker    # create the shared docker volumes and start docker-compose.yml
 ```
-The server listens on host port 5000 (`http://<host>:5000/api`).
+The server listens on host port 5000 (`http://<host>:5000/api`, or `https://` with the certificate below). The Agent refuses `http://` unless `ALLOW_INSECURE_CUSTOMER_SERVER=true`, which is for a local evaluation only.
 
 # Running in cluster mode (optional)
 The default single-process setup signs serially: one customer-server process holds a
@@ -61,7 +61,7 @@ docker compose -f docker-compose.cluster.yml down
 
 The Fireblocks Agent configuration does not change: nginx publishes the same host
 port 5000 as the single-process setup, so `CUSTOMER_SERVER_URL` keeps pointing at
-`http://<host>:5000/api`.
+`https://<host>:5000/api` (or `http://` with `ALLOW_INSECURE_CUSTOMER_SERVER=true`).
 
 Choosing N: start with the number of CPU cores of the host (each signer replica is a
 full Node process that can saturate about one core while signing) and adjust based on
@@ -102,7 +102,7 @@ measurement. If you omit `--scale`, the file's default of 2 replicas is used.
      block (`ssl_certificate` + `ssl_certificate_key`).
   4. Restart: `docker compose -f docker-compose.cluster.yml up -d --force-recreate nginx`
   5. Point the Agent at `https://<host>:5000/api` and, for a self-signed certificate,
-     set `SSL_CERT_PATH` in the Agent env file as described below.
+     set `CUSTOMER_SERVER_CA_FILE` in the Agent env file as described below.
 
 # Support for self signed certificate
 The server can support self signed certificate when accepting SSL connections from the Agent.
@@ -125,4 +125,4 @@ In order to run the server with self signed certificate, follow the following st
       SELF_SIGNED_SSL_CERT_PATH="./env/self-signed-cert.txt"`
 7. Start the server, it will automatically run in SSL if the defined files are found
 8. In order for the Agent to accept the self signed certificate, add the following to the Agent env file (e.g. .env.prod)
-   - `SSL_CERT_PATH="./examples/server/env/self-signed-cert.txt"`
+   - `CUSTOMER_SERVER_CA_FILE="./examples/server/env/self-signed-cert.txt"` and `CUSTOMER_SERVER_URL="https://localhost:5000/api"`

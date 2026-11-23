@@ -5,6 +5,7 @@ import { GUID, JWT } from '../types';
 import deviceService from './device.service';
 import { setupTokenBeforeAndAfter } from './device.service.test';
 import fbServerApi from './fb-server.api';
+import heartbeat from './heartbeat';
 import { fbServerApiDriver, messageBuilder } from './fb-server.api.test';
 import agent from './fireblocks-agent';
 import messagesService from './messages.service';
@@ -35,6 +36,18 @@ describe('HSM Agent', () => {
 
     expect(fbServerApi.getMessages).toHaveBeenCalledTimes(1);
     expect(messagesService.handleMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it('beats the heartbeat on each long-poll step', async () => {
+    jest.spyOn(fbServerApi, 'getMessages').mockImplementation(jest.fn(() => Promise.resolve([])));
+    jest.spyOn(messagesService, 'handleMessages').mockImplementation(jest.fn(() => Promise.resolve()));
+    const beat = jest.spyOn(heartbeat, 'beat').mockImplementation(() => undefined);
+
+    await agent._runLoopStep(new https.Agent());
+    await agent._runLoopStep(new https.Agent());
+
+    expect(beat).toHaveBeenCalledTimes(2);
+    beat.mockRestore();
   });
 
   it('should validate a valid pairing token', () => {

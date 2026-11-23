@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { TOKEN_PATH } from '../constants';
 
 const loggerMock = { info: jest.fn(), error: jest.fn(), warn: jest.fn() };
@@ -53,6 +55,43 @@ describe('device service FB_DEVICE_DATA', () => {
 
     expect(service.isPaired()).toBe(true);
     expect(fs.existsSync(TOKEN_PATH)).toBe(false);
+  });
+
+  it('reads the device data from the file named by FB_DEVICE_DATA_FILE', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'device-data-'));
+    const file = path.join(dir, 'device-data');
+    fs.writeFileSync(file, `${JSON.stringify(DEVICE_DATA)}\n`);
+    process.env.FB_DEVICE_DATA_FILE = file;
+    try {
+      const service = loadService();
+
+      expect(service.isPaired()).toBe(true);
+      expect(service.getDeviceData()).toStrictEqual(DEVICE_DATA);
+      expect(fs.existsSync(TOKEN_PATH)).toBe(false);
+      expect(loggerMock.info).toHaveBeenCalledWith('Using the device data from the file named by FB_DEVICE_DATA_FILE');
+      expect(JSON.stringify(loggerMock.info.mock.calls)).not.toContain(DEVICE_DATA.refreshToken);
+    } finally {
+      delete process.env.FB_DEVICE_DATA_FILE;
+      delete process.env.FB_DEVICE_DATA;
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses FB_DEVICE_DATA and FB_DEVICE_DATA_FILE together', () => {
+    process.env.FB_DEVICE_DATA_FILE = '/does/not/matter';
+    const exit = jest.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('process.exit');
+    }) as never);
+    const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(() => loadService(JSON.stringify(DEVICE_DATA))).toThrow('process.exit');
+      expect(exit).toHaveBeenCalledWith(2);
+      expect(String(error.mock.calls[0][0])).toContain('Set either FB_DEVICE_DATA or FB_DEVICE_DATA_FILE, not both.');
+    } finally {
+      exit.mockRestore();
+      error.mockRestore();
+      delete process.env.FB_DEVICE_DATA_FILE;
+    }
   });
 
   it('returns the injected device data', () => {

@@ -28,9 +28,11 @@ jest.mock('ws', () => {
   return MockWebSocket;
 });
 
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import deviceService from './device.service';
 import fbServerApi, { buildResponseObject } from './fb-server.api';
 import wsApi from './fb-server-ws.api';
+import heartbeat from './heartbeat';
 import logger from './logger';
 import { FBMessageEnvelope, MessageEnvelop, MessageStatus } from '../types';
 import { WS_CONNECT_TIMEOUT_MS, WS_MAX_PAYLOAD_BYTES, WS_OPEN_TIMEOUT_MS, WS_PING_INTERVAL_MS } from '../constants';
@@ -393,6 +395,43 @@ describe('fb-server-ws.api', () => {
     expect(options.maxPayload).toBe(WS_MAX_PAYLOAD_BYTES);
   });
 
+  it('connects directly when no proxy is set', async () => {
+    const saved = { https: process.env.HTTPS_PROXY, http: process.env.HTTP_PROXY };
+    delete process.env.HTTPS_PROXY;
+    delete process.env.HTTP_PROXY;
+    try {
+      wsApi.start(jest.fn());
+      await flushMicrotasks();
+      const [, options] = MockWebSocket.mock.calls[0];
+      expect(options.agent).toBeUndefined();
+    } finally {
+      if (saved.https !== undefined) process.env.HTTPS_PROXY = saved.https;
+      if (saved.http !== undefined) process.env.HTTP_PROXY = saved.http;
+    }
+  });
+
+  it('tunnels through the proxy when one is set', async () => {
+    const saved = { https: process.env.HTTPS_PROXY, http: process.env.HTTP_PROXY };
+    // Both, so the test holds for an https:// or an http:// MOBILE_GATEWAY_URL.
+    process.env.HTTPS_PROXY = 'http://proxy.example.internal:3128';
+    process.env.HTTP_PROXY = 'http://proxy.example.internal:3128';
+    try {
+      wsApi.start(jest.fn());
+      await flushMicrotasks();
+      const [, options] = MockWebSocket.mock.calls[0];
+      expect(options.agent).toBeInstanceOf(HttpsProxyAgent);
+      expect(options.agent.proxy.host).toBe('proxy.example.internal:3128');
+    } finally {
+      for (const [name, value] of [
+        ['HTTPS_PROXY', saved.https],
+        ['HTTP_PROXY', saved.http],
+      ] as const) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
+  });
+
   it('terminates and reconnects when the open handshake stalls (open never fires)', async () => {
     jest.useFakeTimers();
     wsApi.start(jest.fn());
@@ -429,6 +468,38 @@ describe('fb-server-ws.api', () => {
     jest.advanceTimersByTime(RECONNECT_BASE_MS);
     await flushMicrotasks();
     expect(MockWebSocket).toHaveBeenCalledTimes(2);
+  });
+
+  it('beats the heartbeat on each connection attempt, on open and on each answered keep-alive, not on a half-dead one', async () => {
+    jest.useFakeTimers();
+    const beat = jest.spyOn(heartbeat, 'beat').mockImplementation(() => undefined);
+    wsApi.start(jest.fn());
+    await flushMicrotasks();
+    expect(beat).toHaveBeenCalledTimes(1); // the connection attempt
+
+    const first = MockWebSocket.instances[0];
+    first.emit('open');
+    expect(beat).toHaveBeenCalledTimes(2);
+
+    // alive since open: beat, then ping
+    jest.advanceTimersByTime(WS_PING_INTERVAL_MS);
+    expect(beat).toHaveBeenCalledTimes(3);
+
+    // a pong arrives: the next tick beats again
+    first.emit('pong');
+    jest.advanceTimersByTime(WS_PING_INTERVAL_MS);
+    expect(beat).toHaveBeenCalledTimes(4);
+
+    // no pong: the tick terminates the socket and does not beat
+    jest.advanceTimersByTime(WS_PING_INTERVAL_MS);
+    expect(first.terminate).toHaveBeenCalledTimes(1);
+    expect(beat).toHaveBeenCalledTimes(4);
+
+    // the reconnect attempt beats: the loop is still moving
+    jest.advanceTimersByTime(RECONNECT_BASE_MS);
+    await flushMicrotasks();
+    expect(MockWebSocket).toHaveBeenCalledTimes(2);
+    expect(beat).toHaveBeenCalledTimes(5);
   });
 
   // Drive the fake clock forward in small steps until `predicate` holds, capped so a wedged

@@ -1,0 +1,209 @@
+# Fireblocks Agent: relays signing requests between Fireblocks and your Customer Server (your own, or
+# KeyLink Flow). One replica only: two Agents with the same device credentials conflict.
+
+image:
+  # Build the Agent image from this repository (3.0.0 or later) and push it to your registry.
+  repository: ""
+  tag: ""
+  # A digest (sha256:...) pins the image and takes precedence over the tag. Recommended in
+  # production, so a re-pushed tag can't change what runs.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# Where the chart runs:
+#   openshift   Red Hat OpenShift. Its restricted-v2 policy assigns each pod a user ID, so the chart
+#               sets none, and the pairing Job writes the Secret with oc by default.
+#   kubernetes  Any other Kubernetes, for example Google Kubernetes Engine (GKE). Nothing assigns a
+#               user ID there, so the chart adds kubernetes.podSecurityContext to every pod, and the
+#               pairing Job writes the Secret with kubectl by default (pairing.cli).
+platform: openshift
+
+kubernetes:
+  # Added to podSecurityContext with platform=kubernetes; a key set in podSecurityContext wins.
+  # 1000 is the Agent image's own user and group. The kubectl image used for pairing runs as root
+  # by default, so it needs a user ID from the pod.
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Fireblocks Mobile API Gateway. Empty uses the value in the image's .env.prod
+# (https://mobile-api.fireblocks.io).
+mobileGatewayUrl: ""
+
+# Your Customer Server, as the Agent calls it.
+customerServer:
+  # Base URL of its API, https://, for example https://keylink-flow.<namespace>.svc:5000/api (the
+  # name the server's certificate covers). Required. The Agent refuses http:// unless
+  # allowInsecureHttp is set.
+  url: ""
+  # Development clusters only: allow an http:// url (ALLOW_INSECURE_CUSTOMER_SERVER). Signing
+  # requests and the Authorization key then cross the network unencrypted.
+  allowInsecureHttp: false
+  # The Authorization header the Agent sends: a key in an existing Secret. It must be one the server
+  # accepts (for KeyLink Flow, one of its known API keys). Empty existingSecret sends none.
+  authorization:
+    existingSecret: ""
+    key: customer-server-authorization
+  # On OpenShift with an https:// url and no ca below: trust OpenShift's service CA too, which
+  # signs the server's certificate with KeyLink Flow's serviceTls (the default there). The chart
+  # creates a ConfigMap that OpenShift fills with it. Not used on other platforms.
+  trustServiceCa: true
+  # The CA certificate that signs the server's HTTPS certificate, from a ConfigMap or a Secret (one
+  # of them), trusted in addition to the default CA certificates (CUSTOMER_SERVER_CA_FILE). Used
+  # only for calls to the server. Use a ConfigMap or Secret that holds the CA certificate alone,
+  # never the CA's or the server's private key. Empty: the default CA certificates (and the service
+  # CA, see trustServiceCa). The Agent waits until the key exists.
+  ca:
+    configMap: ""
+    secret: ""
+    key: ca.crt
+
+# The device credentials ({userId, deviceId, refreshToken}). The chart creates this Secret empty
+# and never changes its data; the pairing Job fills it. The Agent waits until it is filled.
+deviceData:
+  secretName: ""   # default: <release fullname>-device-data
+  key: device-data
+
+# One-time pairing. Create a Secret holding a fresh pairing token, set enabled=true and install or
+# upgrade right after issuing the token (it is valid for one hour). A Job pairs, stores the device
+# credentials in the device-data Secret and, by default, deletes the pairing-token Secret.
+# Re-pairing is the same with a new token. Set enabled=false again afterwards.
+pairing:
+  enabled: false
+  tokenSecret: ""
+  tokenKey: pairing-token
+  deleteTokenSecret: true
+  # The Kubernetes API server's endpoint addresses, for the pairing Job's NetworkPolicy: the
+  # addresses in `kubectl get endpoints kubernetes -n default`, not the kubernetes Service's IP
+  # (NetworkPolicies see the endpoint the Service forwards to). Empty allows ports 6443 and 443 to
+  # any address. Required with a proxy or networkPolicy.fireblocksCidrs, so that the pairing Job
+  # can't use the API rule to reach other hosts on 443.
+  apiServerCidrs: []
+  # The command-line tool that writes the device credentials into the Secret and deletes the
+  # pairing-token Secret: oc (from cliImage) or kubectl (from kubectlImage). Empty: oc with
+  # platform=openshift, kubectl with platform=kubernetes. Either way the Job's Role is the same.
+  cli: ""
+  # Image with the OpenShift CLI (oc), used with cli=oc to write the result into the Secret. registry.redhat.io
+  # needs your Red Hat pull secret, which OpenShift clusters normally have in their global pull
+  # secret. On a disconnected cluster, mirror the image with all its architectures and set
+  # repository to the mirror; the digest stays the same.
+  cliImage:
+    repository: registry.redhat.io/openshift4/ose-cli-rhel9
+    tag: v4.18
+    # Pinned by digest (the multi-architecture image index of the tag above), which takes precedence
+    # over the tag. When you change the tag, change the digest too, or set it to "" to pull by tag.
+    digest: "sha256:1c54f0195d6be3e186f77e4e6a9b874fcf0384b2c0b41665fbe0dbc02bd85f77"
+    pullPolicy: IfNotPresent
+  # Image with kubectl on its PATH, used with cli=kubectl. The default is the Kubernetes project's
+  # own kubectl image: kubectl alone, no shell, so the chart runs kubectl directly, once per step.
+  # Any image with kubectl works; it runs as the pod's user (kubernetes.podSecurityContext). Behind
+  # a mirror, set repository to the mirror; the digest stays the same.
+  kubectlImage:
+    repository: registry.k8s.io/kubectl
+    tag: v1.35.9
+    # Pinned by digest (the multi-architecture image index of the tag above), which takes precedence
+    # over the tag. When you change the tag, change the digest too, or set it to "" to pull by tag.
+    digest: "sha256:436cbaa8a019152063d638f412cf9d73ec29e56061529d28cbc231c6ab1b37a4"
+    pullPolicy: IfNotPresent
+
+networkPolicy:
+  enabled: true
+  # Where the Customer Server runs, as NetworkPolicy peers (podSelector, namespaceSelector or
+  # ipBlock). Empty allows customerServerPort to any pod in this namespace.
+  customerServerPeers: []
+  # The Customer Server pod's container port (the Service's targetPort), which the NetworkPolicy
+  # matches after the Service has forwarded the connection, not the Service port. Empty takes the
+  # port in customerServer.url, which is right only when the Service port and the container port
+  # are the same (KeyLink Flow's chart uses 5000 for both).
+  customerServerPort: ""
+  # Outbound HTTPS to Fireblocks. Empty allows port 443 to any address; list CIDRs to narrow it.
+  # Not used with a proxy: then the Agent may reach only the proxy, and the pairing Job only the
+  # proxy and the Kubernetes API addresses in pairing.apiServerCidrs.
+  fireblocksCidrs: []
+
+# Outbound HTTPS proxy for the Agent's connections to Fireblocks: the REST calls, the signing
+# WebSocket and pairing. Set url, or existingSecret when the URL carries a user name and password;
+# never put credentials in a values file. The Agent tunnels through it with CONNECT, so TLS to
+# Fireblocks stays end to end; the proxy must allow CONNECT to port 443 of the Fireblocks hosts and
+# WebSocket traffic inside that tunnel. The Agent always reaches the Customer Server directly, and the
+# pairing Job's oc step talks to the Kubernetes API directly.
+proxy:
+  # For example http://proxy.example.com:3128, without credentials.
+  url: ""
+  # A Secret holding the whole proxy URL, for a URL with credentials. Mounted as a file
+  # (HTTPS_PROXY_FILE), never set as an environment variable.
+  existingSecret: ""
+  secretKey: proxy-url
+  # Proxy addresses (CIDRs) and port for the NetworkPolicies, which then allow egress to the proxy
+  # instead of port 443 to any address. Required with networkPolicy.enabled. The port defaults to
+  # the one in url.
+  cidrs: []
+  port: ""
+  # Hosts that go direct, appended to the default: localhost,127.0.0.1,.svc,.cluster.local.
+  noProxy: ""
+
+# Extra CA certificates (PEM) the Agent trusts for its connections to Fireblocks, for example the
+# root CA of a TLS-inspecting proxy, from a ConfigMap or a Secret (one of them). Read through Node's
+# NODE_EXTRA_CA_CERTS, in addition to the default CA certificates. TLS verification is never off.
+caBundle:
+  configMap: ""
+  secret: ""
+  key: ca-bundle.crt
+
+# Extra environment variables, as a list of name/value pairs (no secrets here).
+extraEnv: []
+
+# Liveness probe. The Agent writes the time to a heartbeat file in its /tmp volume
+# (HEARTBEAT_FILE) while its connection loop to Fireblocks makes progress: at each connection
+# attempt, when the WebSocket opens and at each answered keep-alive ping (every 30 seconds by
+# default), or at each long poll. The probe restarts the Agent when the time in the file is older
+# than maxAgeSeconds, which recovers a connection loop that has stopped. A failing connection attempt
+# still counts as progress, so an outage at Fireblocks or at your proxy does not restart the Agent.
+# Keep maxAgeSeconds well above WS_PING_INTERVAL_MS and FB_LONG_POLL_TIMEOUT_MS if you raise them.
+livenessProbe:
+  enabled: true
+  maxAgeSeconds: 300
+  initialDelaySeconds: 60
+  periodSeconds: 60
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Resources for the pairing Job's oc or kubectl steps. Its pairing step uses resources.
+helperResources:
+  requests:
+    cpu: 20m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+# OpenShift's restricted-v2 policy assigns the user and group IDs; set no runAsUser here. With
+# platform=kubernetes, this is added on top of kubernetes.podSecurityContext.
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

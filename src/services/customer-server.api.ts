@@ -50,6 +50,9 @@ function buildRequestConfig(httpsAgent: https.Agent, timeout: number = CUSTOMER_
     headers: { Authorization: CUSTOMER_SERVER_AUTHORIZATION },
     httpsAgent,
     timeout,
+    // Never through HTTPS_PROXY / HTTP_PROXY: the outbound proxy is for the connections to
+    // Fireblocks, and signing requests to the Customer Server stay on the direct path.
+    proxy: false as const,
   };
 }
 

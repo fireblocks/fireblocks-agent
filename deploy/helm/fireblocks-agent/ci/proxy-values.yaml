@@ -1,0 +1,17 @@
+# Rendered in CI. The Agent and its pairing step reach Fireblocks only through an outbound proxy
+# (URL without credentials), and trust the root CA of a TLS-inspecting proxy.
+image:
+  repository: registry.example.com/keylink/fireblocks-agent
+  tag: "3.0.0"
+customerServer:
+  url: https://keylink-flow.keylink-flow.svc:5000/api
+pairing:
+  enabled: true
+  tokenSecret: fireblocks-agent-pairing-token
+  apiServerCidrs: ["198.51.100.10/32"]
+proxy:
+  url: http://proxy.example.com:3128
+  cidrs: ["192.0.2.10/32"]
+caBundle:
+  secret: outbound-proxy-ca
+  key: ca.crt

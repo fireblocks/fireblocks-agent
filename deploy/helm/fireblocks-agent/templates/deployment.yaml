@@ -1,0 +1,173 @@
+{{- include "fireblocks-agent.validate" . -}}
+{{- $secretDir := "/run/secrets/fireblocks-agent" -}}
+{{- $caSpec := include "fireblocks-agent.customerServerCa" . -}}
+{{- $ca := list -}}
+{{- if $caSpec }}{{ $ca = splitList ":" $caSpec }}{{ end -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "fireblocks-agent.deviceDataSecret" . }}
+  labels:
+    {{- include "fireblocks-agent.labels" . | nindent 4 }}
+  annotations:
+    # The pairing Job fills this Secret. It has no data in the chart, so an upgrade never resets
+    # it, and uninstalling the release keeps it.
+    helm.sh/resource-policy: keep
+type: Opaque
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fireblocks-agent.fullname" . }}
+  labels:
+    {{- include "fireblocks-agent.labels" . | nindent 4 }}
+spec:
+  # One Agent at a time: two with the same device credentials race each other. Recreate stops the
+  # old pod before the new one starts.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "fireblocks-agent.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "fireblocks-agent.labels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "fireblocks-agent.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: agent
+          image: {{ include "fireblocks-agent.image" .Values.image | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            - name: NODE_ENV
+              value: prod
+            - name: LOG_TO_FILE
+              value: "false"
+            - name: CUSTOMER_SERVER_URL
+              value: {{ .Values.customerServer.url | quote }}
+            {{- if $ca }}
+            # The CA the Agent checks the server's certificate against, besides the default ones
+            # (calls to the server only). The Agent stops at startup if it can't read it.
+            - name: CUSTOMER_SERVER_CA_FILE
+              value: "{{ $secretDir }}/customer-server-ca/{{ index $ca 2 }}"
+            {{- end }}
+            {{- if .Values.customerServer.allowInsecureHttp }}
+            # customerServer.allowInsecureHttp: plain HTTP to the server, development only.
+            - name: ALLOW_INSECURE_CUSTOMER_SERVER
+              value: "true"
+            {{- end }}
+            {{- with .Values.mobileGatewayUrl }}
+            - name: MOBILE_GATEWAY_URL
+              value: {{ . | quote }}
+            {{- end }}
+            # Secrets: file paths only, never the values.
+            - name: FB_DEVICE_DATA_FILE
+              value: "{{ $secretDir }}/device-data/{{ .Values.deviceData.key }}"
+            {{- if .Values.livenessProbe.enabled }}
+            # For the liveness probe below.
+            - name: HEARTBEAT_FILE
+              value: {{ include "fireblocks-agent.heartbeatFile" . | quote }}
+            {{- end }}
+            {{- if .Values.customerServer.authorization.existingSecret }}
+            - name: CUSTOMER_SERVER_AUTHORIZATION_FILE
+              value: "{{ $secretDir }}/customer-server/{{ .Values.customerServer.authorization.key }}"
+            {{- end }}
+            {{- with include "fireblocks-agent.proxyEnv" . | trim }}{{ . | nindent 12 }}{{ end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.livenessProbe }}
+          {{- if .enabled }}
+          # Fails when the heartbeat file is missing or older than maxAgeSeconds; see values.yaml.
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - {{ printf "beat=$(cat %s) && [ $(( $(date +%%s) - beat )) -lt %d ]" (include "fireblocks-agent.heartbeatFile" $) (int .maxAgeSeconds) | quote }}
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            failureThreshold: {{ .failureThreshold }}
+          {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: device-data
+              mountPath: {{ $secretDir }}/device-data
+              readOnly: true
+            {{- if .Values.customerServer.authorization.existingSecret }}
+            - name: customer-server
+              mountPath: {{ $secretDir }}/customer-server
+              readOnly: true
+            {{- end }}
+            {{- if $ca }}
+            - name: customer-server-ca
+              mountPath: {{ $secretDir }}/customer-server-ca
+              readOnly: true
+            {{- end }}
+            {{- include "fireblocks-agent.proxyVolumeMounts" . | nindent 12 }}
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # Until the pairing Job has filled the Secret, the key is missing and the pod waits in
+        # ContainerCreating instead of starting unpaired.
+        - name: device-data
+          secret:
+            secretName: {{ include "fireblocks-agent.deviceDataSecret" . }}
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.deviceData.key }}
+                path: {{ .Values.deviceData.key }}
+        {{- with .Values.customerServer.authorization.existingSecret }}
+        - name: customer-server
+          secret:
+            secretName: {{ . }}
+            defaultMode: 0440
+            items:
+              - key: {{ $.Values.customerServer.authorization.key }}
+                path: {{ $.Values.customerServer.authorization.key }}
+        {{- end }}
+        {{- if $ca }}
+        # Listing the key makes the pod wait until the CA certificate exists (for example until
+        # OpenShift has injected the service CA), so the Agent never starts without it.
+        - name: customer-server-ca
+          {{- if eq (index $ca 0) "configMap" }}
+          configMap:
+            name: {{ index $ca 1 }}
+          {{- else }}
+          secret:
+            secretName: {{ index $ca 1 }}
+            defaultMode: 0440
+          {{- end }}
+            items:
+              - key: {{ index $ca 2 }}
+                path: {{ index $ca 2 }}
+        {{- end }}
+        {{- include "fireblocks-agent.proxyVolumes" . | nindent 8 }}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
