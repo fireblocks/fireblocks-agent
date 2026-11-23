@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import Chance from 'chance';
@@ -30,6 +30,20 @@ describe('Customer Server API', () => {
     const res = await service.messagesToSign(messagesToSign, httpsAgent);
 
     expect(res).toEqual(expectedRes);
+  });
+
+  it('never sends Customer Server calls through HTTPS_PROXY or HTTP_PROXY', async () => {
+    const post = jest.spyOn(axios, 'post').mockResolvedValue({ data: { statuses: [] } });
+    try {
+      await service.messagesToSign([], httpsAgent);
+      await service.messagesStatus({ requestsIds: [] }, httpsAgent);
+      for (const call of post.mock.calls) {
+        expect(call[2]).toMatchObject({ proxy: false, httpsAgent });
+      }
+      expect(post).toHaveBeenCalledTimes(2);
+    } finally {
+      post.mockRestore();
+    }
   });
 });
 

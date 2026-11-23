@@ -1,0 +1,238 @@
+{{- if .Values.pairing.enabled }}
+{{- $name := printf "%s-pairing" (include "fireblocks-agent.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- $deviceSecret := include "fireblocks-agent.deviceDataSecret" . -}}
+{{- $cli := include "fireblocks-agent.pairingCli" . -}}
+# The pairing Job's own identity. It may only read and update the device-data Secret and, when
+# pairing.deleteTokenSecret is set, delete the pairing-token Secret. The Agent itself has no
+# access to the Kubernetes API.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "fireblocks-agent.pairingLabels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "fireblocks-agent.pairingLabels" . | nindent 4 }}
+rules:
+  # Kubernetes cannot limit "create" to one name, so the chart creates the Secret and the Job only
+  # updates it.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: [{{ $deviceSecret | quote }}]
+    verbs: ["get", "update", "patch"]
+  {{- if .Values.pairing.deleteTokenSecret }}
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: [{{ .Values.pairing.tokenSecret | quote }}]
+    verbs: ["get", "delete"]
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "fireblocks-agent.pairingLabels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "fireblocks-agent.pairingLabels" . | nindent 4 }}
+  annotations:
+    # Runs after install or upgrade while pairing.enabled is set; a rerun replaces the
+    # previous Job.
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  # No retries: a pairing token is spent by a successful pairing. Issue a new token and rerun.
+  backoffLimit: 0
+  # Shorter than Helm's default wait for a hook (5 minutes), so Helm reports the Job's own failure.
+  activeDeadlineSeconds: 240
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "fireblocks-agent.pairingLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ $name }}
+      # The API token is mounted only into the store container below, not into the pairing step.
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "fireblocks-agent.podSecurityContext" . | nindent 8 }}
+      initContainers:
+        # Pairs with Fireblocks and writes the device credentials to a memory-backed volume.
+        - name: pair
+          image: {{ include "fireblocks-agent.image" .Values.image | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # args, not command: the image's tini entrypoint stays PID 1 and forwards signals.
+          # The token Secret is mounted as optional, so a missing Secret fails the Job at once with
+          # this message instead of leaving the pod waiting for the volume until the Job's deadline.
+          # pairing.enabled left on after a successful pairing is the usual cause: the Job deleted
+          # the Secret.
+          args:
+            - sh
+            - -ec
+            - |
+              if [ ! -s "$PAIRING_TOKEN_FILE" ]; then
+                echo "The pairing token Secret $TOKEN_SECRET, key $TOKEN_KEY, does not exist or is empty: nothing was sent to Fireblocks." >&2
+                echo "A successful pairing deletes it. If the Agent is already paired, set pairing.enabled=false and upgrade again." >&2
+                echo "To pair or re-pair, create the Secret with a fresh pairing token, then upgrade with pairing.enabled=true." >&2
+                exit 2
+              fi
+              {{- if eq $cli "kubectl" }}
+              node dist/pair.js
+              # The kubectl image has no shell to encode the result, so the patch for the Secret's
+              # data is written here, to the same memory-backed volume.
+              node -e 'const fs = require("fs"); const e = process.env; fs.writeFileSync(e.DEVICE_DATA_PATCH_FILE, JSON.stringify({ data: { [e.DEVICE_DATA_KEY]: fs.readFileSync(e.DEVICE_DATA_OUTPUT_FILE).toString("base64") } }), { mode: 0o600 })'
+              {{- else }}
+              exec node dist/pair.js
+              {{- end }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: NODE_ENV
+              value: prod
+            - name: LOG_TO_FILE
+              value: "false"
+            {{- with .Values.mobileGatewayUrl }}
+            - name: MOBILE_GATEWAY_URL
+              value: {{ . | quote }}
+            {{- end }}
+            - name: PAIRING_TOKEN_FILE
+              value: "/run/secrets/pairing/{{ .Values.pairing.tokenKey }}"
+            - name: TOKEN_SECRET
+              value: {{ .Values.pairing.tokenSecret | quote }}
+            - name: TOKEN_KEY
+              value: {{ .Values.pairing.tokenKey | quote }}
+            - name: DEVICE_DATA_OUTPUT_FILE
+              value: /scratch/device-data
+            {{- if eq $cli "kubectl" }}
+            - name: DEVICE_DATA_KEY
+              value: {{ .Values.deviceData.key | quote }}
+            - name: DEVICE_DATA_PATCH_FILE
+              value: /scratch/device-data-patch.json
+            {{- end }}
+            # The pairing call goes to Fireblocks, so through the proxy when one is set. The store
+            # step below talks to the Kubernetes API and gets no proxy settings.
+            {{- with include "fireblocks-agent.proxyEnv" . | trim }}{{ . | nindent 12 }}{{ end }}
+          volumeMounts:
+            - name: pairing-token
+              mountPath: /run/secrets/pairing
+              readOnly: true
+            - name: scratch
+              mountPath: /scratch
+            - name: tmp
+              mountPath: /tmp
+            {{- include "fireblocks-agent.proxyVolumeMounts" . | nindent 12 }}
+      {{- if eq $cli "kubectl" }}
+      {{- /*
+      kubectl, one command per container, since the image has no shell: "store" patches the
+      device-data Secret's data, then "delete-token" removes the spent pairing token. Init containers
+      run in order, so the token goes only after the credentials are stored.
+      */}}
+      {{- $store := dict "name" "store" "root" . "scratch" true "args" (list "patch" "secret" $deviceSecret "--namespace" .Release.Namespace "--type=merge" "--patch-file=/scratch/device-data-patch.json") }}
+      {{- if .Values.pairing.deleteTokenSecret }}
+        {{- include "fireblocks-agent.kubectlStep" $store | nindent 8 }}
+      containers:
+        {{- include "fireblocks-agent.kubectlStep" (dict "name" "delete-token" "root" . "args" (list "delete" "secret" .Values.pairing.tokenSecret "--namespace" .Release.Namespace)) | nindent 8 }}
+      {{- else }}
+      containers:
+        {{- include "fireblocks-agent.kubectlStep" $store | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      containers:
+        # Copies the result into the device-data Secret, then removes the spent pairing token.
+        - name: store
+          image: {{ include "fireblocks-agent.image" .Values.pairing.cliImage | quote }}
+          imagePullPolicy: {{ .Values.pairing.cliImage.pullPolicy }}
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              oc set data "secret/$DEVICE_DATA_SECRET" --from-file="$DEVICE_DATA_KEY=/scratch/device-data" >/dev/null
+              echo "device credentials stored in Secret $DEVICE_DATA_SECRET"
+              if [ "$DELETE_TOKEN_SECRET" = "true" ]; then
+                oc delete "secret/$TOKEN_SECRET" >/dev/null
+                echo "pairing token Secret $TOKEN_SECRET deleted"
+              fi
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.helperResources | nindent 12 }}
+          env:
+            - name: HOME
+              value: /tmp
+            - name: DEVICE_DATA_SECRET
+              value: {{ $deviceSecret | quote }}
+            - name: DEVICE_DATA_KEY
+              value: {{ .Values.deviceData.key | quote }}
+            - name: TOKEN_SECRET
+              value: {{ .Values.pairing.tokenSecret | quote }}
+            - name: DELETE_TOKEN_SECRET
+              value: {{ .Values.pairing.deleteTokenSecret | quote }}
+          volumeMounts:
+            - name: scratch
+              mountPath: /scratch
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: api-access
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+      {{- end }}
+      volumes:
+        # The service account's API token, CA and namespace, only for the oc or kubectl containers.
+        - name: api-access
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  expirationSeconds: 3600
+              - configMap:
+                  name: kube-root-ca.crt
+                  items:
+                    - key: ca.crt
+                      path: ca.crt
+              - downwardAPI:
+                  items:
+                    - path: namespace
+                      fieldRef:
+                        fieldPath: metadata.namespace
+        # Optional: the pair step reports a missing Secret itself (see above).
+        - name: pairing-token
+          secret:
+            secretName: {{ .Values.pairing.tokenSecret }}
+            defaultMode: 0440
+            optional: true
+        # Memory-backed, so the device credentials never touch a node's disk.
+        - name: scratch
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        {{- include "fireblocks-agent.proxyVolumes" . | nindent 8 }}
+{{- end }}

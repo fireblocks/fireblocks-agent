@@ -1,0 +1,31 @@
+{{- $cli := ternary "oc" "kubectl" (eq .Values.platform "openshift") -}}
+Fireblocks Agent {{ .Chart.AppVersion }} is installed as {{ include "fireblocks-agent.fullname" . }}, one replica (Recreate strategy).
+{{- $caSpec := include "fireblocks-agent.customerServerCa" . }}
+{{- $ca := list }}
+{{- if $caSpec }}{{ $ca = splitList ":" $caSpec }}{{ end }}
+It calls your Customer Server at {{ .Values.customerServer.url }}{{ if $ca }}, checking its certificate against the default CA certificates and the CA in {{ index $ca 0 }} {{ index $ca 1 }} (key {{ index $ca 2 }}){{ else if eq (include "fireblocks-agent.urlScheme" .) "https" }}, checking its certificate against the default CA certificates{{ end }}.
+{{- if .Values.customerServer.allowInsecureHttp }}
+WARNING: customerServer.allowInsecureHttp is set: signing requests and the Authorization key go to the
+server over plain HTTP, unencrypted. Use it on a development cluster only.
+{{- end }}
+
+The Agent starts once the Secret {{ include "fireblocks-agent.deviceDataSecret" . }} holds its device credentials
+(key "{{ .Values.deviceData.key }}"); until then the pod waits in ContainerCreating.
+{{- if .Values.pairing.enabled }}
+
+Pairing: the Job {{ include "fireblocks-agent.fullname" . }}-pairing pairs with the token in the Secret {{ .Values.pairing.tokenSecret }}
+(a pairing token is valid for one hour). Check it with:
+  {{ $cli }} logs job/{{ include "fireblocks-agent.fullname" . }}-pairing -c pair
+Set pairing.enabled=false after a successful pairing.
+{{- if .Values.pairing.deleteTokenSecret }} A successful pairing deletes the token Secret, so an
+upgrade with pairing still on runs the Job again, which fails at once and fails the upgrade.
+{{- else }} An upgrade with pairing still on runs the Job again with
+the spent token, which Fireblocks refuses, and fails the upgrade.
+{{- end }}
+{{- else }}
+
+Pairing: off. To pair or re-pair, put a fresh pairing token in a Secret and upgrade with
+pairing.enabled=true and pairing.tokenSecret=<that Secret>.
+{{- end }}
+
+Check the Agent: {{ $cli }} logs deploy/{{ include "fireblocks-agent.fullname" . }}   (look for "WS: connected")

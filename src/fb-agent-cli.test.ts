@@ -152,3 +152,64 @@ describe('fb-agent-cli main, unpaired with no terminal', () => {
     expect(passwordMock).toHaveBeenCalled();
   });
 });
+
+describe('fb-agent-cli start, credentials file cannot be read', () => {
+  let exitSpy: any;
+
+  beforeEach(() => {
+    isPairedMock.mockReturnValue(true);
+    // Unlike the block above, exit does not throw: it is called from a .catch, so a throw there
+    // would only turn into another unhandled rejection.
+    exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+  });
+
+  afterEach(() => {
+    exitSpy.mockRestore();
+    getDeviceDataMock.mockReset();
+    jest.clearAllMocks();
+  });
+
+  // start() does not await main(), so let its rejection handler run before asserting.
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+  it('exits with 1 and names the file it could not read', async () => {
+    const message = "EACCES: permission denied, open '/app/data/.fireblocks-refresh-token'";
+    getDeviceDataMock.mockImplementation(() => {
+      throw Object.assign(new Error(message), { code: 'EACCES' });
+    });
+    const { start } = require('./fb-agent-cli');
+
+    await start({} as any);
+    await flush();
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(loggerMock.error).toHaveBeenCalledWith(expect.stringContaining(message));
+    expect(runAgentMainLoopMock).not.toHaveBeenCalled();
+  });
+
+  it('logs only the type of a corrupt file error, never its content', async () => {
+    getDeviceDataMock.mockImplementation(() => {
+      throw new SyntaxError('Unexpected token \'s\', "secret-refresh-token" is not valid JSON');
+    });
+    const { start } = require('./fb-agent-cli');
+
+    await start({} as any);
+    await flush();
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const logged = loggerMock.error.mock.calls.flat().join(' ');
+    expect(logged).toContain('SyntaxError');
+    expect(logged).not.toContain('secret-refresh-token');
+  });
+
+  it('does not exit on a normal start', async () => {
+    getDeviceDataMock.mockReturnValue({ userId: 'u', deviceId: 'd' });
+    const { start } = require('./fb-agent-cli');
+
+    await start({} as any);
+    await flush();
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(runAgentMainLoopMock).toHaveBeenCalled();
+  });
+});

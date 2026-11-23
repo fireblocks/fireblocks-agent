@@ -3,5 +3,6 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testPathIgnorePatterns: [".d.ts", ".js"],
-  coverageReporters: ["json-summary"]
+  coverageReporters: ["json-summary"],
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"]
 };

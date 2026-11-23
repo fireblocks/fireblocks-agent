@@ -29,7 +29,7 @@ Fireblocks Agent
 
 **How requests are routed:** signing traffic (`/api/messagesToSign`, `/api/messagesStatus`, `/api/signRequest/...`) is load-balanced round-robin across the `customer-server-signer` replicas, while key generation (`/api/hsm/*`) always goes to the single `customer-server-primary` process. Keeping key generation on one process is what makes the shared token safe for parallel signing; nginx enforces this routing automatically, so no extra configuration is needed.
 
-**Agent configuration:** the Fireblocks Agent needs no cluster-specific settings. nginx is its single entry point on host port 5000, so `CUSTOMER_SERVER_URL` is simply `http://<host>:5000/api` — identical in both modes. Keys, tokens, and the message database live on shared Docker volumes, so you can switch between cluster and single-process mode at any time without losing keys.
+**Agent configuration:** the Fireblocks Agent needs no cluster-specific settings. nginx is its single entry point on host port 5000, so `CUSTOMER_SERVER_URL` is simply `https://<host>:5000/api` with TLS on nginx (Section 6), identical in both modes. Plain `http://<host>:5000/api` needs `ALLOW_INSECURE_CUSTOMER_SERVER=true` in the Agent, for a local evaluation only. Keys, tokens, and the message database live on shared Docker volumes, so you can switch between cluster and single-process mode at any time without losing keys.
 
 ---
 
@@ -112,10 +112,11 @@ Repeat this restart any time you generate additional keys later.
 In the Agent's env file (e.g. `.env.prod`):
 
 ```
-CUSTOMER_SERVER_URL="http://<host>:5000/api"
+CUSTOMER_SERVER_URL="https://<host>:5000/api"
+CUSTOMER_SERVER_CA_FILE="./examples/server/env/self-signed-cert.txt"
 ```
 
-Then start the Agent as usual.
+with TLS on nginx as in [Section 6](#6-tls). For a quick local evaluation without TLS, use `CUSTOMER_SERVER_URL="http://<host>:5000/api"` and `ALLOW_INSECURE_CUSTOMER_SERVER=true` instead: the Agent refuses `http://` otherwise. Then start the Agent as usual.
 
 ### Stopping cluster mode
 
@@ -161,9 +162,9 @@ nginx re-resolves the signer pool via Docker DNS every few seconds, so replicas 
 
 ---
 
-## 6. TLS (optional)
+## 6. TLS
 
-By default, cluster mode runs plain HTTP on port 5000. In cluster mode, TLS is terminated **by nginx** — the customer-server replicas always speak plain HTTP on the internal Docker network and are never exposed on the host.
+By default, cluster mode runs plain HTTP on port 5000, which the Fireblocks Agent accepts only with `ALLOW_INSECURE_CUSTOMER_SERVER=true`. In cluster mode, TLS is terminated **by nginx**: the customer-server replicas always speak plain HTTP on the internal Docker network and are never exposed on the host.
 
 To enable TLS with a self-signed certificate:
 
@@ -176,10 +177,10 @@ To enable TLS with a self-signed certificate:
    docker compose -f docker-compose.cluster.yml up -d --force-recreate nginx
    ```
 
-5. In the Agent env file, change `CUSTOMER_SERVER_URL` to `https://<host>:5000/api` and set `SSL_CERT_PATH` to the self-signed certificate so the Agent trusts it:
+5. In the Agent env file, change `CUSTOMER_SERVER_URL` to `https://<host>:5000/api` and set `CUSTOMER_SERVER_CA_FILE` to the self-signed certificate so the Agent trusts it:
 
    ```
-   SSL_CERT_PATH="./examples/server/env/self-signed-cert.txt"
+   CUSTOMER_SERVER_CA_FILE="./examples/server/env/self-signed-cert.txt"
    ```
 
 ---
@@ -192,7 +193,8 @@ To enable TLS with a self-signed certificate:
 | Signing fails with "key not found" on some requests only | Signers started before the keys were generated | `docker compose -f docker-compose.cluster.yml restart customer-server-signer` |
 | `curl http://localhost:5000/healthz` fails | nginx not up, or port conflict | `docker compose -f docker-compose.cluster.yml ps` and check nginx logs: `docker compose -f docker-compose.cluster.yml logs nginx` |
 | Throughput doesn't improve with more replicas | Host is out of CPU cores, or load is not signing-bound | Check `docker stats`; keep N ≤ physical cores |
-| Agent gets TLS errors after enabling SSL | Agent doesn't trust the self-signed certificate | Set `SSL_CERT_PATH` in the Agent env file (Section 6, step 5) |
+| Agent gets TLS errors after enabling SSL | Agent doesn't trust the self-signed certificate | Set `CUSTOMER_SERVER_CA_FILE` in the Agent env file (Section 6, step 5) |
+| Agent exits with `CUSTOMER_SERVER_URL is http://` | TLS is not on, and the Agent refuses plain HTTP | Enable TLS (Section 6), or for a local evaluation set `ALLOW_INSECURE_CUSTOMER_SERVER=true` |
 
 ---
 

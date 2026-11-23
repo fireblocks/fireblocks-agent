@@ -1,5 +1,5 @@
 {
-  "version": "2.4.4",
+  "version": "2.5.0",
   "description": "HSM Agent",
   "name": "@fireblocks/hsm-agent",
   "main": "dist/index.js",
@@ -17,9 +17,8 @@
     "start:debug": "NODE_ENV=dev9 node --inspect-brk -r ts-node/register src/index.ts",
     "start:example-server": "cd ./examples/server && npm run start:docker",
     "start:prod": "NODE_ENV=prod node dist/hsm-client.js",
-    "start:pm2": "NODE_ENV=prod pm2 start dist/hsm-client.js && pm2 attach 0",
     "start:docker": "docker run -t hsm-agent",
-    "build:docker": "docker build -t hsm-agent .",
+    "build:docker": "docker build --build-arg NPM_REGISTRY=$NPM_REGISTRY -t hsm-agent .",
     "test": "NODE_ENV=prod jest --runInBand --coverage --detectOpenHandles --forceExit",
     "prepack": "npm run build",
     "test:watch": "jest --watch --runInBand",
@@ -55,19 +54,24 @@
   },
   "dependencies": {
     "@inquirer/password": "^1.1.14",
-    "axios": "^1.18.1",
+    "axios": "^1.21.0",
     "chalk": "^4.0.0",
     "dotenv": "^16.3.1",
-    "figlet": "^1.7.0",
+    "figlet": "^1.12.0",
+    "https-proxy-agent": "7.0.6",
     "jsonwebtoken": "^9.0.2",
     "ora": "^5.0.0",
-    "uuid": "^9.0.1",
+    "proxy-from-env": "2.1.0",
+    "uuid": "^11.1.1",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^5.0.0",
-    "ws": "8.21.1"
+    "ws": "8.23.0"
   },
   "overrides": {
-    "jws": "^3.2.3"
+    "jws": "^3.2.3",
+    "follow-redirects": "^1.16.2",
+    "moment": "^2.31.0",
+    "async": "^3.2.6"
   },
   "husky": {
     "hooks": {

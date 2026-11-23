@@ -1,0 +1,20 @@
+# Rendered in CI. The Agent next to the KeyLink Flow chart in the same namespace: the server's API
+# over HTTPS with an OpenShift service CA certificate, the Authorization key from KeyLink Flow's
+# Secret, and the egress to the server limited to its pods.
+image:
+  repository: registry.example.com/keylink/fireblocks-agent
+  tag: "2.5.0"
+customerServer:
+  url: https://keylink-flow.keylink-flow.svc:5000/api
+  authorization:
+    existingSecret: keylink-flow-secrets
+    key: customer-server-authorization
+  ca:
+    configMap: keylink-flow-service-ca
+    key: service-ca.crt
+networkPolicy:
+  customerServerPeers:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: keylink-flow
+          app.kubernetes.io/component: customer-server

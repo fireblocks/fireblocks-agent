@@ -191,3 +191,59 @@ describe('constants timeout ordering check', () => {
     expect(warn).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('constants: a wrong _FILE setting', () => {
+  afterEach(() => {
+    delete process.env.HTTPS_PROXY_FILE;
+    jest.restoreAllMocks();
+    jest.resetModules();
+  });
+
+  it('stops with exit status 2 and names the setting, not the value', () => {
+    process.env.HTTPS_PROXY_FILE = '/nonexistent/proxy-url';
+    const exit = jest.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('process.exit');
+    }) as never);
+    const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    jest.resetModules();
+    expect(() => require('./constants')).toThrow('process.exit');
+    expect(exit).toHaveBeenCalledWith(2);
+    expect(String(error.mock.calls[0][0])).toContain('HTTPS_PROXY_FILE');
+  });
+});
+
+describe('constants TOKEN_PATH', () => {
+  const ORIGINAL = process.env.DEVICE_DATA_PATH;
+
+  afterEach(() => {
+    if (ORIGINAL === undefined) {
+      delete process.env.DEVICE_DATA_PATH;
+    } else {
+      process.env.DEVICE_DATA_PATH = ORIGINAL;
+    }
+    jest.resetModules();
+  });
+
+  // requireActual: the test setup replaces both paths with temporary files.
+  const loadPaths = (value?: string): { TOKEN_PATH: string; LEGACY_TOKEN_PATH: string } => {
+    jest.resetModules();
+    if (value === undefined) {
+      delete process.env.DEVICE_DATA_PATH;
+    } else {
+      process.env.DEVICE_DATA_PATH = value;
+    }
+    return jest.requireActual('./constants');
+  };
+
+  it('uses DEVICE_DATA_PATH when set', () => {
+    expect(loadPaths(' /app/data/.fireblocks-refresh-token ').TOKEN_PATH).toBe('/app/data/.fireblocks-refresh-token');
+  });
+
+  it('keeps the file next to the code when DEVICE_DATA_PATH is unset or blank', () => {
+    for (const value of [undefined, '  ']) {
+      const { TOKEN_PATH, LEGACY_TOKEN_PATH } = loadPaths(value);
+      expect(TOKEN_PATH).toBe(LEGACY_TOKEN_PATH);
+      expect(LEGACY_TOKEN_PATH.endsWith('/.fireblocks-refresh-token')).toBe(true);
+    }
+  });
+});

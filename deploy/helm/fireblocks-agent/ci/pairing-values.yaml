@@ -1,0 +1,23 @@
+# Rendered in CI. Any Customer Server over HTTPS with a certificate from a public CA (the default CA
+# certificates), during the one-time pairing Job, with egress narrowed to Fireblocks and Kubernetes
+# API addresses and the oc image pinned.
+image:
+  repository: registry.example.com/keylink/fireblocks-agent
+  tag: "2.5.0"
+customerServer:
+  url: https://signing-server.example.com:8443/api
+  authorization:
+    existingSecret: signing-server-agent-key
+    key: authorization
+pairing:
+  enabled: true
+  tokenSecret: fireblocks-agent-pairing-token
+  apiServerCidrs: ["198.51.100.10/32"]
+  cliImage:
+    digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+networkPolicy:
+  fireblocksCidrs: ["203.0.113.0/24"]
+  customerServerPeers:
+    - podSelector:
+        matchLabels:
+          app: signing-server

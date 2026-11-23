@@ -10,7 +10,9 @@ import {
 } from '../constants';
 import deviceService from './device.service';
 import fbServerApi, { buildResponseObject } from './fb-server.api';
+import heartbeat from './heartbeat';
 import logger from './logger';
+import { proxyAgentFor } from './proxy';
 
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
@@ -146,6 +148,8 @@ class FbServerWsApi {
     // a token fetch that hangs rather than fails would end the reconnect chain silently.
     const attempt = ++this.attemptId;
     this.armConnectWatchdog(attempt);
+    // The reconnect chain is moving, even if this attempt fails: see services/heartbeat.ts.
+    heartbeat.beat();
     try {
       const accessToken = await fbServerApi.getAccessToken(deviceService.getDeviceData());
       if (this.stopped || this.attemptId !== attempt) {
@@ -161,6 +165,9 @@ class FbServerWsApi {
         handshakeTimeout: WS_OPEN_TIMEOUT_MS,
         // Cap a single inbound frame so a huge/malicious frame can't stall the loop / spike memory.
         maxPayload: WS_MAX_PAYLOAD_BYTES,
+        // ws has no proxy support of its own: tunnel through HTTPS_PROXY when one applies, chosen by
+        // the same resolver axios uses for the REST calls. Undefined connects directly.
+        agent: proxyAgentFor(MOBILE_GATEWAY_URL),
       });
       this.ws = ws;
       // Watchdog for the CONNECTING phase: if 'open' never fires (e.g. TCP connected but the
@@ -182,6 +189,7 @@ class FbServerWsApi {
         this.isAlive = true;
         this.enableTcpKeepAlive(ws);
         this.startKeepAlive(ws);
+        heartbeat.beat();
         logger.info('WS: connected - MAG will push messages (no polling)');
       });
 
@@ -350,6 +358,8 @@ class FbServerWsApi {
         this.scheduleReconnect(); // reconnect directly (the ignored 'close' won't)
         return;
       }
+      // The connection answered since the last tick: it is alive.
+      heartbeat.beat();
       this.isAlive = false;
       try {
         ws.ping();

@@ -10,3 +10,6 @@ messages*.json
 .vscode
 customer-server.d.ts
 .*-audit.json
+
+# Temporary copies of build secrets that podman-remote can leave in the build context
+podman-build-secret-*
