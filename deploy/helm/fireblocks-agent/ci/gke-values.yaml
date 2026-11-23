@@ -1,0 +1,28 @@
+# Rendered in CI. Google Kubernetes Engine (GKE): the Agent next to the KeyLink Flow chart in the
+# same namespace, over HTTPS with the server's certificate from cert-manager (tls.existingSecret in
+# the KeyLink Flow chart) and its private CA's certificate published in a ConfigMap, during the
+# one-time pairing Job, which writes the Secret with kubectl and runs as the Agent image's user.
+platform: kubernetes
+image:
+  repository: us-central1-docker.pkg.dev/example-project/keylink/fireblocks-agent
+  tag: "3.0.0"
+customerServer:
+  url: https://keylink-flow.keylink-flow.svc:5000/api
+  authorization:
+    existingSecret: keylink-flow-secrets
+    key: customer-server-authorization
+  ca:
+    configMap: keylink-flow-ca
+    key: ca.crt
+pairing:
+  enabled: true
+  tokenSecret: fireblocks-agent-pairing-token
+  # The control plane's private endpoint: kubectl get endpoints kubernetes -n default
+  apiServerCidrs: ["198.51.100.10/32"]
+networkPolicy:
+  fireblocksCidrs: ["203.0.113.0/24"]
+  customerServerPeers:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: keylink-flow
+          app.kubernetes.io/component: customer-server

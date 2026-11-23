@@ -206,7 +206,7 @@ class MessageService implements IMessageService {
     let broadcastPromises = [];
     let ackPromises = [];
     logger.info(
-      `Number of messages to update: ${Object.keys(messagesStatus).length}, Number of massages in cache: ${
+      `Number of messages to update: ${Object.keys(messagesStatus).length}, Number of messages in cache: ${
         Object.keys(this.msgCache).length
       }`,
     );

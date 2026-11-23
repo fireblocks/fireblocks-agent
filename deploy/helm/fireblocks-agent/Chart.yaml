@@ -1,0 +1,7 @@
+apiVersion: v2
+name: fireblocks-agent
+description: Fireblocks Agent for KeyLink, with its one-time pairing Job, for Red Hat OpenShift (restricted-v2) and Kubernetes
+type: application
+version: 0.1.0
+appVersion: "3.0.0"
+kubeVersion: ">=1.25.0-0"

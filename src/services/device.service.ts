@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { validate as isUuid } from 'uuid';
-import { FB_DEVICE_DATA, TOKEN_PATH } from '../constants';
+import { FB_DEVICE_DATA, LEGACY_TOKEN_PATH, SETTINGS_FROM_FILES, TOKEN_PATH } from '../constants';
 import { GUID, RefreshToken } from '../types';
 import logger from './logger';
 
@@ -41,7 +41,11 @@ const parseInjectedDeviceData = (): DeviceData | undefined => {
     logger.error(`FB_DEVICE_DATA has a ${malformed.join(', ')} that is not a GUID, ignoring it`);
     return undefined;
   }
-  logger.info('Using the device data from the FB_DEVICE_DATA environment variable');
+  logger.info(
+    SETTINGS_FROM_FILES.includes('FB_DEVICE_DATA')
+      ? 'Using the device data from the file named by FB_DEVICE_DATA_FILE'
+      : 'Using the device data from the FB_DEVICE_DATA environment variable',
+  );
   return {
     userId: parsed.userId as GUID,
     deviceId: parsed.deviceId as GUID,
@@ -51,11 +55,29 @@ const parseInjectedDeviceData = (): DeviceData | undefined => {
 
 const injectedDeviceData = parseInjectedDeviceData();
 
+// The credentials file to read: TOKEN_PATH, or else the file an earlier version wrote next to the
+// code, so an Agent paired before DEVICE_DATA_PATH existed stays paired. New credentials are always
+// written to TOKEN_PATH.
+let legacyNoticeLogged = false;
+const storedDeviceDataPath = (): string | undefined => {
+  if (fs.existsSync(TOKEN_PATH)) {
+    return TOKEN_PATH;
+  }
+  if (LEGACY_TOKEN_PATH !== TOKEN_PATH && fs.existsSync(LEGACY_TOKEN_PATH)) {
+    if (!legacyNoticeLogged) {
+      legacyNoticeLogged = true;
+      logger.warn(`Reading the device data from ${LEGACY_TOKEN_PATH}; move the file to ${TOKEN_PATH}`);
+    }
+    return LEGACY_TOKEN_PATH;
+  }
+  return undefined;
+};
+
 let deviceDataCache;
 const deviceService = {
   isPaired: (): boolean => {
     // Injected data means paired, so main() never enters its pairing loop.
-    return !!injectedDeviceData || !!deviceDataCache || fs.existsSync(TOKEN_PATH);
+    return !!injectedDeviceData || !!deviceDataCache || !!storedDeviceDataPath();
   },
 
   saveDeviceData: (deviceData: DeviceData) => {
@@ -74,7 +96,8 @@ const deviceService = {
     if (deviceDataCache) {
       return deviceDataCache;
     }
-    return deviceService.isPaired() ? JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf-8')) : undefined;
+    const stored = storedDeviceDataPath();
+    return stored ? JSON.parse(fs.readFileSync(stored, 'utf-8')) : undefined;
   },
 };
 

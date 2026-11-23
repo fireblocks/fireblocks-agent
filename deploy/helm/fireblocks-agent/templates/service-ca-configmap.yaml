@@ -1,0 +1,18 @@
+{{- if hasPrefix "configMap:" (include "fireblocks-agent.customerServerCa" .) }}
+{{- if eq (index (splitList ":" (include "fireblocks-agent.customerServerCa" .)) 1) (include "fireblocks-agent.serviceCaConfigMap" .) }}
+{{- /*
+customerServer.trustServiceCa on OpenShift: OpenShift injects its service CA certificate into this
+ConfigMap (key service-ca.crt), and the Agent trusts it for the Customer Server, besides the default
+CA certificates. That is the CA of a server certificate from serviceTls in the KeyLink Flow chart.
+The chart sets no data, so upgrades keep the injected key.
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fireblocks-agent.serviceCaConfigMap" . }}
+  labels:
+    {{- include "fireblocks-agent.labels" . | nindent 4 }}
+  annotations:
+    service.beta.openshift.io/inject-cabundle: "true"
+{{- end }}
+{{- end }}

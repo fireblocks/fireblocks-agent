@@ -6,22 +6,29 @@ import { AGENT_VERSION } from '../version';
 import deviceService, { DeviceData } from './device.service';
 import fbServerApi from './fb-server.api';
 import fbServerWsApi from './fb-server-ws.api';
+import heartbeat from './heartbeat';
 import logger from './logger';
 import messageService from './messages.service';
 export interface FireblocksAgent {
   pairDevice(pairingToken: JWT): void;
+  requestDeviceData(pairingToken: JWT): Promise<DeviceData>;
   runAgentMainLoop(httpsAgent: https.Agent): Promise<void>;
   isValidPairingToken(pairingToken: JWT): boolean;
 }
 
 class FireblocksAgentImpl implements FireblocksAgent {
   async pairDevice(pairingToken: string) {
+    deviceService.saveDeviceData(await this.requestDeviceData(pairingToken));
+  }
+
+  // Pairs with Fireblocks and returns the device data without storing it anywhere.
+  async requestDeviceData(pairingToken: string): Promise<DeviceData> {
     const { userId } = jwt.decode(pairingToken) as PairingToken;
     const { refreshToken, deviceId } = await fbServerApi.pairDevice({
       userId,
       pairingToken,
     });
-    deviceService.saveDeviceData({ userId, deviceId, refreshToken });
+    return { userId, deviceId, refreshToken };
   }
 
   runAgentMainLoop = async (httpsAgent: https.Agent) => {
@@ -54,6 +61,8 @@ class FireblocksAgentImpl implements FireblocksAgent {
   }
 
   _runLoopStep = async (httpsAgent) => {
+    // Each poll is bounded by FB_LONG_POLL_TIMEOUT_MS, so a loop that keeps polling beats regularly.
+    heartbeat.beat();
     const start = Date.now();
     logger.info(`Waiting for messages from Fireblocks... (version=${AGENT_VERSION})`);
     const messages = await fbServerApi.getMessages();

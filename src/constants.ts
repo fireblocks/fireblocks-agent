@@ -1,3 +1,20 @@
+import { applySecretFiles } from './utils/secret-files';
+
+// Settings read from files (the _FILE settings in utils/secret-files.ts) are read before the .env
+// file, so they take precedence over its defaults.
+// A wrong _FILE setting stops the process here, before anything else runs, with exit status 2: for
+// the pairing step (pair.ts) that is "a setting or file is wrong, nothing was sent". The message names
+// the setting and the path, never the value.
+const readSettingsFromFiles = (): string[] => {
+  try {
+    return applySecretFiles(process.env);
+  } catch (e) {
+    console.error(e?.message ?? String(e));
+    return process.exit(2);
+  }
+};
+export const SETTINGS_FROM_FILES = readSettingsFromFiles();
+
 require('dotenv').config({
   path: `${__dirname}/../.env.${process.env.NODE_ENV}`,
 });
@@ -31,12 +48,19 @@ export const CUSTOMER_SERVER_SIGN_TIMEOUT_MS =
   Number.isFinite(customerServerSignTimeoutMs) && customerServerSignTimeoutMs > 0
     ? customerServerSignTimeoutMs
     : 120000;
-export const TOKEN_PATH = `${__dirname}/.fireblocks-refresh-token`;
+// Where the Agent keeps an interactively paired device's credentials. DEVICE_DATA_PATH sets it;
+// the image sets it to /app/data/.fireblocks-refresh-token, outside the code, so the code
+// directory stays read-only. Without it, the file sits next to the code, as in earlier versions.
+export const LEGACY_TOKEN_PATH = `${__dirname}/.fireblocks-refresh-token`;
+export const TOKEN_PATH = process.env.DEVICE_DATA_PATH?.trim() || LEGACY_TOKEN_PATH;
 // An already-paired {userId, deviceId, refreshToken}, so a container starts paired without a
 // TTY and without writing to disk - TOKEN_PATH is ephemeral there. Pair once elsewhere and
-// copy the file. Bearer credential: inject from a secret manager, never an .env file.
+// copy the file. Bearer credential: inject from a secret manager, never an .env file, preferably
+// as a mounted file named by FB_DEVICE_DATA_FILE.
 export const FB_DEVICE_DATA = process.env.FB_DEVICE_DATA?.trim() || undefined;
-export const SSL_CERT_PATH = process.env.SSL_CERT_PATH;
+// A file the Agent writes the time to while its connection loop makes progress, for a liveness
+// probe (see services/heartbeat.ts). Empty: no heartbeat file is written.
+export const HEARTBEAT_FILE = process.env.HEARTBEAT_FILE?.trim() || undefined;
 // Deadline for the short request/response calls to MAG (access_token, pair_device,
 // get_service_certificates, the msg ack, and the HTTP broadcast). Node's http client has no
 // timeout of its own, so a gateway that completes the TCP handshake and then never responds --
